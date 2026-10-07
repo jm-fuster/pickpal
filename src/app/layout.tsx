@@ -73,6 +73,13 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "PickPal",
   description: DESCRIPTION,
+  // La app no debe aparecer en Google: el caso de estudio que sí debe
+  // posicionar vive en jorgemolinafuster.com/work/pickpal. No bloquear en
+  // robots.txt — si Google no puede rastrear la página, no ve el noindex.
+  // Ninguna página hija debe definir su propio `robots` (Next sobrescribe el
+  // objeto entero por segmento). La cabecera X-Robots-Tag de next.config.ts
+  // cubre además los ficheros que no son HTML.
+  robots: { index: false, follow: false },
   icons: {
     apple: "/apple-touch-icon.png",
   },

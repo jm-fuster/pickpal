@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const securityHeaders = [
+  // Complementa `robots` de src/app/layout.tsx: cubre también fuentes, imágenes
+  // y demás ficheros que no son HTML. No añadir Disallow en robots.txt.
+  { key: "X-Robots-Tag", value: "noindex, nofollow" },
   {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",

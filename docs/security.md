@@ -223,6 +223,22 @@ compartido, usado por `people.getAll` e `importantDates.getUpcoming`).
   el invitado se vaya solo — ver "Lo que NO está implementado todavía".
 - **Ownership check ampliado, no nuevo:** ver §2 (`assertPersonAccess`).
 
+### 10. La app no se indexa en buscadores
+
+El caso de estudio que debe posicionar vive en otro sitio
+(jorgemolinafuster.com/work/pickpal); esta app es accesible por enlace pero no
+debe salir en Google. Dos capas, ambas necesarias:
+
+- `robots: { index: false, follow: false }` en `metadata` de
+  [`src/app/layout.tsx`](../src/app/layout.tsx). Next sobrescribe el objeto
+  `robots` entero por segmento, así que ninguna página o layout hijo debe
+  definir el suyo.
+- Cabecera `X-Robots-Tag: noindex, nofollow` en todas las rutas
+  ([`next.config.ts`](../next.config.ts)), que cubre también fuentes, imágenes
+  y demás ficheros que no son HTML.
+- **No poner `Disallow` en `robots.txt`** (hoy no existe): si Google no puede
+  rastrear la página, no llega a ver el `noindex` y puede mantenerla indexada.
+
 ---
 
 ## Checklist de PR
