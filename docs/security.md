@@ -163,8 +163,10 @@ Nunca se renderiza `err.message` crudo en la UI.
 - Si requiere sesión (caso por defecto): no toques nada, ya está protegido.
 - Si debe ser público: añádelo explícitamente a `isPublicRoute`. **Justifica por qué en el commit.**
 
+**Páginas estáticas detrás del proxy.** Las páginas de `(app)` se pintan en el cliente con los datos de Convex, así que su HTML no lleva nada del usuario y se sirve desde la caché (las que no llevan parámetros en la URL). El proxy corre **antes** de esa caché y exige sesión igual. Si una página de `(app)` empieza a leer datos en el servidor, deja de poder cachearse así: tiene que pasar a dinámica.
+
 Rutas públicas actuales:
-- `/` — landing.
+- `/` — landing. Quien tiene sesión no llega a verla: el proxy le redirige a `/agenda` antes de servirla, para que la página pueda ser estática.
 - `/sign-in(.*)`, `/sign-up(.*)` — flujo Clerk.
 - `/privacidad` — aviso de privacidad. Debe ser legible antes de crear cuenta y por terceros que aparezcan como "ser querido" en la cuenta de un usuario.
 - `/terminos` — términos y condiciones. Mismo motivo: la página dice "al registrarte aceptas estos términos", así que tienen que poder leerse antes de registrarse. Estuvo protegida por omisión (el default-deny la capturó) y los enlaces del footer y del sign-up llevaban a sign-in — **al añadir una página legal nueva, acordarse de esta lista**.

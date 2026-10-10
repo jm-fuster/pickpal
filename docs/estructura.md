@@ -34,15 +34,17 @@ pickpal/
 │   ├── proxy.ts                     # Next 16 renombró middleware.ts → proxy.ts.
 │   │                                # Denegar por defecto + CSRF por Sec-Fetch-Site
 │   ├── app/
-│   │   ├── layout.tsx               # ClerkProvider + Convex + tema + fuentes
-│   │   ├── page.tsx                 # landing pública
+│   │   ├── layout.tsx               # ClerkProvider + tema + fuentes
+│   │   ├── fonts.ts                 # Geist Mono, sin precarga: se importa donde se usa
+│   │   ├── page.tsx                 # landing pública, estática (con sesión, el proxy
+│   │   │                            # redirige a /agenda)
 │   │   ├── manifest.ts              # PWA
 │   │   ├── privacidad/ terminos/    # páginas legales — públicas a propósito
 │   │   │
 │   │   ├── (auth)/                  # sign-in y sign-up de Clerk
 │   │   │
 │   │   ├── (app)/                   # todo lo de aquí exige sesión
-│   │   │   ├── layout.tsx           # sidebar, campana, enlace de salto
+│   │   │   ├── layout.tsx           # Convex, sidebar, campana, enlace de salto
 │   │   │   ├── agenda/              # lo que llega en los próximos 4 meses
 │   │   │   ├── seres-queridos/
 │   │   │   │   ├── page.tsx         # la lista
@@ -72,8 +74,11 @@ pickpal/
 │   │   └── gifts/                   # panel y tarjetas de ideas
 │   │
 │   └── lib/                         # utilidades puras, con tests al lado
-│       ├── gifts.ts                 # esquemas Zod de generación + tipos de regalo
+│       ├── gifts.ts                 # esquemas Zod de generación
+│       ├── giftCatalog.ts           # tipos de regalo y claves de imagen, sin zod
 │       ├── schemas.ts               # esquemas de formulario
+│       ├── options.ts               # relaciones y reacciones, sin zod
+│       ├── zod.ts                   # la parte de zod que usan los schemas del cliente
 │       ├── stores.ts                # las 11 tiendas, sus URLs de búsqueda y sus dominios
 │       ├── links.ts                 # enlaces de «Mi lista»: normalizar, validar, dominio
 │       ├── brands.ts                # resolución de tienda de marca

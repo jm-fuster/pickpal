@@ -17,7 +17,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { RELATIONSHIPS } from "@/lib/schemas";
+import { RELATIONSHIPS } from "@/lib/options";
 
 const ALL_VALUE = "all";
 

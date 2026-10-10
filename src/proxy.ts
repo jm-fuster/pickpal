@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
 // Default-deny: cualquier ruta no listada aquí requiere sesión.
 // Esto bloquea automáticamente nuevas rutas que se creen sin auth explícita.
@@ -25,6 +26,15 @@ export default clerkMiddleware(async (auth, req) => {
     const site = req.headers.get("sec-fetch-site");
     if (site && site !== "same-origin") {
       return new Response("Forbidden", { status: 403 });
+    }
+  }
+  // La landing es solo para visitantes sin sesión: quien ya la tiene entra
+  // directo a la agenda. Se decide aquí y no en la página para que `/` sea
+  // estática y la sirva la CDN sin renderizar nada en el servidor.
+  if (req.nextUrl.pathname === "/") {
+    const { userId } = await auth();
+    if (userId) {
+      return NextResponse.redirect(new URL("/agenda", req.url));
     }
   }
   if (!isPublicRoute(req)) {

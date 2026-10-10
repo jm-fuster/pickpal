@@ -6,11 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { userErrorMessage } from "@/lib/errors";
-import { Plus } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { giftHistorySchema, REACTIONS } from "@/lib/schemas";
 import type { GiftHistoryFormValues } from "@/lib/schemas";
+import { AddRowButton } from "@/components/layout/AddRowButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,14 +64,7 @@ export function GiftHistoryForm({ personId }: { personId: Id<"people"> }) {
 
   if (!showForm) {
     return (
-      <button
-        type="button"
-        onClick={() => setShowForm(true)}
-        className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
-      >
-        <Plus className="size-4" aria-hidden />
-        Añadir regalo
-      </button>
+      <AddRowButton onClick={() => setShowForm(true)}>Añadir regalo</AddRowButton>
     );
   }
 

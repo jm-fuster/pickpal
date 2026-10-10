@@ -44,7 +44,7 @@ El presupuesto (`budgetMin` / `budgetMax`) se asocia a cada **fecha importante**
 
 ## Tipos de regalo
 
-Cuatro opciones mutuamente excluyentes definidas en `src/lib/gifts.ts`:
+Cuatro opciones mutuamente excluyentes definidas en `src/lib/giftCatalog.ts`:
 
 | Valor | Icono (lucide) | Label | Descripción visible | Comportamiento del prompt |
 |---|---|---|---|---|
@@ -370,7 +370,7 @@ El orden de los chips es siempre el canónico de `ALL_STORES` (Amazon, AliExpres
 Cada card lleva una cabecera visual con dos niveles, de mejor a peor:
 
 1. **Foto de stock (Pexels)** — `image: { url, photographer?, photographerUrl? }`. Se busca server-side en `/api/recommendations` tras la generación, con una query EN INGLÉS de 2-4 palabras (`imageQuery`) que Gemini produce por idea. `attachStockImages` lanza las 9 búsquedas en paralelo con timeout de 4 s por foto y **nunca falla la generación**: sin `PEXELS_API_KEY`, sin resultados, con error o timeout, la idea sale sin `image`. `imageQuery` se elimina siempre antes de persistir.
-2. **Icono por categoría (fallback)** — tinte plano + icono lucide elegido vía `imageKey`, un catálogo cerrado de 30 claves (`GIFT_IMAGE_KEYS` en [`src/lib/gifts.ts`](../src/lib/gifts.ts)). También cubre fotos que fallan al cargar en cliente (`onError` → estado `photoFailed`) e ideas persistidas antes de estos campos.
+2. **Icono por categoría (fallback)** — tinte plano + icono lucide elegido vía `imageKey`, un catálogo cerrado de 30 claves (`GIFT_IMAGE_KEYS` en [`src/lib/giftCatalog.ts`](../src/lib/giftCatalog.ts)). También cubre fotos que fallan al cargar en cliente (`onError` → estado `photoFailed`) e ideas persistidas antes de estos campos.
 
 La foto ilustra la **categoría**, no el producto exacto — el matching semántico de un buscador de stock no es perfecto y no se verifica (hacerlo requeriría visión por IA, descartado por coste). Generación de imágenes con IA descartada también (~0,35 €/tirada + latencia) — ver decisión en `docs/design-system.md` · "Cards generadas por IA".
 
@@ -440,7 +440,8 @@ Los números concretos de RPM/RPD del free tier **ya no aparecen en la doc de Go
 | [`convex/recommendations.ts`](../convex/recommendations.ts) | `getByPersonOccasion`, `upsert`, `removeIdea` (actualiza `discardedTitles` + `dislikedCategories`) |
 | [`convex/savedIdeas.ts`](../convex/savedIdeas.ts) | `save`, `remove`, `getByPerson` — ideas que el usuario quiere recordar (👍) |
 | [`convex/recommendationUsage.ts`](../convex/recommendationUsage.ts) | Rate limit: `check` (query sin efecto) + `consume` (mutation, solo tras éxito) |
-| [`src/lib/gifts.ts`](../src/lib/gifts.ts) | Tipos `GiftType`, `GiftRecommendation`, schema Zod (incluye `suggestedStores`), constante `GIFT_TYPES` |
+| [`src/lib/gifts.ts`](../src/lib/gifts.ts) | Tipo `GiftRecommendation`, schema Zod (incluye `suggestedStores`); reexporta el catálogo |
+| [`src/lib/giftCatalog.ts`](../src/lib/giftCatalog.ts) | Constante `GIFT_TYPES`, tipo `GiftType` y claves `GIFT_IMAGE_KEYS`, sin zod para que el cliente no lo arrastre |
 | [`src/lib/stores.ts`](../src/lib/stores.ts) | `STORE_IDS`, `STORE_LABELS`, `generateStoreSearchUrl`, `pickEffectiveStores`, `sanitizeFavoriteStores` |
 | [`src/lib/stores.test.ts`](../src/lib/stores.test.ts) | Tests unitarios de URL building, sanitización y `pickEffectiveStores` |
 | [`convex/settings.ts`](../convex/settings.ts) | `getMine` y `setMine` con `favoriteStores`; importa `ALLOWED_STORES` de `validators.ts` |

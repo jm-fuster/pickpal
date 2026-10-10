@@ -1,15 +1,15 @@
-import { z } from "zod";
+import * as z from "./zod";
+import es from "zod/v4/locales/es.js";
 import { isHttpUrl, normalizeLinkInput } from "./links";
+import { RELATIONSHIPS } from "./options";
+
+export { REACTIONS, RELATIONSHIPS } from "./options";
 
 // Mensajes de validación por defecto en español (campos sin mensaje propio:
 // `.max()`, `.url()`, `.min()`, etc.). Sin esto Zod emite textos en inglés.
-z.config(z.locales.es());
-
-export const REACTIONS = [
-  { value: "loved", label: "Le encantó" },
-  { value: "ok", label: "Le dio igual" },
-  { value: "bad", label: "No gustó" },
-] as const;
+// Se importa solo `es`: `z.locales.es()` mete en el bundle del cliente los
+// cuarenta idiomas de zod (~160 KB sin comprimir). Ver ./zod.ts.
+z.config(es());
 
 export const giftHistorySchema = z.object({
   giftName: z.string().trim().min(1, "El nombre es obligatorio").max(120),
@@ -20,14 +20,6 @@ export const giftHistorySchema = z.object({
 });
 
 export type GiftHistoryFormValues = z.infer<typeof giftHistorySchema>;
-
-export const RELATIONSHIPS = [
-  { value: "friend", label: "Amigo/a" },
-  { value: "family", label: "Familia" },
-  { value: "partner", label: "Pareja" },
-  { value: "colleague", label: "Compañero/a" },
-  { value: "other", label: "Otro" },
-] as const;
 
 export const importantDateSchema = z
   .object({

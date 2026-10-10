@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { RELATIONSHIPS } from "@/lib/schemas";
+import { RELATIONSHIPS } from "@/lib/options";
 import type { Doc } from "../../../convex/_generated/dataModel";
 
 interface UpcomingDateCardProps {

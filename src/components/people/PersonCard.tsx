@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { RELATIONSHIPS } from "@/lib/schemas";
+import { RELATIONSHIPS } from "@/lib/options";
 import type { Doc } from "../../../convex/_generated/dataModel";
 
 const relationshipLabel = (value: string) =>

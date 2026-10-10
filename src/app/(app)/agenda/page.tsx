@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Coffee } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
@@ -8,7 +9,6 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { DateGroupedList } from "@/components/dashboard/DateGroupedList";
-import { GiftsPanel } from "@/components/gifts/GiftsPanel";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { IncomingListsCard } from "@/components/lista/IncomingListsCard";
 import { buttonVariants } from "@/components/ui/button";
@@ -16,6 +16,14 @@ import { cn } from "@/lib/utils";
 import { computeDaysUntil, monthsWindowDays } from "@/lib/dates";
 
 const WINDOW_MONTHS = 4;
+
+// El panel de ideas solo se abre a partir de xl y tras pulsar «Ideas»; por
+// debajo, la tarjeta enlaza a /gifts. Va en su propio chunk para que la agenda
+// pinte antes, y se precarga en cuanto la página está lista en pantallas xl
+// para que abrirlo no espere a la red.
+const loadGiftsPanel = () => import("@/components/gifts/GiftsPanel");
+const GiftsPanel = dynamic(() => loadGiftsPanel().then((m) => m.GiftsPanel));
+const XL_QUERY = "(min-width: 80rem)";
 
 type SelectedEvent = {
   personId: Id<"people">;
@@ -33,6 +41,10 @@ export default function DashboardPage() {
   const people = useQuery(api.people.getAll, ready ? {} : "skip");
 
   const [selected, setSelected] = useState<SelectedEvent | null>(null);
+
+  useEffect(() => {
+    if (window.matchMedia(XL_QUERY).matches) void loadGiftsPanel();
+  }, []);
 
   const filtered = useMemo(() => {
     if (!upcoming) return [];

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { use, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   CalendarDays, CalendarX2, Camera, Check, ExternalLink, Gift, NotebookPen, PencilLine, Repeat2, Ruler, Star, Tags, Trash2, ThumbsUp, Users, X,
 } from "lucide-react";
@@ -31,8 +32,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger,
 } from "@/components/ui/select";
-import { EditImportantDateInline, ImportantDateForm } from "@/components/people/ImportantDateForm";
-import { EditGiftHistoryInline, GiftHistoryForm } from "@/components/people/GiftHistoryForm";
+import { AddRowButton } from "@/components/layout/AddRowButton";
 import { BackLink } from "@/components/layout/BackLink";
 import { LoadingFallback } from "@/components/layout/LoadingFallback";
 import { AvatarPickerDialog } from "@/components/people/AvatarPickerDialog";
@@ -42,11 +42,33 @@ import { AiNotesNotice } from "@/components/people/AiNotesNotice";
 import { ShareDialog } from "@/components/people/ShareDialog";
 import { AddToHistoryDialog, type HistoryValues } from "@/components/people/AddToHistoryDialog";
 import { PersonListSection } from "@/components/lista/PersonListSection";
-import { RELATIONSHIPS, REACTIONS } from "@/lib/schemas";
+import { RELATIONSHIPS, REACTIONS } from "@/lib/options";
 import { cn } from "@/lib/utils";
 import { ALL_STORES, generateStoreSearchUrl, pickEffectiveStores, sanitizeFavoriteStores, STORE_ICONS, STORE_LABELS, type StoreId } from "@/lib/stores";
 import { matchFavoriteBrands } from "@/lib/brands";
 import { BrandStoreLink } from "@/components/gifts/BrandStoreLink";
+
+// Los formularios de evento y de historial (react-hook-form + zod, el slider de
+// presupuesto, el selector de fecha) solo se usan al pulsar «Añadir» o
+// «Editar». Van en su propio chunk, que se pide en cuanto monta la página: llega
+// en paralelo a los datos y no retrasa la hidratación. Mientras tanto, el
+// marcador es la misma fila «Añadir…» que pinta el formulario plegado.
+const loadImportantDateForm = () => import("@/components/people/ImportantDateForm");
+const loadGiftHistoryForm = () => import("@/components/people/GiftHistoryForm");
+const ImportantDateForm = dynamic(
+  () => loadImportantDateForm().then((m) => m.ImportantDateForm),
+  { loading: () => <AddRowButton>Añadir evento</AddRowButton> },
+);
+const EditImportantDateInline = dynamic(() =>
+  loadImportantDateForm().then((m) => m.EditImportantDateInline),
+);
+const GiftHistoryForm = dynamic(
+  () => loadGiftHistoryForm().then((m) => m.GiftHistoryForm),
+  { loading: () => <AddRowButton>Añadir regalo</AddRowButton> },
+);
+const EditGiftHistoryInline = dynamic(() =>
+  loadGiftHistoryForm().then((m) => m.EditGiftHistoryInline),
+);
 
 const MONTHS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
@@ -686,6 +708,11 @@ export default function PersonDetailPage({
   const giftHistory = useQuery(api.giftHistory.getByPerson, ready ? { personId: id } : "skip");
   const savedIdeas = useQuery(api.savedIdeas.getByPerson, ready ? { personId: id } : "skip");
   const settings = useQuery(api.settings.getMine, ready ? {} : "skip");
+
+  useEffect(() => {
+    void loadImportantDateForm();
+    void loadGiftHistoryForm();
+  }, []);
 
   if (!ready || person === undefined || dates === undefined || giftHistory === undefined || savedIdeas === undefined) {
     return <LoadingFallback />;

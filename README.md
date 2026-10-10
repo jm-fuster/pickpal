@@ -77,7 +77,7 @@ received, and any notes — and that history is fed back into the next generatio
 **Gift ideas on a short leash.** Pick the occasion, pick one of four kinds of gift
 (*Producto físico*, *Experiencia*, *Tiempo juntos*, *Sorpréndeme*), and press
 **Generar 9 ideas**. The request asks Gemini 3.5 Flash for nine and accepts
-between six and nine (`z.array(...).min(6).max(9)`, `src/lib/gifts.ts:122`), then
+between six and nine (`z.array(...).min(6).max(9)`, `src/lib/gifts.ts:88`), then
 drops duplicate titles. Save an idea with a thumbs-up, or discard it with a
 thumbs-down — discarding offers an Undo, and once it sticks, that idea's
 categories are recorded so the next batch steers away from them. A saved idea

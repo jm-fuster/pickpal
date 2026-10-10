@@ -10,6 +10,7 @@ import { ArrowUpRight, Check, Download, Moon, Sun } from "lucide-react";
 import { toast } from "sonner";
 import { userErrorMessage } from "@/lib/errors";
 import { api } from "../../../../convex/_generated/api";
+import { geistMono } from "@/app/fonts";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -481,7 +482,7 @@ export default function SettingsPage() {
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="delete-confirm">
-              Escribe <span className="font-mono font-semibold">ELIMINAR</span>{" "}
+              Escribe <span className={`${geistMono.variable} font-mono font-semibold`}>ELIMINAR</span>{" "}
               para confirmar
             </Label>
             <Input

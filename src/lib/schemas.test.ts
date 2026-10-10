@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { importantDateSchema, personFormSchema } from "./schemas";
+import { importantDateSchema, listItemSchema, personFormSchema } from "./schemas";
+
+// schemas.ts carga solo el idioma español de zod (ver ./zod.ts). Si ese
+// import se rompe, zod vuelve al inglés sin avisar.
+describe("mensajes por defecto", () => {
+  it("salen en español en los campos sin mensaje propio", () => {
+    const result = listItemSchema.safeParse({ title: "x".repeat(121) });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toMatch(/^Demasiado grande/);
+  });
+});
 
 describe("personFormSchema", () => {
   const validPerson = {

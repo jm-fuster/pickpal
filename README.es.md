@@ -74,7 +74,7 @@ poner. Ese historial vuelve a entrar en la siguiente generación.
 **Ideas con el modelo atado corto.** Eliges la ocasión, eliges uno de los cuatro tipos de
 regalo (*Producto físico*, *Experiencia*, *Tiempo juntos*, *Sorpréndeme*) y pulsas
 **Generar 9 ideas**. La petición le pide nueve a Gemini 3.5 Flash y acepta entre seis y
-nueve (`z.array(...).min(6).max(9)`, `src/lib/gifts.ts:122`); después descarta los títulos
+nueve (`z.array(...).min(6).max(9)`, `src/lib/gifts.ts:88`); después descarta los títulos
 repetidos. Cada idea se guarda con un pulgar arriba o se descarta con uno abajo, y al
 descartar hay deshacer: cuando se confirma, se apuntan las categorías de esa idea para que
 la siguiente tanda se aleje de ellas. Una idea guardada pasa al historial con **Lo regalé**.

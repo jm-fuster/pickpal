@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { BookHeart, PencilLine, Plus, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { BookHeart, PencilLine, X } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
@@ -9,11 +10,17 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { AddRowButton } from "@/components/layout/AddRowButton";
 import { EmptyState } from "@/components/layout/EmptyState";
-import { ListItemForm } from "@/components/lista/ListItemForm";
 import { ListItemLink } from "@/components/lista/ListItemLink";
 import { ListReaders } from "@/components/lista/ListReaders";
 import { userErrorMessage } from "@/lib/errors";
+
+// El formulario (react-hook-form + zod) solo aparece al apuntar o editar algo.
+// Va en su propio chunk, que se pide al montar la página: llega mucho antes de
+// que la lista cargue, así que el botón lo abre sin esperas.
+const loadListItemForm = () => import("@/components/lista/ListItemForm");
+const ListItemForm = dynamic(() => loadListItemForm().then((m) => m.ListItemForm));
 
 /**
  * «Mi lista»: lo que te haría ilusión recibir, para quien te regala
@@ -28,6 +35,10 @@ export default function MyListPage() {
 
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<Id<"listItems"> | null>(null);
+
+  useEffect(() => {
+    void loadListItemForm();
+  }, []);
 
   const handleRemove = async (id: Id<"listItems">) => {
     try {
@@ -81,14 +92,7 @@ export default function MyListPage() {
               {adding ? (
                 <ListItemForm onDone={() => setAdding(false)} />
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setAdding(true)}
-                  className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
-                >
-                  <Plus className="size-4" aria-hidden />
-                  Apuntar algo
-                </button>
+                <AddRowButton onClick={() => setAdding(true)}>Apuntar algo</AddRowButton>
               )}
 
               {items.length > 0 && (

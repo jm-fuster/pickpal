@@ -164,7 +164,7 @@ function validateIdeaImage(image: IdeaImage | undefined) {
 }
 
 // Claves del catálogo visual de las cards de ideas. Espejadas de
-// GIFT_IMAGE_KEYS en src/lib/gifts.ts (cliente) — si añades una clave,
+// GIFT_IMAGE_KEYS en src/lib/giftCatalog.ts (cliente) — si añades una clave,
 // actualiza ambos sitios.
 export const ALLOWED_IMAGE_KEYS = [
   "tecnologia",
@@ -207,7 +207,7 @@ const ALLOWED_RELATIONSHIPS = [
   "other",
 ];
 
-// Espejo de GIFT_TYPES en src/lib/gifts.ts (cliente).
+// Espejo de GIFT_TYPES en src/lib/giftCatalog.ts (cliente).
 export const ALLOWED_GIFT_TYPES = [
   "fisica",
   "experiencia",

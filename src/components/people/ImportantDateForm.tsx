@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
+import { AddRowButton } from "@/components/layout/AddRowButton";
 import {
   Select, SelectContent, SelectItem, SelectTrigger,
 } from "@/components/ui/select";
@@ -82,14 +82,7 @@ export function ImportantDateForm({ personId }: { personId: Id<"people"> }) {
 
   if (!showForm) {
     return (
-      <button
-        type="button"
-        onClick={() => setShowForm(true)}
-        className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
-      >
-        <Plus className="size-4" aria-hidden />
-        Añadir evento
-      </button>
+      <AddRowButton onClick={() => setShowForm(true)}>Añadir evento</AddRowButton>
     );
   }
 

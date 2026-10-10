@@ -34,7 +34,7 @@ import {
   Wine,
   type LucideIcon,
 } from "lucide-react";
-import type { GiftImageKey, GiftType } from "./gifts";
+import type { GiftImageKey, GiftType } from "./giftCatalog";
 
 // Tintes planos derivados de los tokens del design system (nada de gradients).
 // El glifo ámbar usa --category-amber, no --warning: aquí es decorativo, no un
@@ -60,7 +60,7 @@ const entry = (icon: LucideIcon, tint: GiftImageTint): GiftImageVisual => ({
   iconClass: TINTS[tint].icon,
 });
 
-// Mapeo completo del catálogo GIFT_IMAGE_KEYS (src/lib/gifts.ts).
+// Mapeo completo del catálogo GIFT_IMAGE_KEYS (src/lib/giftCatalog.ts).
 // Familias de tinte: ámbar = creativo/ocio/tech, terracota = hogar/comida/afecto,
 // verde = naturaleza/experiencias activas.
 const GIFT_IMAGES: Record<GiftImageKey, GiftImageVisual> = {

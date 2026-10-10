@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { preconnect } from "react-dom";
 import { BookHeart, CalendarDays, Users, Settings } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { SafeNotificationBell } from "@/components/layout/SafeNotificationBell";
@@ -8,12 +9,28 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { LogoMark } from "@/components/ui/LogoMark";
 import { UserInitializer } from "@/components/layout/UserInitializer";
 import { SessionGuard } from "@/components/layout/SessionGuard";
+import { ConvexClientProvider } from "../ConvexClientProvider";
 
 export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Convex solo hace falta dentro de la app: la landing, las páginas legales y
+  // el login no lo cargan ni abren su WebSocket. Aquí sí se abre nada más
+  // ejecutarse el JS, así que el DNS y el TLS conviene tenerlos hechos ya.
+  if (process.env.NEXT_PUBLIC_CONVEX_URL) {
+    preconnect(process.env.NEXT_PUBLIC_CONVEX_URL);
+  }
+
+  return (
+    <ConvexClientProvider>
+      <AppShell>{children}</AppShell>
+    </ConvexClientProvider>
+  );
+}
+
+function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-1">
       <SessionGuard />

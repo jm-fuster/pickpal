@@ -33,7 +33,8 @@ import { GenerationProgress } from "@/components/gifts/GenerationProgress";
 import { BackLink } from "@/components/layout/BackLink";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { LoadingFallback } from "@/components/layout/LoadingFallback";
-import { GIFT_TYPES, type GiftType, type GiftRecommendation } from "@/lib/gifts";
+import { GIFT_TYPES, type GiftType } from "@/lib/giftCatalog";
+import type { GiftRecommendation } from "@/lib/gifts";
 import { ALL_STORES, pickEffectiveStores, sanitizeFavoriteStores } from "@/lib/stores";
 
 const formatBudget = (min?: number, max?: number) => {

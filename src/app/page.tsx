@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,15 +36,9 @@ const STEPS: {
   },
 ];
 
-export default async function Home() {
-  const { userId } = await auth();
-
-  // La landing es solo para visitantes sin sesión. Quien ya tiene sesión
-  // iniciada en su dispositivo entra directamente a la agenda.
-  if (userId) {
-    redirect("/agenda");
-  }
-
+// Quien ya tiene sesión no llega a ver esto: src/proxy.ts lo manda a la
+// agenda antes de servir la página, que así puede ser estática.
+export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between px-6 py-5">

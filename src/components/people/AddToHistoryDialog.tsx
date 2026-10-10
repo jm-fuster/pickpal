@@ -18,7 +18,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { REACTIONS } from "@/lib/schemas";
+import { REACTIONS } from "@/lib/options";
 import { userErrorMessage } from "@/lib/errors";
 
 export type HistoryValues = {

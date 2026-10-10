@@ -1,54 +1,9 @@
 import { z } from "zod";
+import { GIFT_IMAGE_KEYS } from "./giftCatalog";
 import { STORE_IDS } from "./stores";
 
-export const GIFT_TYPES = [
-  { value: "fisica", label: "Producto físico", icon: "ShoppingBag", description: "Algo que comprar y envolver" },
-  { value: "experiencia", label: "Experiencia", icon: "Ticket", description: "Cena, taller, escapada…" },
-  { value: "tiempo-juntos", label: "Tiempo juntos", icon: "Heart", description: "Planes sin coste o caseros" },
-  { value: "sorprendeme", label: "Sorpréndeme", icon: "Shuffle", description: "Mezcla de los tres tipos" },
-] as const;
-
-export type GiftType = (typeof GIFT_TYPES)[number]["value"];
-
-// Catálogo cerrado de claves visuales para la cabecera de las cards de ideas.
-// La IA elige una por idea (enum en el schema de generación); el mapeo
-// clave → icono lucide + tinte vive en src/lib/giftImages.ts. Espejado en
-// ALLOWED_IMAGE_KEYS de convex/validators.ts — si añades una clave,
-// actualiza ambos sitios y el mapa de giftImages.ts.
-export const GIFT_IMAGE_KEYS = [
-  "tecnologia",
-  "audio",
-  "gaming",
-  "fotografia",
-  "libros",
-  "musica",
-  "arte-manualidades",
-  "juegos-mesa",
-  "papeleria",
-  "bricolaje",
-  "joyeria-relojes",
-  "moda",
-  "belleza",
-  "cocina",
-  "gourmet",
-  "vino-bebidas",
-  "cafe-te",
-  "hogar-decoracion",
-  "plantas",
-  "mascotas",
-  "deporte",
-  "aire-libre",
-  "viajes",
-  "experiencia-gastronomica",
-  "experiencia-cultural",
-  "experiencia-aventura",
-  "experiencia-bienestar",
-  "taller-curso",
-  "plan-casero",
-  "regalo-generico",
-] as const;
-
-export type GiftImageKey = (typeof GIFT_IMAGE_KEYS)[number];
+export { GIFT_IMAGE_KEYS, GIFT_TYPES } from "./giftCatalog";
+export type { GiftImageKey, GiftType } from "./giftCatalog";
 
 const baseRecommendationSchema = z.object({
   title: z.string().min(1).max(80),

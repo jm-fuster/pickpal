@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { esES } from "@clerk/localizations";
-import { ConvexClientProvider } from "./ConvexClientProvider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@/components/analytics";
@@ -46,11 +45,6 @@ const clerkLocalization = {
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
@@ -110,7 +104,7 @@ export default function RootLayout({
       <html
         lang="es"
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+        className={`${geistSans.variable} ${fraunces.variable} h-full antialiased`}
       >
         <body className="min-h-full flex flex-col">
           <ThemeProvider
@@ -118,7 +112,7 @@ export default function RootLayout({
             defaultTheme="light"
             disableTransitionOnChange
           >
-            <ConvexClientProvider>{children}</ConvexClientProvider>
+            {children}
             <Toaster />
           </ThemeProvider>
           <Analytics />
