@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  closestOccasionLabel,
   computeDaysUntil,
   computeDaysUntilNextOccurrence,
   formatDayMonth,
@@ -172,5 +173,65 @@ describe("formatDaysUntil", () => {
     expect(formatDaysUntil(2)).toBe("En 2 días");
     expect(formatDaysUntil(30)).toBe("En 30 días");
     expect(formatDaysUntil(365)).toBe("En 365 días");
+  });
+});
+
+describe("closestOccasionLabel", () => {
+  // 10 de octubre de 2026, a mediodía local.
+  const hoy = new Date(2026, 9, 10, 12);
+
+  it("prefiere la fecha de hace una semana a la de dentro de dos", () => {
+    expect(
+      closestOccasionLabel(
+        [
+          { label: "Aniversario", month: 10, day: 24 },
+          { label: "Cumpleaños", month: 10, day: 3 },
+          { label: "Navidad", month: 12, day: 25 },
+        ],
+        hoy,
+      ),
+    ).toBe("Cumpleaños");
+  });
+
+  it("mira el año pasado si la de este año aún no ha llegado", () => {
+    // Reyes del 6 de enero queda a 277 días hacia atrás y a 88 hacia delante;
+    // el Santo del 1 de noviembre, a 22. Gana el Santo.
+    expect(
+      closestOccasionLabel(
+        [
+          { label: "Reyes", month: 1, day: 6 },
+          { label: "Santo", month: 11, day: 1 },
+        ],
+        hoy,
+      ),
+    ).toBe("Santo");
+  });
+
+  it("cuenta las fechas únicas por su año", () => {
+    expect(
+      closestOccasionLabel(
+        [
+          { label: "Boda", month: 10, day: 8, year: 2026, recurring: false },
+          { label: "Cumpleaños", month: 10, day: 20 },
+        ],
+        hoy,
+      ),
+    ).toBe("Boda");
+  });
+
+  it("hoy gana a todo", () => {
+    expect(
+      closestOccasionLabel(
+        [
+          { label: "Cumpleaños", month: 10, day: 9 },
+          { label: "Santo", month: 10, day: 10 },
+        ],
+        hoy,
+      ),
+    ).toBe("Santo");
+  });
+
+  it("sin fechas devuelve vacío", () => {
+    expect(closestOccasionLabel([], hoy)).toBe("");
   });
 });

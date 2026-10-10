@@ -109,6 +109,8 @@ La plantilla es **oscura por diseño** (verde profundo + coral), en los dos modo
 │  │  [avatar 44px]  Nombre (#FBF7EE)  │  │
 │  │                 Etiqueta · dd/mm  │  │
 │  │                 "en X días" coral │  │
+│  │                 [N cosas en su    │  │
+│  │                  lista…] (enlace) │  │
 │  └───────────────────────────────────┘  │
 │  [ 🎁 Ideas para {nombre} ] (#F1704B)   │
 ├─────────────────────────────────────────┤
@@ -142,6 +144,10 @@ Cada tarjeta incluye el avatar circular de la persona (44 × 44 px):
 - Si no hay URL: tabla de 44 × 44 con fondo `#3D5040` y la inicial del nombre en `#FBF7EE` centrada.
 
 El campo `personAvatarUrl` se propaga desde `person.avatarUrl` en `convex/notifications.ts` (`findEventsNeedingEmail`) y se declara como `v.optional(v.string())` en el validator de `sendBatchedReminderEmail`.
+
+### Línea de «Mi lista» (10-oct-2026)
+
+Si el destinatario guardó en la ficha de esa persona la lista que ella le compartió, la tarjeta añade debajo de la cuenta atrás «{nombre} tiene N cosas en su lista que nadie ha marcado todavía» (en singular con N = 1), enlazada a `/seres-queridos/{personId}#lista`, en `#FBF7EE` y subrayada a 12 px. Solo la cifra, nunca títulos: el correo pasa por Resend (decisión 18 de [`encargo-lista.md`](encargo-lista.md)). La cuenta la hace `lists.countUnclaimedForReader` dentro de `findEventsNeedingEmail`, solo para los eventos que van a enviarse, y viaja en `listUnclaimed`, opcional y ausente si es 0. El HTML lo pinta `listLineHtml`, con sus tests en `convex/emails.test.ts`. Como el aviso solo llega a quien es dueño de la ficha, quien la tiene compartida como invitado no ve esta línea, igual que no recibe el aviso.
 
 ### Modo oscuro en clientes de correo (resuelto 28-ago-2026)
 
@@ -258,7 +264,7 @@ Resumen — el detalle vive en [`docs/security.md`](security.md).
 
 - El email del usuario se almacena en `userSettings.email` por dos razones: (1) evitar que el cron tenga que llamar a la API de Clerk en cada ejecución, (2) tener un valor estable aunque cambie el JWT.
 - Si el usuario desactiva el toggle, el campo `email` **se conserva** (no se borra en `setMine`). Esto permite reactivar sin volver a forzar Save desde un cliente con JWT fresco. Si en el futuro hay tema de RGPD que exija borrarlo, hay que añadir lógica explícita.
-- El cuerpo del email contiene nombres de personas y etiquetas de eventos del usuario — son datos del propio usuario y van a su email, no se filtran a terceros. Resend almacena los emails enviados durante un tiempo en su panel; revisar [política de Resend](https://resend.com/legal/privacy-policy) si la app crece.
+- El cuerpo del email contiene nombres de personas y etiquetas de eventos del usuario — son datos del propio usuario y van a su email, no se filtran a terceros. La única excepción es la línea de «Mi lista»: una cifra sobre la lista de otro usuario, que la ha compartido con el destinatario. Por eso es solo una cifra. Resend almacena los emails enviados durante un tiempo en su panel; revisar [política de Resend](https://resend.com/legal/privacy-policy) si la app crece.
 
 ---
 
@@ -292,7 +298,7 @@ npx convex run emails:sendTestEmail '{"to":"tu@email.com"}' --prod
 
 Es la vía recomendada para comprobar la cadena completa —API key, remitente, dominio verificado, DNS— porque no depende de que hoy haya eventos dentro de la ventana de antelación. Devuelve un resumen con el remitente real usado, útil para confirmar que `EMAIL_FROM` está donde crees.
 
-Sin argumentos extra manda **dos tarjetas** y el CTA apunta a `/agenda`. Una tarjeta usa avatar con imagen y la otra la inicial, para ejercitar las dos ramas de `avatarHtml`; los `daysUntil` de muestra (0 y 5) cubren las redacciones "hoy" y "en N días".
+Sin argumentos extra manda **dos tarjetas** y el CTA apunta a `/agenda`. Una tarjeta usa avatar con imagen y la otra la inicial, para ejercitar las dos ramas de `avatarHtml`; los `daysUntil` de muestra (0 y 5) cubren las redacciones "hoy" y "en N días". La primera tarjeta lleva además la línea de «Mi lista» (`listUnclaimed: 3`) y la segunda no, para ver las dos variantes.
 
 Para revisar la variante de **un solo evento**, que es la que enlaza a la ficha de la persona, pásale un `personId` y un `dateId` reales del mismo deployment:
 

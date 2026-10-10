@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isHttpUrl, normalizeLinkInput } from "./links";
 
 // Mensajes de validación por defecto en español (campos sin mensaje propio:
 // `.max()`, `.url()`, `.min()`, etc.). Sin esto Zod emite textos en inglés.
@@ -94,3 +95,22 @@ export const personFormSchema = z
   });
 
 export type PersonFormValues = z.infer<typeof personFormSchema>;
+
+// «Mi lista» (docs/encargo-lista.md). Espejo de `validateListItemInput` en
+// convex/validators.ts. El título comparte tope con `giftName` porque «Ya se lo
+// he regalado» lo copia tal cual al historial.
+export const listItemSchema = z.object({
+  title: z.string().trim().min(1, "Escribe qué es").max(120),
+  url: z
+    .string()
+    .trim()
+    .max(2048)
+    .optional()
+    .refine((v) => {
+      const link = normalizeLinkInput(v);
+      return link === undefined || isHttpUrl(link);
+    }, "Tiene que ser una dirección web, como https://…"),
+  note: z.string().max(500).optional(),
+});
+
+export type ListItemFormValues = z.infer<typeof listItemSchema>;

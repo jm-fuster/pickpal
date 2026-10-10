@@ -9,7 +9,7 @@
 ```
 pickpal/
 ├── convex/                          # backend: base de datos y lógica de servidor
-│   ├── schema.ts                    # las 9 tablas
+│   ├── schema.ts                    # las 13 tablas
 │   ├── auth.ts                      # requireUser(ctx) → identity.subject
 │   ├── auth.config.ts               # valida el JWT de Clerk (plantilla "convex")
 │   ├── validators.ts                # revalidación server-side; espeja los Zod de src/lib
@@ -20,6 +20,8 @@ pickpal/
 │   ├── rateLimit.ts                 # contador genérico por (usuario, día, cubo)
 │   ├── savedIdeas.ts                # ideas guardadas con el pulgar arriba
 │   ├── giftHistory.ts               # qué se regaló y cómo sentó
+│   ├── personShares.ts              # compartir fichas: invitados y comprobación de acceso
+│   ├── lists.ts                     # «Mi lista»: elementos, quién la ve y marcas
 │   ├── settings.ts                  # userSettings: tema, avisos, tiendas
 │   ├── notifications.ts             # internal: qué eventos tocan por email hoy
 │   ├── emails.ts                    # internal: envío por la API REST de Resend
@@ -49,10 +51,13 @@ pickpal/
 │   │   │   │       ├── page.tsx     # ficha: se edita en la propia página
 │   │   │   │       ├── edit/        # solo redirige a la ficha
 │   │   │   │       └── gifts/       # panel de ideas
+│   │   │   ├── mi-lista/            # lo que te haría ilusión, y con quién la compartes
 │   │   │   └── settings/
 │   │   │
 │   │   └── api/
 │   │       ├── recommendations/     # generación de ideas con Gemini
+│   │       ├── people/[personId]/share/  # compartir una ficha por email
+│   │       ├── lista/share/         # compartir tu lista por email
 │   │       └── account/delete/      # purga Convex y luego borra el usuario Clerk
 │   │
 │   ├── components/
@@ -63,12 +68,14 @@ pickpal/
 │   │   │                            # conservó el nombre viejo de la ruta (/dashboard
 │   │   │                            # → /agenda); no hay ningún dashboard
 │   │   ├── people/                  # formularios, tags, avatar, presupuesto
+│   │   ├── lista/                   # «Mi lista»: formulario, quién la ve, tarjeta y sección de la ficha
 │   │   └── gifts/                   # panel y tarjetas de ideas
 │   │
 │   └── lib/                         # utilidades puras, con tests al lado
 │       ├── gifts.ts                 # esquemas Zod de generación + tipos de regalo
 │       ├── schemas.ts               # esquemas de formulario
-│       ├── stores.ts                # las 11 tiendas y sus URLs de búsqueda
+│       ├── stores.ts                # las 11 tiendas, sus URLs de búsqueda y sus dominios
+│       ├── links.ts                 # enlaces de «Mi lista»: normalizar, validar, dominio
 │       ├── brands.ts                # resolución de tienda de marca
 │       ├── interests.ts             # catálogo local de ~130 intereses
 │       ├── giftImages.ts            # clave de imagen → icono y tinte
@@ -83,9 +90,10 @@ pickpal/
 
 ## Schema de base de datos (Convex)
 
-Nueve tablas. Ocho llevan `clerkUserId` denormalizado para comprobar la propiedad
-en cada función; la excepción es `importantDates`, que cuelga de la persona y
-hereda de ella el control de acceso. El detalle de campos vive en
+Trece tablas. Casi todas llevan el `clerkUserId` de su dueño o autor
+denormalizado para comprobar el acceso en cada función; `importantDates` cuelga
+de la persona y hereda de ella el control de acceso, y las tres de «Mi lista»
+llevan `ownerClerkUserId` (y `readerClerkUserId` las de permisos y marcas). El detalle de campos vive en
 [`convex/schema.ts`](../convex/schema.ts) — aquí solo el mapa, para que no se
 desincronice otra vez.
 
@@ -96,10 +104,14 @@ desincronice otra vez.
 | `userSettings` | Tema, avisos por email y su antelación, tiendas favoritas | `by_user` |
 | `emailNotifications` | Deduplicación de envíos por `(fecha, año, antelación)` | `by_date_year`, `by_date_year_lead`, `by_user` |
 | `recommendationUsage` | Cuota de IA: 10 generaciones por usuario y día UTC | `by_user_day` |
-| `rateLimitBuckets` | Contador genérico: 50 personas, 100 fechas, 50 ideas guardadas al día | `by_user_day_bucket` |
+| `rateLimitBuckets` | Contador genérico por cubo y día: personas, fechas, ideas guardadas, invitaciones y «Mi lista». Las cifras, en [`security.md`](security.md) §4 | `by_user_day_bucket` |
 | `recommendations` | La tanda generada, cacheada por persona, ocasión y tipo | `by_user_person_occasion_type`, `by_person` |
 | `savedIdeas` | Ideas guardadas con el pulgar arriba | `by_person`, `by_user` |
 | `giftHistory` | Qué se regaló, en qué año y qué cara puso | `by_person` |
+| `personShares` | Con quién más se comparte una ficha | `by_person`, `by_person_and_user`, `by_user` |
+| `listItems` | Lo que un usuario apunta en «Mi lista» | `by_owner` |
+| `listShares` | Quién puede leer cada lista y en qué ficha la guardó | `by_owner`, `by_reader`, `by_owner_and_reader`, `by_person` |
+| `listClaims` | Marcas de «Lo regalo yo»; el dueño de la lista nunca las ve | `by_item`, `by_reader`, `by_owner_and_reader` |
 
 **Decisiones de diseño:**
 

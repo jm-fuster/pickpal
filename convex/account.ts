@@ -2,6 +2,7 @@ import { mutation } from "./_generated/server";
 import { requireUser } from "./auth";
 import { deletePersonCascade } from "./people";
 import { deleteSharesForUser, transferToOldestInviteeOrNull } from "./personShares";
+import { deleteListDataForUser } from "./lists";
 
 /**
  * Borra todos los datos del usuario autenticado en Convex.
@@ -24,6 +25,9 @@ import { deleteSharesForUser, transferToOldestInviteeOrNull } from "./personShar
  *   "eras dueño" — si la persona sigue existiendo (p. ej. se transfirió más
  *   arriba, o es una ficha ajena que te compartieron), esas filas se quedan:
  *   son parte del historial conjunto, no solo tuyas.
+ * - «Mi lista» (`listItems`, `listShares`, `listClaims`), vía
+ *   `lists.deleteListDataForUser`: tu lista entera, sin transferirla a nadie,
+ *   y los permisos y marcas que tenías en listas de otros.
  * - `userSettings`, `emailNotifications`, `recommendationUsage`, `rateLimitBuckets`.
  *
  * No expone `clerkUserId` como argumento ni acepta un `userId` distinto al
@@ -52,6 +56,8 @@ export const deleteMyAccount = mutation({
 
     // Fichas ajenas que te habían compartido: te desligas de todas.
     await deleteSharesForUser(ctx, clerkUserId);
+
+    await deleteListDataForUser(ctx, clerkUserId);
 
     // Huérfana de verdad = su persona ya no existe. No basta con "no soy su
     // dueño ahora": una transferida sigue viva, y una idea que guardaste en

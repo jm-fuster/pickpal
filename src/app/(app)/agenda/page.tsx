@@ -10,6 +10,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { DateGroupedList } from "@/components/dashboard/DateGroupedList";
 import { GiftsPanel } from "@/components/gifts/GiftsPanel";
 import { EmptyState } from "@/components/layout/EmptyState";
+import { IncomingListsCard } from "@/components/lista/IncomingListsCard";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { computeDaysUntil, monthsWindowDays } from "@/lib/dates";
@@ -54,6 +55,8 @@ export default function DashboardPage() {
           Lo que llega en los próximos 4 meses.
         </p>
       </div>
+
+      <IncomingListsCard />
 
       {!ready || upcoming === undefined ? (
         <div className="space-y-3" role="status">

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, CalendarDays, Users, Settings, X } from "lucide-react";
+import { Menu, BookHeart, CalendarDays, Users, Settings, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/seres-queridos", label: "Seres queridos", icon: Users },
+  { href: "/mi-lista", label: "Mi lista", icon: BookHeart },
   { href: "/settings", label: "Ajustes", icon: Settings },
 ];
 

@@ -1285,11 +1285,13 @@ Visible a partir de `lg` (1024px). Implementado en `src/app/(app)/layout.tsx`.
 |---|---|---|
 | Agenda | `/agenda` | `CalendarDays` |
 | Seres queridos | `/seres-queridos` | `Users` |
+| Mi lista | `/mi-lista` | `BookHeart` |
 | Ajustes | `/settings` | `Settings` |
 
 - "Agenda" en vez de "Inicio" porque la sección muestra fechas próximas, no un dashboard genérico.
 - "Seres queridos" en vez de "Personas" — voz más cálida y coherente con el registro del producto.
 - `CalendarDays` en vez de `Home` — el icono de casita no comunicaba nada sobre fechas.
+- "Mi lista" (10-oct-2026) va después de "Seres queridos" y antes de "Ajustes": es la única sección que habla de ti y no de los demás. `BookHeart` y no `Gift` (ya es el de "Ideas de regalo") ni un icono de lista de tareas: es una libreta de lo que te haría ilusión, no una lista de pendientes.
 
 ### Cards (shadcn `Card`)
 
@@ -1575,6 +1577,36 @@ La sección "Historial de regalos" en `/seres-queridos/[personId]` registra rega
 - Solución: renderizar el label manualmente en el trigger usando `REACTIONS.find(r => r.value === field.value)?.label ?? "Reacción…"` dentro de un `<span>`, sin `SelectValue`. Los items siguen dentro de `SelectContent` para el dropdown.
 - Aplicar este patrón en cualquier Select controlado con valor inicial en un formulario de edición.
 
+### «Mi lista» (`/mi-lista`, tarjeta de lista recibida y sección de la ficha)
+
+La función entera está en [`docs/encargo-lista.md`](encargo-lista.md). Aquí, cómo se ve. Todo reutiliza piezas que ya existían: cards con eyebrow, filas como las de eventos e historial, formulario en línea con borde punteado y `EmptyState`.
+
+**`/mi-lista`** ([`src/app/(app)/mi-lista/page.tsx`](../src/app/(app)/mi-lista/page.tsx)): `max-w-5xl`, `h1` «Mi lista» con subtítulo «Lo que te haría ilusión recibir, para quien te regala.». Debajo, rejilla `lg:grid-cols-[minmax(0,1fr)_320px]`: a la izquierda la card «Lo que te haría ilusión» (eyebrow `BookHeart`) y a la derecha la card «Quién la ve» (eyebrow `Users`). En móvil se apilan.
+
+- **Elementos**: botón punteado «Apuntar algo» que despliega `ListItemForm` en el sitio, igual que «Nuevo evento». Cada fila es la de eventos: título `font-medium`, enlace y nota `text-xs text-muted-foreground`, y a la derecha `PencilLine` (editar en línea con el mismo formulario) y `X` (quitar, sin confirmación, como los eventos). Del más nuevo al más antiguo, sin orden manual.
+- **Sin elementos**: `EmptyState` con `BookHeart`, «Nada apuntado todavía» y CTA «Apuntar lo primero», en lugar de la card. Al pulsarlo aparece la card con el formulario abierto.
+- **«Quién la ve»** (`ListReaders`): primero el texto fijo «Quien la lee puede marcar lo que va a regalarte. Tú no lo verás.» en `text-sm text-muted-foreground`. No es decoración: que el dueño no vea las marcas es lo contrario de lo esperable y, sin el aviso, parecería un fallo. Después, la lista de emails con «Quitar» (`ghost sm`, en `text-destructive`) y un diálogo de confirmación, y debajo el campo de invitar, con el mismo patrón y el mismo hint que `ShareDialog`.
+
+**Enlace de un elemento** (`ListItemLink`): `text-xs text-muted-foreground`, subrayado al pasar. Siempre enseña el dominio (sin `www.`), y si es una de las 11 tiendas, delante su logo con la misma placa que los chips de tienda (`size-3.5 rounded-sm bg-white p-px`), y detrás `ExternalLink` `size-3`. El dominio no se sustituye por el nombre de la tienda: se ve adónde lleva el enlace antes de abrirlo, y un dominio que imita a otro sale en punycode.
+
+**Tarjeta de lista recibida** (`IncomingListsCard`, arriba en `/agenda` y `/seres-queridos`, bajo el encabezado): card estándar con un círculo `size-10 bg-secondary/15 text-brand-secondary` y `BookHeart` dentro, el mismo tinte terracota que las ideas de hogar y afecto. Texto: «{Nombre} te ha compartido su lista.» en `font-medium`, el email debajo en `text-xs` si hay nombre (el nombre lo elige cada uno; el email está verificado) y «¿Quién es en tu libreta?». Acciones: `Select` de fichas + «Guardar en su ficha», «Crear ficha de {nombre}» (`outline sm`, abre en el sitio nombre + relación, sin relación por defecto) y «No me interesa» (`ghost sm`). Tras guardarla, la misma tarjeta pregunta «¿Compartes tu lista con {nombre}?» con «Compartir mi lista» y «Ahora no». No hay email ni entrada en la campana: la campana es «Próximas fechas».
+
+**Sección de la ficha** (`PersonListSection`, en `/seres-queridos/[personId]` justo antes de «Ideas guardadas», con `id="lista"` porque el email enlaza ahí): card con eyebrow `BookHeart` «La lista de {nombre}» y debajo «Lo que {nombre} ha apuntado que le haría ilusión. No ve lo que marcas.». Filas como las de la página del dueño, con la acción a la derecha según el estado:
+
+| Estado | A la derecha |
+|---|---|
+| Nadie lo ha marcado | `Button outline sm` con `Gift`: «Lo regalo yo» |
+| Lo has marcado tú | `Badge secondary` «Lo regalas tú» + `Button sm` «Ya se lo he regalado» + `X` para quitar la marca |
+| Ya lo diste por regalado | `Badge outline` con `Check`: «Regalado» + `X` |
+| Lo ha marcado otra persona | `text-xs text-muted-foreground` «Ya lo regala otra persona», y el título en `text-muted-foreground` |
+
+- **«Lo regalas tú» es `secondary`** (terracota): es énfasis sobre algo tuyo, la regla de los badges. Las acciones siguen en verde.
+- **Aviso de edición**: bajo la fila, una franja `rounded-md bg-secondary/10 text-xs` con «{Nombre} lo ha cambiado después de que lo marcaras.» y un botón `xs outline` «Entendido».
+- **Ya no está en su lista**: las marcas de elementos que el dueño borró van al final, en filas con borde punteado, título apagado y `Badge outline` «Ya no está en su lista».
+- **Pie**: `Select sm` «Ficha» para mover la lista a otra ficha y «Dejar esta lista» (`ghost sm`, con diálogo de confirmación).
+
+**`AddToHistoryDialog`** ([`src/components/people/AddToHistoryDialog.tsx`](../src/components/people/AddToHistoryDialog.tsx)) es el diálogo que antes vivía dentro de la ficha para «Lo regalé». Lo comparten las ideas guardadas, con la ocasión fija en la descripción, y la lista, que pregunta la ocasión con un `Input` relleno con la fecha de la ficha más cercana a hoy (`closestOccasionLabel`).
+
 ### Enlace de retroceso (back link)
 
 Patrón para "volver a la sección anterior", visible en la parte superior de páginas de detalle o subpáginas. Componente compartido: `src/components/layout/BackLink.tsx`.
@@ -1689,7 +1721,8 @@ Iconos en uso:
 - `NotebookPen` — eyebrow de sección "Notas" (ficha).
 - `CalendarDays` — eyebrow de sección "Eventos" (ficha y formulario) y nav "Agenda".
 - `Ruler` — eyebrow de sección "Datos prácticos" (ficha y formulario).
-- `Gift` — eyebrow de sección "Historial de regalos" (ficha), botón "Ideas de regalo" y empty state de la campana.
+- `Gift` — eyebrow de sección "Historial de regalos" (ficha), botón "Ideas de regalo" y empty state de la campana. También el botón "Lo regalo yo" de una lista ajena.
+- `BookHeart` — todo lo de «Mi lista»: nav, eyebrow de "Lo que te haría ilusión" y de "La lista de {nombre}", icono de la tarjeta de lista recibida y empty state de `/mi-lista`.
 - `ShoppingBag` — tipo de regalo "Producto físico".
 - `Ticket` — tipo de regalo "Experiencia".
 - `Heart` — tipo de regalo "Tiempo juntos".
@@ -1755,7 +1788,7 @@ Dos divergencias que la migración cierra de paso, y que conviene no reintroduci
 
 ## Empty states
 
-Componente compartido: `src/components/layout/EmptyState.tsx`. Usado en [`src/app/(app)/seres-queridos/page.tsx`](../src/app/(app)/seres-queridos/page.tsx), [`src/app/(app)/agenda/page.tsx`](../src/app/(app)/agenda/page.tsx) y [`src/components/gifts/GiftsPanel.tsx`](../src/components/gifts/GiftsPanel.tsx).
+Componente compartido: `src/components/layout/EmptyState.tsx`. Usado en [`src/app/(app)/seres-queridos/page.tsx`](../src/app/(app)/seres-queridos/page.tsx), [`src/app/(app)/agenda/page.tsx`](../src/app/(app)/agenda/page.tsx), [`src/app/(app)/mi-lista/page.tsx`](../src/app/(app)/mi-lista/page.tsx) y [`src/components/gifts/GiftsPanel.tsx`](../src/components/gifts/GiftsPanel.tsx).
 
 ```tsx
 <EmptyState
@@ -1800,6 +1833,8 @@ Componente compartido: `src/components/layout/EmptyState.tsx`. Usado en [`src/ap
 | Hay personas pero sin eventos próximos | `Coffee` | "Todo tranquilo" | "Ver seres queridos" → `/seres-queridos` |
 
 La página hace dos queries en paralelo: `api.importantDates.getUpcoming` y `api.people.getAll`. Si `filtered.length === 0`, se comprueba `people.length` para decidir qué empty state mostrar. Si `people` todavía carga, se muestra el skeleton (no el empty state) para evitar un flash.
+
+**Mi lista** (`src/app/(app)/mi-lista/page.tsx`): sin elementos, `EmptyState` con `BookHeart`, título «Nada apuntado todavía», descripción «Apunta lo que te haría ilusión recibir, con su enlace si lo tienes. Quien tenga acceso a tu lista lo verá en su libreta, junto a tus fechas.» y CTA filled «Apuntar lo primero» (`Button` + `hover:bg-primary/80`), que abre el formulario en el sitio en vez de navegar. Una lista ajena sin elementos no usa `EmptyState`: dentro de su card basta «Todavía no ha apuntado nada.».
 
 **GiftsPanel sin eventos** (`src/components/gifts/GiftsPanel.tsx`):
 

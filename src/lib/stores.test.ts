@@ -6,6 +6,7 @@ import {
   padPriceRange,
   pickEffectiveStores,
   sanitizeFavoriteStores,
+  storeIdForUrl,
 } from "./stores";
 
 describe("generateStoreSearchUrl", () => {
@@ -251,5 +252,25 @@ describe("pickEffectiveStores", () => {
     // Preserva el orden de favoriteStores tal como llega; la página llama a
     // sanitizeFavoriteStores antes para asegurar orden canónico de STORE_IDS.
     expect(result.stores).toEqual(["amazon", "miravia"]);
+  });
+});
+
+describe("storeIdForUrl", () => {
+  it("reconoce cada tienda por su dominio", () => {
+    expect(storeIdForUrl("https://www.amazon.es/dp/B0X")).toBe("amazon");
+    expect(storeIdForUrl("https://amzn.eu/d/abc")).toBe("amazon");
+    expect(storeIdForUrl("https://es.aliexpress.com/item/1.html")).toBe("aliexpress");
+    expect(storeIdForUrl("https://www.ikea.com/es/es/p/x")).toBe("ikea");
+    expect(storeIdForUrl("https://www.elcorteingles.es/moda/x")).toBe("elcorteingles");
+  });
+
+  it("no se deja engañar por un dominio que solo contiene el de la tienda", () => {
+    expect(storeIdForUrl("https://amazon.es.ofertas-timo.com/x")).toBeNull();
+    expect(storeIdForUrl("https://miamazon.es/x")).toBeNull();
+  });
+
+  it("devuelve null para cualquier otra web o para lo que no es http(s)", () => {
+    expect(storeIdForUrl("https://www.etsy.com/listing/1")).toBeNull();
+    expect(storeIdForUrl("javascript:alert(1)")).toBeNull();
   });
 });

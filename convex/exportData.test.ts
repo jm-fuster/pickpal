@@ -172,6 +172,11 @@ describe("no desincronizarse del borrado", () => {
     for (const t of tablas(fs.readFileSync("convex/personShares.ts", "utf8"))) {
       borrado.add(t);
     }
+    // Y «Mi lista» en lists.ts, desde `deleteListDataForUser` hasta el final.
+    const listas = fs.readFileSync("convex/lists.ts", "utf8");
+    const bloqueListas = listas.slice(listas.indexOf("export async function deleteListDataForUser"));
+    expect(bloqueListas, "deleteListDataForUser no está en convex/lists.ts").not.toBe(listas);
+    for (const t of tablas(bloqueListas)) borrado.add(t);
 
     const exportadas = tablas(fs.readFileSync("convex/exportData.ts", "utf8"));
 

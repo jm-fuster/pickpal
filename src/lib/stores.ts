@@ -1,3 +1,5 @@
+import { linkHostname } from "./links";
+
 export const STORE_IDS = [
   "amazon",
   "elcorteingles",
@@ -178,4 +180,46 @@ export function pickEffectiveStores(
     return { stores: intersection, isFallback: false };
   }
   return { stores: [...favoriteStores], isFallback: true };
+}
+
+/**
+ * Dominios de cada tienda, para reconocer el enlace de un elemento de «Mi
+ * lista» y enseñar su logo (decisión 3 de docs/encargo-lista.md). Se resuelve
+ * en el navegador, sin pedir nada a la tienda. Cuenta el dominio exacto y sus
+ * subdominios (`es.aliexpress.com`), no un dominio que solo lo contiene
+ * (`amazon.es.otra-cosa.com`).
+ */
+export const STORE_DOMAINS: Record<StoreId, readonly string[]> = {
+  amazon: [
+    "amazon.es",
+    "amazon.com",
+    "amazon.de",
+    "amazon.fr",
+    "amazon.it",
+    "amazon.co.uk",
+    // Enlaces cortos que genera el botón «Compartir» de Amazon.
+    "amzn.eu",
+    "amzn.to",
+  ],
+  elcorteingles: ["elcorteingles.es"],
+  aliexpress: ["aliexpress.com", "aliexpress.es"],
+  temu: ["temu.com"],
+  miravia: ["miravia.es"],
+  decathlon: ["decathlon.es", "decathlon.com"],
+  ikea: ["ikea.com", "ikea.es"],
+  pccomponentes: ["pccomponentes.com"],
+  mediamarkt: ["mediamarkt.es"],
+  zalando: ["zalando.es"],
+  druni: ["druni.es"],
+};
+
+export function storeIdForUrl(url: string): StoreId | null {
+  const host = linkHostname(url);
+  if (!host) return null;
+  for (const id of STORE_IDS) {
+    if (STORE_DOMAINS[id].some((d) => host === d || host.endsWith(`.${d}`))) {
+      return id;
+    }
+  }
+  return null;
 }

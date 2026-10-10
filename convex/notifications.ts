@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
+import { countUnclaimedForReader } from "./lists";
 
 /**
  * Días enteros entre hoy (UTC, hora 0) y la fecha objetivo (UTC, hora 0).
@@ -82,6 +83,9 @@ export type EventToNotify = {
   month: number;
   day: number;
   daysUntil: number;
+  /** Elementos sin marcar en las listas que el destinatario asoció a esta
+   * persona («Mi lista», decisión 18). Ausente si no hay ninguno. */
+  listUnclaimed?: number;
 };
 
 export type UserToNotify = {
@@ -138,6 +142,14 @@ export const findEventsNeedingEmail = internalQuery({
             .unique();
           if (already) continue;
 
+          // Solo la cifra, y solo de las listas que este usuario asoció a la
+          // persona: el correo nunca lleva títulos de la lista de nadie.
+          const listUnclaimed = await countUnclaimedForReader(
+            ctx,
+            person._id,
+            s.clerkUserId,
+          );
+
           events.push({
             dateId: date._id,
             personId: person._id,
@@ -148,6 +160,7 @@ export const findEventsNeedingEmail = internalQuery({
             month: date.month,
             day: date.day,
             daysUntil: next.daysUntil,
+            ...(listUnclaimed > 0 ? { listUnclaimed } : {}),
           });
         }
       }

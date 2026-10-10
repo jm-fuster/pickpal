@@ -491,3 +491,46 @@ export function validateDateInput(input: {
   }
   validateBudget(input.budgetMin, input.budgetMax);
 }
+
+// «Mi lista». Espejados de `listItemSchema` en src/lib/schemas.ts. El título
+// comparte tope con `giftName` del historial: «Ya se lo he regalado» lo copia
+// tal cual a una entrada nueva.
+const MAX_LIST_ITEM_TITLE = 120;
+const MAX_LIST_ITEM_NOTE = 500;
+const MAX_LIST_ITEM_URL = 2048;
+
+/**
+ * El enlace de un elemento de la lista. Lo escribe el usuario y se pinta en el
+ * `href` de otro, así que solo pasan `http:` y `https:`: un `javascript:`
+ * sería XSS en la cuenta de quien lo abre. El servidor nunca abre la URL
+ * (decisión 3 de docs/encargo-lista.md), solo la guarda.
+ */
+export function isAllowedListItemUrl(url: string): boolean {
+  if (url.length === 0 || url.length > MAX_LIST_ITEM_URL) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  return (
+    (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+    parsed.hostname.length > 0
+  );
+}
+
+export function validateListItemInput(input: {
+  title: string;
+  url?: string;
+  note?: string;
+}) {
+  const title = input.title.trim();
+  if (title.length === 0) throw new ConvexError("El título es obligatorio.");
+  if (title.length > MAX_LIST_ITEM_TITLE) throw new ConvexError("Título demasiado largo.");
+  if (input.url !== undefined && !isAllowedListItemUrl(input.url)) {
+    throw new ConvexError("El enlace tiene que empezar por http:// o https://.");
+  }
+  if (input.note !== undefined && input.note.length > MAX_LIST_ITEM_NOTE) {
+    throw new ConvexError("Nota demasiado larga.");
+  }
+}

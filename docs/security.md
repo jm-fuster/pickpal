@@ -58,6 +58,13 @@ dueño** — usan `assertIsOwner`, que sí es la comparación estricta de toda l
 vida. Compartir amplía casi todos los permisos, pero no estos dos: ver
 `docs/dudas.md` → "Compartir personas entre usuarios", decisión 1.
 
+**«Mi lista» no usa este patrón, a propósito.** Una lista la lee quien tiene
+una fila en `listShares` con el dueño de la lista, y eso es lo único que se
+comprueba: aunque el lector la guarde en una ficha, tener acceso a esa ficha
+(como dueño o como invitado) no da acceso a la lista. Si se comprobara por la
+ficha, compartir una ficha enseñaría la lista a gente que su dueño no eligió.
+Ver §11.
+
 Si añades una tabla nueva con dueño, replica el patrón que corresponda. Si no
 es posible identificar el dueño, **no se puede exponer la operación**.
 
@@ -85,6 +92,7 @@ Por qué importa: sin esto un usuario autenticado puede insertar `notes` de 100 
   - `matchedBrandStores` (opcional, resuelto vía Brandfetch): por entrada, `brand` ≤ 40 chars no vacío, `domain` validado como hostname (regex + ≤ 253 chars), `logoUrl` (opcional) por prefijo del CDN de Brandfetch. Cierra el gap de que un cliente directo inyecte un dominio/URL arbitrarios en el botón de marca. El mismo helper (`validateMatchedBrandStores`) valida el snapshot `matchedBrandStores` que persiste `api.savedIdeas.save` (vía `validateSavedIdeaInput`).
 
   Cierra el gap de que un atacante autenticado llamara directamente a `api.recommendations.upsert` saltándose la API route con un payload masivo.
+- `validateListItemInput` — elementos de «Mi lista»: título ≤ 120 (el mismo tope que `giftName`, porque «Ya se lo he regalado» lo copia al historial), nota ≤ 500 y enlace ≤ 2048 que tiene que ser `http:` o `https:` (`isAllowedListItemUrl`). Ver §11.
 
 **Salida de Gemini = input no confiable.** El JSON que devuelve la IA pasa por `generateObject` con un schema Zod (`giftRecommendationSchema`), pero antes de tocar la BD vuelve a validarse en `validateRecommendationIdeas`. Defensa en profundidad: el schema Zod podría aflojar sus restricciones por error, o un cliente malicioso podría llamar a `upsert` directamente con datos que nunca pasaron por Gemini.
 
@@ -101,7 +109,7 @@ Aplícalo a cualquier mutation que:
 - Llame a APIs externas de pago (cuota).
 - Envíe notificaciones / emails.
 
-Buckets actuales: `create_person` (50/día), `create_date` (100/día), `save_idea` (50/día), `invite_person` (20/día — compartir una ficha, ver §9), `invite_lookup` (30/día — comprobar un email antes de invitar, ver §9), `recommendationUsage` (10/día, tabla aparte por motivos históricos).
+Buckets actuales: `create_person` (50/día), `create_date` (100/día), `save_idea` (50/día), `invite_person` (20/día — compartir una ficha, ver §9), `invite_lookup` (30/día — comprobar un email antes de invitar, ver §9; lo comparten las fichas y «Mi lista»), `create_list_item` (100/día), `claim_list_item` (100/día — marcar «Lo regalo yo»), `invite_list` (20/día — compartir tu lista, por email o de vuelta; ver §11), `recommendationUsage` (10/día, tabla aparte por motivos históricos).
 
 **Cuota de recomendaciones = reserva atómica.** `api.recommendationUsage.reserve` (mutation) incrementa el contador **antes** de llamar a Gemini y lanza `ConvexError` si está agotado; al ser una transacción Convex, dos peticiones concurrentes en el límite no pueden superar las 10/día. Si la generación falla (saturación, timeout o validación del schema de Gemini), la API route llama a `refund` para devolver la unidad: como el `return` de éxito va tras el `upsert`, llegar al `catch` garantiza que no se persistió ninguna idea, así que un fallo de formato del proveedor no cuesta una generación. `refund` recibe el `day` UTC que devolvió `reserve` para devolver la unidad al bucket correcto aunque el fallo cruce la medianoche UTC. No existe un `consume` posterior al guardado: el patrón check-luego-consume tenía una carrera de coste y un caso "ideas guardadas pero el usuario ve error".
 
@@ -181,6 +189,8 @@ El `clerkUserId` siempre se lee de la sesión vía `requireUser` — la mutation
 
 **Excepción desde que existe compartir (§9):** `deleteMyAccount` ya no borra incondicionalmente cada `people` del usuario. Si la persona tiene invitados, la propiedad se transfiere al más antiguo (`personShares.transferToOldestInviteeOrNull`) en lugar de borrarla — bloquear el borrado violaría el derecho RGPD a irse, y cascada la castigaría a un tercero por una decisión ajena. Solo se cascada-borra si no queda nadie más con acceso. Además, `deleteMyAccount` llama a `personShares.deleteSharesForUser` para desligar al usuario de toda ficha ajena que le hubieran compartido — la versión en bloque de `personShares.leave`.
 
+**«Mi lista» no tiene esa excepción (§11):** `lists.deleteListDataForUser` borra la lista entera del usuario (elementos, accesos y las marcas que otros hicieron en ella) sin transferirla, y sus accesos y marcas en listas ajenas. Las entradas de historial que un lector creó a partir de la lista son de su ficha y se quedan.
+
 ### 8. Variables de entorno
 
 - `NEXT_PUBLIC_*` se inyecta en el bundle cliente. **Nunca** poner secrets ahí.
@@ -238,6 +248,47 @@ debe salir en Google. Dos capas, ambas necesarias:
   y demás ficheros que no son HTML.
 - **No poner `Disallow` en `robots.txt`** (hoy no existe): si Google no puede
   rastrear la página, no llega a ver el `noindex` y puede mantenerla indexada.
+
+### 11. «Mi lista»
+
+Diseño completo en [`docs/encargo-lista.md`](encargo-lista.md); código en
+[`convex/lists.ts`](../convex/lists.ts). Hay tres públicos y cada función sirve
+a uno solo:
+
+- **El dueño nunca ve las marcas.** `myItems` y `myReaders` leen solo
+  `listItems` y `listShares`; ninguna query del dueño cruza con `listClaims`, ni
+  para un contador, y la exportación del dueño tampoco las lleva (§2.6 de
+  `privacy.md` explica la base). Es la propiedad que sostiene la función y la
+  primera que prueba `convex/lists.test.ts`. Si una query nueva del dueño
+  necesita mirar `listClaims`, está mal planteada.
+- **El lector entra por el permiso del dueño.** `forPerson` y `claim` buscan la
+  fila de `listShares` (dueño, lector), nunca el acceso a la ficha donde el
+  lector guardó la lista (§2). Ve que un elemento está cogido, pero no quién lo
+  cogió (`state: "taken"` sin `claimId`) ni quién más lee la lista.
+- **La asociación a una ficha se valida al leer.** Un lector pierde el acceso a
+  una ficha por varios caminos (`people.remove`, `personShares.leave`, la
+  transferencia al borrar una cuenta). En vez de engancharse a cada uno,
+  `validPersonId` comprueba `personHasAccess` en cada lectura y, si falla, la
+  lista vuelve a quedar pendiente.
+- **Invitar es como en las fichas** (§9): `/api/lista/share` gasta
+  `invite_lookup` antes de preguntar a Clerk y `lists.invite` aplica el tope de
+  20 lectores y el cubo `invite_list`. `lists.shareBack` comparte tu lista con
+  quien te compartió la suya sin email: la cuenta sale de la fila de
+  `listShares` del lector, nunca de un argumento.
+- **El nombre que ve el lector lo pone el dueño.** `ownerName` y `ownerEmail` se
+  copian del JWT del dueño al conceder el acceso, no del cliente. El nombre de
+  pila lo elige cada usuario en Clerk, así que no prueba nada; el email está
+  verificado, y por eso la tarjeta de lista recibida enseña los dos. Si el JWT
+  no trae `given_name` (porque la plantilla `convex` de Clerk no lo incluya o
+  porque el usuario no haya puesto nombre), la tarjeta usa el email.
+- **Los enlaces vienen de otro usuario.** El servidor nunca los abre: no hay
+  vista previa, así que no hay superficie de SSRF. Solo se aceptan `http:` y
+  `https:` (`isAllowedListItemUrl`), porque un `javascript:` en el `href` sería
+  XSS en la cuenta de quien lo abre. Se pintan con `target="_blank"
+  rel="noopener noreferrer nofollow"` y siempre con el dominio visible
+  (`ListItemLink`); un dominio que imita a otro sale en punycode.
+- **Quitar el acceso borra las marcas.** `revoke` y `leave` borran las marcas de
+  ese lector en esa lista; si no, bloquearían elementos para siempre.
 
 ---
 
@@ -326,7 +377,8 @@ Decisiones explícitas de "ahora no":
 - **Auditoría de acceso**: no se loguea quién leyó qué. Aceptable para una app personal; revisar si pasa a multi-tenant.
 - **El dueño no puede revocar a un invitado.** Solo existe `personShares.leave` (el invitado se va solo). Añadir un `personShares.revoke` (dueño quita a un invitado concreto) es sencillo con la tabla actual, pero no lo pedía el encargo y no hay un caso de uso claro que lo motive todavía — revisar si aparece.
 - **Compartir concede acceso al momento, sin que el invitado acepte.** `personShares.invite` resuelve el email y da acceso en la misma llamada; no hay un estado "pendiente" ni una notificación al invitado de que ahora tiene acceso a una ficha con datos de salud. Aceptable para el caso de uso (hermanos que ya han hablado de compartir antes de escribir el email), pero si se abre a compartir con desconocidos, esto necesita revisarse.
-- **El email tiene que coincidir con una cuenta existente.** No hay invitación por email a alguien sin cuenta todavía (sin flujo de "cuando se registre, dale acceso"). Quien invita ve "No hay ninguna cuenta de PickPal con ese email" y tiene que pedirle a esa persona que se registre primero.
+- **El email tiene que coincidir con una cuenta existente.** No hay invitación por email a alguien sin cuenta todavía (sin flujo de "cuando se registre, dale acceso"). Quien invita ve "No hay ninguna cuenta de PickPal con ese email" y tiene que pedirle a esa persona que se registre primero. Vale igual para compartir «Mi lista» (§11): invitar a quien aún no tiene cuenta quedó fuera de la primera versión porque obliga a escribir a alguien que no es usuario.
+- **No se puede bloquear a quien te comparte listas.** «No me interesa» deja la lista, pero la misma persona puede volver a compartirla y la tarjeta reaparece. Lo acotan el cubo `invite_list` (20/día por quien comparte) y que hace falta conocer el email de la cuenta. Revisar si aparece abuso.
 
 ---
 

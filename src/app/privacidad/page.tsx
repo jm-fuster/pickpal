@@ -65,6 +65,12 @@ export default function PrivacyPage() {
               y las recomendaciones que la IA ha generado para ti.
             </li>
             <li>
+              <span className="text-foreground">Tu lista:</span> lo que apuntas
+              en &laquo;Mi lista&raquo; que te haría ilusión recibir, con quién
+              la compartes y, en las listas que otras personas te comparten, lo
+              que marcas para regalarles.
+            </li>
+            <li>
               <span className="text-foreground">Tus ajustes:</span>{" "}
               preferencias de notificaciones por correo y tiendas favoritas. El
               tema claro u oscuro se queda en tu navegador, no llega a nuestros
@@ -80,7 +86,8 @@ export default function PrivacyPage() {
           <ul className="space-y-2 text-sm text-foreground list-disc pl-5">
             <li>
               <span className="text-foreground">Darte el servicio</span> —tu
-              cuenta, tu libreta, las ideas de regalo y compartir fichas—: es la
+              cuenta, tu libreta, las ideas de regalo, compartir fichas y tu
+              lista—: es la
               ejecución del contrato que aceptas al registrarte (art. 6.1.b del
               RGPD).
             </li>
@@ -146,7 +153,9 @@ export default function PrivacyPage() {
             <li>
               <span className="text-foreground">Resend</span> — envía los
               correos de aviso si activas las notificaciones. Para escribirlos
-              recibe tu email, el nombre del ser querido, el evento y su fecha.
+              recibe tu email, el nombre del ser querido, el evento y su fecha
+              y, si esa persona te ha compartido su lista, cuántas cosas de
+              ella no ha marcado nadie todavía (la cifra, nunca cuáles son).
             </li>
             <li>
               <span className="text-foreground">Brandfetch</span> — busca la web
@@ -257,6 +266,44 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-3">
+          <h2 className="text-xl font-medium">Tu lista</h2>
+          <p className="text-sm text-foreground">
+            En &laquo;Mi lista&raquo; apuntas lo que te haría ilusión recibir:
+            qué es y, si quieres, un enlace y una nota. Solo la ven las
+            personas con cuenta en PickPal a las que tú invitas, hasta un
+            máximo de 20. Junto a la lista ven tu nombre y tu email, para saber
+            quién se la comparte. Ninguna sabe quién más la lee. PickPal nunca
+            abre los enlaces que apuntas: solo los guarda.
+          </p>
+          <p className="text-sm text-foreground">
+            Quien la lee puede marcar lo que va a regalarte.{" "}
+            <strong>Tú no ves esas marcas</strong>, ni en la app ni en el
+            archivo de &laquo;Descargar mis datos&raquo;: son de quien las hace,
+            y enseñártelas estropearía la sorpresa. Puedes quitarle el acceso a
+            cualquiera cuando quieras, y sus marcas se borran con él.
+          </p>
+          <p className="text-sm text-foreground">
+            Si borras algo que alguien ya había marcado, esa persona sigue
+            viendo una copia (qué era, el enlace y la nota) hasta que quita su
+            marca. Y si alguien apunta en su historial de regalos que te regaló
+            algo de tu lista, esa entrada es de su libreta: no se borra con el
+            elemento ni con tu cuenta.
+          </p>
+          <p className="text-sm text-foreground">
+            Tu lista no se envía a Google Gemini. El único dato suyo que sale
+            de PickPal es una cifra: el correo de aviso de quien te tiene en su
+            libreta puede decir cuántas cosas de tu lista no ha marcado nadie,
+            nunca cuáles. Si cierras tu cuenta, tu lista se borra entera, con
+            sus accesos y sus marcas, y no pasa a nadie.
+          </p>
+          <p className="text-sm text-foreground">
+            Si alguien te comparte su lista, lo que marcas no lo ve quien la
+            escribió. Si dejas una lista o te quitan el acceso, tus marcas se
+            borran.
+          </p>
+        </section>
+
+        <section className="space-y-3">
           <h2 className="text-xl font-medium">Cookies</h2>
           <p className="text-sm text-foreground">
             Solo usamos cookies técnicas necesarias para mantener tu sesión
@@ -293,6 +340,11 @@ export default function PrivacyPage() {
             que otras personas compartieron contigo (entradas del historial e
             ideas guardadas) se queda en esas fichas, sin tu nombre ni tu
             email.
+          </p>
+          <p className="text-sm text-foreground">
+            Tu lista no tiene esa excepción: al cerrar la cuenta se borra
+            entera. Lo único que sobrevive son las entradas que otras personas
+            hayan apuntado en su propio historial de regalos.
           </p>
         </section>
 
@@ -375,7 +427,7 @@ export default function PrivacyPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 27 de septiembre de 2026.
+          Última actualización: 10 de octubre de 2026.
         </p>
       </main>
 

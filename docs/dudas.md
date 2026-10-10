@@ -27,6 +27,73 @@ _Ninguna ahora mismo._
 
 ## Resueltas
 
+- [x] **«Mi lista»: la lista compartida.** Construida el 10-oct-2026 sobre las
+  31 decisiones de `docs/encargo-lista.md`, que es la especificación. Lo que se
+  construyó de verdad:
+
+  - Tres tablas en `convex/schema.ts`: `listItems` (por dueño), `listShares`
+    (dueño, lector, nombre y email del dueño, ficha asociada) y `listClaims`
+    (marcas, con copia del elemento si el dueño lo borra). Todo el backend en
+    [`convex/lists.ts`](../convex/lists.ts), con 27 tests en
+    `convex/lists.test.ts` que empiezan por que el dueño nunca vea las marcas.
+  - Ruta `src/app/api/lista/share/route.ts` (GET: emails de quién la ve; POST:
+    invitar por email), copiada del flujo de compartir fichas.
+  - Página `/mi-lista` (entrada nueva en la navegación, icono `BookHeart`),
+    tarjeta de lista recibida en `/agenda` y `/seres-queridos`
+    (`IncomingListsCard`) y sección «La lista de {nombre}» en la ficha
+    (`PersonListSection`), justo antes de «Ideas guardadas».
+  - El diálogo de pasar al historial salió de la ficha a
+    `src/components/people/AddToHistoryDialog.tsx`, que usan las ideas guardadas
+    («Lo regalé», ocasión fija) y la lista («Ya se lo he regalado», ocasión
+    propuesta con `closestOccasionLabel`).
+  - Logo por dominio con `storeIdForUrl` y `STORE_DOMAINS` en
+    `src/lib/stores.ts`; utilidades de enlace en `src/lib/links.ts`.
+  - Línea de la lista en el email de recordatorio (`listLineHtml` en
+    `convex/emails.ts`, con la cuenta en `lists.countUnclaimedForReader`).
+  - Borrado de cuenta (`lists.deleteListDataForUser`) y exportación
+    (`miLista`, `listasQueTeComparten`, `marcasEnListasDeOtros`), con el test
+    de tablas de `exportData.test.ts` ampliado a `lists.ts`.
+  - `/privacidad` (sección «Tu lista», Resend, conservación), `/terminos` (baja
+    del servicio), `docs/privacy.md` §2.6 y `docs/security.md` §11.
+
+  **Decisiones de implementación que el encargo no fijaba**, para no
+  rediscutirlas a ciegas:
+
+  - **El nombre que ve el lector sale del JWT del dueño** (`givenName`, o la
+    primera palabra de `name`) y se copia en `listShares` al compartir, con su
+    email. No se acepta del cliente. Como el nombre lo elige cada uno en Clerk,
+    la tarjeta enseña también el email, que está verificado. Sin nombre en el
+    JWT, la tarjeta usa el email. **Sin comprobar contra el dashboard:** si la
+    plantilla JWT `convex` de Clerk no incluye `given_name`, todas las tarjetas
+    saldrán con el email; se arregla añadiendo el claim a la plantilla.
+  - **Cupos:** `create_list_item` y `claim_list_item` a 100/día, `invite_list`
+    a 20/día (también para compartir de vuelta) e `invite_lookup` compartido con
+    las fichas. Topes de 100 elementos y 20 lectores comprobados antes que el
+    cupo, como en `personShares.invite`.
+  - **Una marca por elemento; la primera gana.** La segunda recibe «Ya lo regala
+    otra persona».
+  - **Guardar sin cambiar nada no es una edición:** no actualiza `editedAt` y no
+    dispara el aviso de la decisión 15.
+  - **«Ya se lo he regalado» sobre un elemento que el dueño ya borró** crea la
+    entrada de historial y borra la marca, porque no queda nada que bloquear.
+  - **La pregunta de compartir de vuelta solo vive en esa visita.** Una lista
+    asociada deja de estar pendiente; si se pulsa «Ahora no» o se cambia de
+    página, no se vuelve a preguntar.
+  - **«Crear ficha de {nombre}» pide la relación sin valor por defecto.**
+    Proponer «Pareja» habría acertado casi siempre, pero una madre guardada
+    como pareja es peor que un clic más.
+  - **Confirmación al quitar un acceso y al dejar una lista**, porque no se
+    pueden deshacer sin una invitación nueva. «No me interesa» no la pide: la
+    lista ni siquiera se ha llegado a ver.
+  - **La sección de la ficha se llama como la ficha** («La lista de Laura» con el
+    nombre que tú le pusiste). Si dos listas se guardan en la misma ficha, cada
+    una lleva el nombre de su dueño.
+  - **Enlaces cortos de Amazon** (`amzn.eu`, `amzn.to`) cuentan como Amazon:
+    es lo que genera su botón «Compartir».
+  - **Sin verificar en el navegador con sesión:** las pantallas que exigen
+    cuenta (`/mi-lista`, la tarjeta y la sección de la ficha) se probaron con
+    tests, typecheck y lint, no con un inicio de sesión real.
+
 - [x] **Compartir personas entre usuarios.** Construido el 20-sep-2026 sobre
   las diez decisiones ya cerradas (ver `docs/encargo-compartir.md`, que era el
   encargo autosuficiente). Lo que se construyó de verdad:

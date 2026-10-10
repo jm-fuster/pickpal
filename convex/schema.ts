@@ -191,4 +191,57 @@ export default defineSchema({
     .index("by_person", ["personId"])
     .index("by_person_and_user", ["personId", "clerkUserId"])
     .index("by_user", ["clerkUserId"]),
+
+  // «Mi lista» (docs/encargo-lista.md): lo que un usuario apunta que le haría
+  // ilusión recibir. Una lista por usuario, así que no hay tabla de listas: el
+  // dueño de cada elemento es la propia lista.
+  listItems: defineTable({
+    ownerClerkUserId: v.string(),
+    title: v.string(),
+    url: v.optional(v.string()),
+    note: v.optional(v.string()),
+    // Solo existe si el dueño lo editó alguna vez. Quien lo había marcado ve
+    // un aviso si es posterior a su `listClaims.ackAt` (decisión 15).
+    editedAt: v.optional(v.number()),
+  }).index("by_owner", ["ownerClerkUserId"]),
+
+  // Quién puede leer cada lista. El acceso se comprueba siempre contra esta
+  // tabla, nunca contra el acceso a la ficha asociada (decisión 12).
+  listShares: defineTable({
+    ownerClerkUserId: v.string(),
+    readerClerkUserId: v.string(),
+    // Copiados del JWT del dueño al conceder el acceso: Convex no guarda
+    // nombres de usuario y la tarjeta de lista recibida los necesita.
+    ownerName: v.optional(v.string()),
+    ownerEmail: v.optional(v.string()),
+    // Ficha del lector a la que la ha asociado. Si deja de tener acceso a
+    // ella, se trata como sin asociar al leer (decisión 11).
+    personId: v.optional(v.id("people")),
+  })
+    .index("by_owner", ["ownerClerkUserId"])
+    .index("by_reader", ["readerClerkUserId"])
+    .index("by_owner_and_reader", ["ownerClerkUserId", "readerClerkUserId"])
+    .index("by_person", ["personId"]),
+
+  // Marcas de «Lo regalo yo». Nunca se devuelven al dueño de la lista, ni en
+  // la app ni en su exportación (decisiones 7 y 21).
+  listClaims: defineTable({
+    ownerClerkUserId: v.string(),
+    readerClerkUserId: v.string(),
+    // Vacío cuando el dueño borró el elemento marcado: quien lo marcó lo
+    // sigue viendo desde `snapshot` hasta que quita la marca (decisión 14).
+    itemId: v.optional(v.id("listItems")),
+    status: v.union(v.literal("marked"), v.literal("given")),
+    ackAt: v.number(),
+    snapshot: v.optional(
+      v.object({
+        title: v.string(),
+        url: v.optional(v.string()),
+        note: v.optional(v.string()),
+      }),
+    ),
+  })
+    .index("by_item", ["itemId"])
+    .index("by_reader", ["readerClerkUserId"])
+    .index("by_owner_and_reader", ["ownerClerkUserId", "readerClerkUserId"]),
 });

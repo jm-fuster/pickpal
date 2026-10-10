@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
 import { requireUser } from "./auth";
+import { personHasAccess } from "./personShares";
 
 /**
  * Copia completa de los datos del usuario autenticado (RGPD art. 15 y 20).
@@ -99,6 +100,56 @@ export const mine = query({
       }),
     );
 
+    // «Mi lista» como dueño: los elementos y a quién se la has compartido.
+    // Sin `listClaims`: si las marcas salieran aquí, bastaría con descargar
+    // los datos para saber qué te van a regalar (decisión 21 de
+    // docs/encargo-lista.md). Una marca es un dato de quien la hace, y sale en
+    // su exportación, en `marcasEnListasDeOtros`.
+    const [elementosDeMiLista, quienVeMiLista, listasQueMeComparten, misMarcas] =
+      await Promise.all([
+        ctx.db
+          .query("listItems")
+          .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", clerkUserId))
+          .collect(),
+        ctx.db
+          .query("listShares")
+          .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", clerkUserId))
+          .collect(),
+        ctx.db
+          .query("listShares")
+          .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
+          .collect(),
+        ctx.db
+          .query("listClaims")
+          .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
+          .collect(),
+      ]);
+    const listasQueTeComparten = await Promise.all(
+      listasQueMeComparten.map(async (s) => {
+        // Solo si aún puedes ver la ficha: si te la dejaron de compartir, su
+        // nombre ya no es dato tuyo.
+        const ficha = s.personId ? await ctx.db.get(s.personId) : null;
+        const veoLaFicha = await personHasAccess(ctx, ficha, clerkUserId);
+        return {
+          de: s.ownerName ?? null,
+          email: s.ownerEmail ?? null,
+          desde: s._creationTime,
+          fichaAsociada: veoLaFicha ? (ficha?.name ?? null) : null,
+        };
+      }),
+    );
+    const marcasEnListasDeOtros = await Promise.all(
+      misMarcas.map(async (c) => {
+        const elemento = c.itemId ? await ctx.db.get(c.itemId) : null;
+        return {
+          elemento: elemento?.title ?? c.snapshot?.title ?? null,
+          estado: c.status === "given" ? "regalado" : "lo regalo yo",
+          sigueEnSuLista: c.itemId !== undefined,
+          desde: c._creationTime,
+        };
+      }),
+    );
+
     // Ideas de personas YA BORRADAS: el borrado en cascada las recoge por este
     // mismo índice, así que la exportación también. Huérfana de verdad = su
     // persona ya no existe — no basta con "no la tengo en `seresQueridos`",
@@ -144,7 +195,10 @@ export const mine = query({
         "1970 y los presupuestos en céntimos. Cada ser querido lleva un " +
         "\"compartidoCon\" con quién más tiene acceso a su ficha; " +
         "\"fichasQueTeComparten\" son las de otros a las que tú tienes acceso " +
-        "(no se incluye su contenido completo, solo que las ves).",
+        "(no se incluye su contenido completo, solo que las ves). " +
+        "\"miLista\" es lo que has apuntado que te haría ilusión y con quién " +
+        "la compartes; no incluye qué ha marcado nadie para regalarte. " +
+        "\"marcasEnListasDeOtros\" es lo que has marcado tú en listas ajenas.",
       usuario: {
         // El identificador con el que se guarda todo lo de abajo.
         clerkUserId,
@@ -153,6 +207,23 @@ export const mine = query({
       ajustes: ajustes.map(limpiar),
       seresQueridos,
       fichasQueTeComparten,
+      miLista: {
+        elementos: elementosDeMiLista.map((i) => ({
+          titulo: i.title,
+          enlace: i.url ?? null,
+          nota: i.note ?? null,
+          _creationTime: i._creationTime,
+          editadoEn: i.editedAt ?? null,
+        })),
+        // Igual que `compartidoCon` de las fichas: el `clerkUserId` de cada
+        // fila es el dato, a quién le diste acceso.
+        compartidaCon: quienVeMiLista.map((s) => ({
+          clerkUserId: s.readerClerkUserId,
+          desde: s._creationTime,
+        })),
+      },
+      listasQueTeComparten,
+      marcasEnListasDeOtros,
       ideasGuardadasDePersonasYaBorradas: huerfanas.map(limpiar),
       avisosPorEmailEnviados: avisos.map(limpiar),
       // Contadores antiabuso. Se reinician cada día y no describen a nadie,

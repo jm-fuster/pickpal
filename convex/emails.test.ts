@@ -8,7 +8,8 @@
 // tests fijan que la URL se percent-encodea, que es lo que sí sobrevive.
 
 import { describe, expect, it } from "vitest";
-import { encodeCssUrl } from "./emails";
+import type { Id } from "./_generated/dataModel";
+import { encodeCssUrl, listLineHtml } from "./emails";
 
 describe("encodeCssUrl", () => {
   it("deja intacta la URL que genera el picker", () => {
@@ -34,5 +35,37 @@ describe("encodeCssUrl", () => {
 
   it("también cubre comillas dobles, barra invertida y espacios", () => {
     expect(encodeCssUrl('a" b\\c')).toBe("a%22%20b%5Cc");
+  });
+});
+
+// La línea de «Mi lista» en la tarjeta del evento (docs/encargo-lista.md,
+// decisión 18): solo una cifra, nunca títulos, y nada si no hay qué contar.
+describe("listLineHtml", () => {
+  const base = { personId: "abc123" as Id<"people">, personName: "Laura" };
+
+  it("no pinta nada sin lista o con todo marcado", () => {
+    expect(listLineHtml(base)).toBe("");
+    expect(listLineHtml({ ...base, listUnclaimed: 0 })).toBe("");
+  });
+
+  it("cuenta en singular y en plural", () => {
+    expect(listLineHtml({ ...base, listUnclaimed: 1 })).toContain(
+      "Laura tiene 1 cosa en su lista que nadie ha marcado todavía",
+    );
+    expect(listLineHtml({ ...base, listUnclaimed: 3 })).toContain(
+      "Laura tiene 3 cosas en su lista que nadie ha marcado todavía",
+    );
+  });
+
+  it("enlaza a la sección de la lista en la ficha", () => {
+    expect(listLineHtml({ ...base, listUnclaimed: 2 })).toContain(
+      'href="https://pickpal.jorgemolinafuster.com/seres-queridos/abc123#lista"',
+    );
+  });
+
+  it("escapa el nombre de la persona", () => {
+    expect(
+      listLineHtml({ ...base, personName: "<b>Ana</b>", listUnclaimed: 2 }),
+    ).toContain("&lt;b&gt;Ana&lt;/b&gt; tiene");
   });
 });

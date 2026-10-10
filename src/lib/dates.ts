@@ -115,3 +115,46 @@ export function formatDaysUntil(days: number): string {
   if (days === 1) return "Mañana";
   return `En ${days} días`;
 }
+
+/**
+ * La etiqueta de la fecha de la ficha más cercana a hoy, hacia delante o hacia
+ * atrás. Es la ocasión que propone «Ya se lo he regalado» en «Mi lista»
+ * (decisión 16 de docs/encargo-lista.md): casi siempre se marca justo después
+ * del cumpleaños o de Navidad, así que la de hace una semana gana a la de
+ * dentro de un mes. Vacío si la ficha no tiene fechas.
+ */
+export function closestOccasionLabel(
+  dates: ReadonlyArray<{
+    label: string;
+    month: number;
+    day: number;
+    year?: number;
+    recurring?: boolean;
+  }>,
+  from: Date = new Date(),
+): string {
+  const today = startOfDay(from);
+  const daysBetween = (a: Date, b: Date) =>
+    Math.abs(Math.round((a.getTime() - b.getTime()) / MS_PER_DAY));
+
+  let best: { label: string; distance: number } | null = null;
+  for (const d of dates) {
+    let distance: number;
+    if (d.recurring === false) {
+      if (d.year === undefined) continue;
+      distance = daysBetween(occurrenceInYear(d.year, d.month, d.day), today);
+    } else {
+      // La anterior es la de este año si ya llegó; si no, la del año pasado.
+      let previous = occurrenceInYear(today.getFullYear(), d.month, d.day);
+      if (previous.getTime() > today.getTime()) {
+        previous = occurrenceInYear(today.getFullYear() - 1, d.month, d.day);
+      }
+      distance = Math.min(
+        computeDaysUntilNextOccurrence(d.month, d.day, from),
+        daysBetween(today, previous),
+      );
+    }
+    if (!best || distance < best.distance) best = { label: d.label, distance };
+  }
+  return best?.label ?? "";
+}

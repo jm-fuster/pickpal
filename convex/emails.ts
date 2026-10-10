@@ -61,6 +61,24 @@ function avatarHtml(name: string, avatarUrl?: string): string {
   </table>`;
 }
 
+/**
+ * «Laura tiene 3 cosas en su lista que nadie ha marcado todavía», enlazado a
+ * la sección de la lista en su ficha (decisión 18 de docs/encargo-lista.md).
+ * Solo la cifra: el correo pasa por Resend y no lleva títulos de la lista.
+ * Vacío si no hay lista asociada o si ya está todo marcado.
+ */
+export function listLineHtml(
+  e: Pick<EventToNotify, "personId" | "personName" | "listUnclaimed">,
+): string {
+  const n = e.listUnclaimed ?? 0;
+  if (n <= 0) return "";
+  const cosas = n === 1 ? "1 cosa" : `${n} cosas`;
+  const href = `${APP_BASE_URL}/seres-queridos/${encodeURIComponent(e.personId)}#lista`;
+  return `<div style="font-size:12px;margin-top:6px;">
+                  <a href="${href}" style="color:#FBF7EE;text-decoration:underline;">${escapeHtml(e.personName)} tiene ${cosas} en su lista que nadie ha marcado todavía</a>
+                </div>`;
+}
+
 function formatEventCard(e: EventToNotify): string {
   const dd = String(e.day).padStart(2, "0");
   const mm = String(e.month).padStart(2, "0");
@@ -86,6 +104,7 @@ function formatEventCard(e: EventToNotify): string {
                 <div style="font-size:15px;font-weight:600;color:#FBF7EE;">${escapeHtml(e.personName)}</div>
                 <div style="font-size:13px;color:#a8c0a0;margin-top:2px;">${escapeHtml(e.label)} &middot; ${dd}/${mm}</div>
                 <div style="font-size:12px;font-weight:600;color:#F1704B;margin-top:2px;">${daysText}</div>
+                ${listLineHtml(e)}
               </td>
             </tr>
           </table>
@@ -251,6 +270,7 @@ export const sendBatchedReminderEmail = internalAction({
         month: v.number(),
         day: v.number(),
         daysUntil: v.number(),
+        listUnclaimed: v.optional(v.number()),
       }),
     ),
   },
@@ -302,6 +322,9 @@ export const sendTestEmail = internalAction({
       month: 8,
       day: 3,
       daysUntil: 0,
+      // La línea de «Mi lista» solo sale en esta tarjeta, para ver las dos
+      // variantes en el mismo correo.
+      listUnclaimed: 3,
     };
 
     const secondary: EventToNotify = {

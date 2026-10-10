@@ -29,7 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger,
 } from "@/components/ui/select";
 import { EditImportantDateInline, ImportantDateForm } from "@/components/people/ImportantDateForm";
 import { EditGiftHistoryInline, GiftHistoryForm } from "@/components/people/GiftHistoryForm";
@@ -40,6 +40,8 @@ import { InterestTagInput } from "@/components/people/InterestTagInput";
 import { BrandTagInput } from "@/components/people/BrandTagInput";
 import { AiNotesNotice } from "@/components/people/AiNotesNotice";
 import { ShareDialog } from "@/components/people/ShareDialog";
+import { AddToHistoryDialog, type HistoryValues } from "@/components/people/AddToHistoryDialog";
+import { PersonListSection } from "@/components/lista/PersonListSection";
 import { RELATIONSHIPS, REACTIONS } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { ALL_STORES, generateStoreSearchUrl, pickEffectiveStores, sanitizeFavoriteStores, STORE_ICONS, STORE_LABELS, type StoreId } from "@/lib/stores";
@@ -109,10 +111,6 @@ function PersonDetailContent({
 
   // ── Convert saved idea to history ──
   const [convertingIdea, setConvertingIdea] = useState<SavedIdeas[number] | null>(null);
-  const [convertReaction, setConvertReaction] = useState("");
-  const [convertYear, setConvertYear] = useState<string>("");
-  const [convertNotes, setConvertNotes] = useState("");
-  const [converting, setConverting] = useState(false);
 
   // ── Shared save (silent on success, toast on error) ──
   type SaveFields = {
@@ -132,37 +130,17 @@ function PersonDetailContent({
     }
   };
 
-  const handleConvertToHistory = async () => {
-    if (!convertingIdea || !convertReaction) return;
-    // El <input type=number> no impide teclear años fuera de [1900, 2100]; sin
-    // este guard el server los rechaza con un toast genérico. Validamos antes
-    // para dar un mensaje preciso.
-    const year = convertYear ? parseInt(convertYear, 10) : undefined;
-    if (year !== undefined && (!Number.isInteger(year) || year < 1900 || year > 2100)) {
-      toast.error("El año debe estar entre 1900 y 2100.");
-      return;
-    }
-    setConverting(true);
-    try {
-      await createHistoryEntry({
-        personId: id,
-        giftName: convertingIdea.title,
-        occasionLabel: convertingIdea.occasionLabel,
-        year,
-        reaction: convertReaction as "loved" | "ok" | "bad",
-        notes: convertNotes || undefined,
-      });
-      await removeSavedIdea({ id: convertingIdea._id });
-      toast.success("Añadido al historial de regalos");
-      setConvertingIdea(null);
-      setConvertReaction("");
-      setConvertYear("");
-      setConvertNotes("");
-    } catch {
-      toast.error("No se pudo guardar en el historial");
-    } finally {
-      setConverting(false);
-    }
+  const handleConvertToHistory = async (values: HistoryValues) => {
+    if (!convertingIdea) return;
+    await createHistoryEntry({
+      personId: id,
+      giftName: convertingIdea.title,
+      occasionLabel: values.occasionLabel,
+      year: values.year,
+      reaction: values.reaction,
+      notes: values.notes,
+    });
+    await removeSavedIdea({ id: convertingIdea._id });
   };
 
   const handleDelete = async () => {
@@ -478,6 +456,11 @@ function PersonDetailContent({
         ) : null}
       </div>
 
+      {/* ── Lista que esta persona te ha compartido («Mi lista» suya) ──
+          Solo sale si tú la has asociado a esta ficha; otro invitado de la
+          ficha no la ve (decisión 12 de docs/encargo-lista.md). */}
+      <PersonListSection personId={id} personName={headerName} dates={dates} />
+
       {/* ── Saved ideas card ── */}
       <Card className="border-border/60 shadow-sm">
         <CardContent className="space-y-4 p-5">
@@ -522,12 +505,7 @@ function PersonDetailContent({
                           <Button
                             size="sm"
                             className="text-xs h-7 px-2 hover:bg-primary/80"
-                            onClick={() => {
-                              setConvertingIdea(s);
-                              setConvertReaction("");
-                              setConvertYear("");
-                              setConvertNotes("");
-                            }}
+                            onClick={() => setConvertingIdea(s)}
                           >
                             Lo regalé
                           </Button>
@@ -626,62 +604,13 @@ function PersonDetailContent({
       </Card>
 
       {/* ── Convert saved idea to history dialog ── */}
-      <Dialog
-        open={convertingIdea !== null}
-        onOpenChange={(open) => { if (!open) setConvertingIdea(null); }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Añadir al historial de regalos</DialogTitle>
-            <DialogDescription>
-              {convertingIdea?.title} · {convertingIdea?.occasionLabel}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label>Reacción</Label>
-              <Select value={convertReaction} onValueChange={(v) => setConvertReaction(v ?? "")}>
-                <SelectTrigger aria-label="Reacción">
-                  <SelectValue placeholder="¿Cómo le sentó?" />
-                </SelectTrigger>
-                <SelectContent>
-                  {REACTIONS.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="convert-year">Año (opcional)</Label>
-              <Input
-                id="convert-year"
-                type="number"
-                min={1900}
-                max={2100}
-                placeholder={String(new Date().getFullYear())}
-                value={convertYear}
-                onChange={(e) => setConvertYear(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="convert-notes">Notas (opcional)</Label>
-              <Textarea
-                id="convert-notes"
-                rows={2}
-                placeholder="Le encantó, pero la talla era pequeña…"
-                value={convertNotes}
-                onChange={(e) => setConvertNotes(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" disabled={converting}>Cancelar</Button>} />
-            <Button onClick={handleConvertToHistory} disabled={converting || !convertReaction}>
-              {converting ? "Guardando…" : "Añadir al historial"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AddToHistoryDialog
+        key={convertingIdea?._id ?? "cerrado"}
+        gift={convertingIdea}
+        fixedOccasion={convertingIdea?.occasionLabel}
+        onClose={() => setConvertingIdea(null)}
+        onConfirm={handleConvertToHistory}
+      />
 
       {/* ── Gift history card ── */}
       <Card className="border-border/60 shadow-sm">

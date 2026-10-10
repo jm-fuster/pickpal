@@ -15,6 +15,7 @@ import type * as emails from "../emails.js";
 import type * as exportData from "../exportData.js";
 import type * as giftHistory from "../giftHistory.js";
 import type * as importantDates from "../importantDates.js";
+import type * as lists from "../lists.js";
 import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as people from "../people.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   exportData: typeof exportData;
   giftHistory: typeof giftHistory;
   importantDates: typeof importantDates;
+  lists: typeof lists;
   migrations: typeof migrations;
   notifications: typeof notifications;
   people: typeof people;

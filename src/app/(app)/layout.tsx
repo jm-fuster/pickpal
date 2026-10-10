@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Users, Settings } from "lucide-react";
+import { BookHeart, CalendarDays, Users, Settings } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { SafeNotificationBell } from "@/components/layout/SafeNotificationBell";
 import { SidebarLink } from "@/components/layout/SidebarLink";
@@ -45,6 +45,10 @@ export default function AppLayout({
           <SidebarLink href="/seres-queridos">
             <Users className="size-4" aria-hidden />
             Seres queridos
+          </SidebarLink>
+          <SidebarLink href="/mi-lista">
+            <BookHeart className="size-4" aria-hidden />
+            Mi lista
           </SidebarLink>
           <SidebarLink href="/settings">
             <Settings className="size-4" aria-hidden />
