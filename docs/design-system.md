@@ -424,6 +424,10 @@ Cuatro sitios del archivo seguían describiendo la app de antes de «Mi lista»,
 
 **Descripción de Community al día con la v1.1**: «67 icons» y «36 product frames» (eran 66 y 30), las cifras que ya dan «Start here» y la cabecera de `Screens & prototype`.
 
+**Corrección: «Start here» no cuadraba entero.** La entrada de la v1.1 dio sus cifras por comprobadas, y se miraron las del bloque de datos y la guía de iconos, no la prosa: el párrafo de `What is inside` (`241:1516`) seguía diciendo «The 66 icons». Pasa a 67. **En los créditos** (`241:1561`), los logos de tienda ya quedaban fuera de la CC BY 4.0 por ser marcas, pero de las fotos solo se nombraba a los autores; se añade «The photographs are not covered by it either: they stay under the Pexels licence.», porque no son del autor del archivo y la CC BY 4.0 no puede cederlas. El párrafo crece una línea y la sección `Start here` se alarga para conservar los 32 px bajo su marco, que ya sobresalía 236 px desde antes. Versión con nombre: «Start here: icons and photo licence».
+
+**Una letra que no se pintaba en los créditos.** Geist no trae la «ộ» vietnamita (U+1ED9), así que «Sóc Năng Động», uno de los fotógrafos, salía con un hueco desde que se escribieron los créditos: el texto era correcto y el glifo no existía. Esa letra, y solo esa, pasa a Inter Regular, que sí la tiene y viene con Figma, así que no falta en ninguna copia del archivo; el párrafo conserva su estilo de texto con esa excepción de un carácter. Se barrieron los nodos de texto de las 29 páginas buscando el resto del bloque vietnamita (U+1EA0–U+1EF9) y no hay más. La «ă» y la «Đ» sí están en Geist. **Regla**: al meter un nombre propio con diacríticos fuera del latín extendido, exportar el nodo y mirarlo, porque Figma no avisa del glifo que falta. Versión con nombre: «Credits: Vietnamese glyph».
+
 Siguen sin ser componentes de librería la fila de la lista, la tarjeta de lista recibida y el enlace con logo de tienda: viven como marcos locales en las pantallas, como el resto del cromo sin componente. Hacerlos componentes sería una página nueva y queda sin decidir.
 
 ### Figma — arquitectura de variables
