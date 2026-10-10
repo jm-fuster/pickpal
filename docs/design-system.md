@@ -430,6 +430,24 @@ Cuatro sitios del archivo seguían describiendo la app de antes de «Mi lista»,
 
 Siguen sin ser componentes de librería la fila de la lista, la tarjeta de lista recibida y el enlace con logo de tienda: viven como marcos locales en las pantallas, como el resto del cromo sin componente. Hacerlos componentes sería una página nueva y queda sin decidir.
 
+#### Propuesta: ideas guardadas por ocasión (10-oct-2026)
+
+`docs/encargo-ocasiones.md` se dibujó en Figma antes de escribir código. Vive en una página nueva al final del archivo, `Saved ideas by occasion`, bajo un bloque propio `◆ PROPOSALS` (divisor, rótulo y página), separada de las pantallas publicadas porque el archivo espeja lo que hay en producción y esto todavía no está. **Si se publica la v1.1 en Community con la página dentro, sale con ella**: hay que borrarla o dejarla a propósito. Versión con nombre: «Proposal: saved ideas by occasion».
+
+La página tiene la cabecera de `Screens & prototype` con tres notas (qué cambia en la ficha, mover y quitar, puntos abiertos) y cinco marcos:
+
+1. La ficha de escritorio entera, con la tarjeta de ideas agrupada en Navidad, Cumpleaños, Graduación del máster (única y ya pasada, con «Ya pasó») y Sin ocasión. Marta gana esos dos eventos en «Eventos» para que salgan todos los casos. Nuestro aniversario se queda sin ideas, y así se ve que un evento vacío no aparece en la tarjeta.
+2. El menú de una idea abierto: «Mover a otra ocasión» con los eventos que vienen y «Sin ocasión», separador y «Quitar idea».
+3. El diálogo «¿Quitar Navidad?» sobre la ficha, con el botón destructivo.
+4. Dos tarjetas del generador, una normal y otra con «Ya guardada en Navidad».
+5. La ficha en móvil, a una columna y con el mismo menú.
+
+**Cómo está hecho.** El menú es un `Popover` desmontado con filas locales, sin componente nuevo. El icono de los tres puntos, `icon/ellipsis`, es un componente con su descripción que vive en la propia página y no entra en `04 · Iconography` hasta que la función se lance. Las tarjetas del generador son copias desmontadas: la `Gift Recommendation Card` de la librería no tiene los pulgares que sí pinta el producto (`GiftRecommendationCard.tsx`). Esa divergencia ya existía, y en la propuesta los pulgares se añadieron a mano.
+
+**Hallazgo de paso: `Dialog` y `Popover` pintan el borde casi negro.** Su trazo va a `color/text` con opacidad 1, y el producto usa `ring-foreground/10`. Probablemente es la misma pérdida de opacidad en pinturas vinculadas que ya está anotada en las trampas de escritura. En las copias de la propuesta el trazo pasa a `color/border`; los componentes de la librería no se han tocado.
+
+**Abierto:** el menú de la propuesta no ofrece los eventos únicos que ya pasaron, y el encargo dice «los eventos de esa persona» sin excepción. Hay que decidirlo antes del código.
+
 ### Figma — arquitectura de variables
 
 El archivo [PickPal — Design System](https://www.figma.com/design/4hQt4BnsEluKsYk5qbKkCz/PickPal---Design-System) espeja este documento y `globals.css`, no al revés: **si Figma contradice el código, gana el código**. Sus 372 variables están organizadas en las cuatro capas del patrón de design tokens, y cada una aliasa a la de abajo sin saltarse eslabones.
