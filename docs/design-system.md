@@ -241,7 +241,7 @@ El archivo pasa de librería interna a archivo publicable. Lo que cambió, y las
 
 **Deja de ser cierto que el archivo no tiene ningún relleno de imagen**: lo afirmaban «Start here» y «About PickPal», y las dos frases ya se corrigieron. Con la fila de categorías fuera, el panel crece a 692 px y su borde superior alinea con el del logo en y 96.
 
-**`opsz` no se puede escribir por API.** El eje óptico de Fraunces se queda en 9 en todo el archivo, incluido el wordmark de 192 px de la portada y `Display/Display 1` a 72 px. `setRangeFontVariations` y `fontVariations` fallan con «object is not extensible». Es un defecto conocido y sin arreglo desde el plugin.
+**`opsz` no se puede escribir por API.** El eje óptico de Fraunces se queda en 9 en todo el archivo, incluido el wordmark de 192 px de la portada y `Display/Display 1` a 72 px. `setRangeFontVariations` y `fontVariations` fallan con «object is not extensible». Es un defecto conocido y sin arreglo desde el plugin. *(Corregido el 26-sep-2026: el 9 es solo el valor que se lee; Figma aplica el tamaño óptico según el cuerpo, así que el wordmark de 192 px sí se pinta con el corte de cartel. Ver «Portada «Marta would love ___» y logos de tienda».)*
 
 **Cifras corregidas en este documento.** La capa semántica son 137, no 136, y el archivo 373, no 372. Y **`color/Green/850` ya no existe**: la rampa Green tiene 11 pasos, 50–950, no los 12 que este documento describía. Tres pasajes lo siguen citando (la nota sobre consolidar pasos no estándar y dos filas de la tabla de `-solid`); son prosa histórica correcta en su fecha, pero las dos filas de tabla afirman un valor presente y hay que remedirlas.
 
@@ -2264,6 +2264,30 @@ Los tres con `clipsContent`. El tercero se encontró **buscando desbordes en tod
 **Por qué solo creció un contenedor.** Antes de tocar nada se siguió la cadena hacia arriba, que es donde esta página tenía el riesgo: la sección de rejilla `Notification Bell · labelled grid` sí sube de 732 a **740**, para conservar los 32 px de aire por los cuatro lados que fijó la pasada de las seis páginas. De ahí para arriba no se propaga: `Preview Dark` es auto-layout vertical de alto **fijo** con holgura de sobra, así que absorbe los 8 px sin crecer; `Dark check` hug a partir de él y se queda en 424; y la sección exterior `Notification Bell` mide lo que le pide el `Dark check`, no la rejilla, así que sigue en 1.260. **Ancho de página intacto en 1.436** y las cuatro secciones de `03 · Navigation` en su sitio —`Sheet` no se movió de y=2.251—, que era la condición que ponía la nota.
 
 Verificado después por captura: las dos variantes del set y la maqueta compuesta cierran su borde inferior y enseñan la tercera fila entera, y el `Dark check` igual.
+
+## Portada «Marta would love ___» y logos de tienda en todo el archivo (26-sep-2026)
+
+**La portada nueva, dentro de `Cover Art`.** Se conservan la sección `33:849` y el marco `33:842`, así que la miniatura del archivo sigue apuntando al mismo nodo. Sustituye la pantalla entera, el lema y los seis chips por una sola idea. A la izquierda, una frase de contexto («Marta’s birthday is in three weeks.»), el titular para completar («She’d love ___.», con cursor y línea en blanco terracota de `brand/logo`) y tres intentos tachados (*a candle*, *flowers, again?*, *a scarf*). A la derecha, la interfaz cuenta el flujo: la `Upcoming Date Card` de Marta con «Cumpleaños · Pareja» y el botón «Ideas de regalo», y debajo un abanico de tres `Gift Recommendation Card` con foto (delantal y lámpara de arcilla detrás, girados ±11°; el torno delante). Los seis datos de los chips pasan a una línea de pie, y la URL de la derecha lleva hipervínculo y subrayado.
+
+**Por qué así, en tres pasos.** (1) A unos 400 px, en la tarjeta de Community, la portada anterior solo dejaba leer «PickPal». (2) La primera versión, con «Marta would love ___» y una sola tarjeta, se leía bien pero no decía que era una app de regalos: sin la palabra, sin una fecha, y la tarjeta suelta parecía una ficha de tienda. (3) Añadir una línea explicando el producto no servía, porque a 400 px queda en unos 6 px. Lo que funcionó fue la frase del cumpleaños, que aguanta ese tamaño, y sobre todo la imagen: una cara, una fecha y varias ideas con foto se leen como «regalos para alguien» antes de leer nada. Todo se comprobó con un mapa de bits exportado a 400 px. En el resto del archivo la fecha de Marta es el aniversario; en la portada es su cumpleaños a propósito, porque se entiende a la primera como ocasión de regalo.
+
+**Detalles de montaje.** El tachado es un rectángulo agrupado con el texto, porque Figma solo deja dar color y grosor propios a un subrayado. La tarjeta del torno mide 392 de base, un ancho real de la rejilla fluida, para que «El Corte Inglés» quepa sin recortarse. Versiones con nombre: «Before the blank-line cover» (la portada anterior) y «Blank-line cover drafts» (las tres variantes antes de elegir). **Pendiente**: reexportar la primera imagen del carrusel y publicar la actualización en Community, que es lo que cambia la miniatura pública.
+
+**El tamaño óptico de Fraunces no estaba atascado en 9.** La nota de 10-sep («`opsz` no se puede escribir por API… se queda en 9») era cierta en la lectura y falsa en el render: Figma aplica el tamaño óptico solo, según el cuerpo. El ancho por em de un mismo texto cambia con el cuerpo (7,90 a 31 px, 6,47 a 150 px) y es idéntico con `opsz` 9, 144 o sin fijar, y 36 px ampliado frente a 144 px da corte de texto frente a corte de cartel. El 9 que se lee es un valor guardado. Consecuencia práctica: **para previsualizar la miniatura hay que exportar la imagen, no reescalar el marco**, porque al reescalar el texto se recompone con el corte pequeño, que es un 22 % más ancho.
+
+**Once logos de tienda como componentes.** Nuevo bloque `Store logos` en `04 · Iconography`: `store/amazon` … `store/druni`, con los nombres de `STORE_IDS`, los logos de `public/stores/` (Temu, Zalando, MediaMarkt y Amazon reducidos a 48 px; IKEA como vector desde su SVG) y la misma anatomía que el `<img>` del código: 16 × 16, placa blanca, `radius/logo` y 1 px de margen, con el logo en `SCALE` para que encoja a 14 en los botones Sm. **La placa es blanco literal, sin variable, a propósito**: el código usa `bg-white`, igual en los dos temas, y el archivo no tenía ningún blanco opaco. Crear un semántico solo para esto sería un token que no existe en el código. Cada logo lleva descripción y la nota de que es marca registrada y no entra en la licencia del archivo; lo mismo se añadió a *Credits* de `Start here`.
+
+**Dónde se aplican, contra el código:**
+
+| Sitio | Antes | Ahora |
+|---|---|---|
+| `Gift Recommendation Card` (maestro y sus 52 instancias) | `StoreButtons` en *wrap* a 240, botón solo con el nombre | Dos columnas iguales (el `grid-cols-2` del código), `Icon Left` = logo, `Icon Right` = `icon/external-link`, nombre en `FILL` con puntos suspensivos |
+| Ideas guardadas del perfil (6 pantallas) | 24 `Store Link Chip` Sm en *Fallback Icon* con nombre de tienda | 24 `Button` Outline Sm con logo y enlace externo, que es lo que pinta el perfil; los 6 chips de Muji siguen siendo `Store Link Chip`, porque son de marca |
+| Ajustes › Tiendas (claro y oscuro) | Casilla + nombre | Casilla + logo + nombre; se corrigieron de paso 10 nombres de capa que no coincidían con su texto |
+
+**Divergencia asumida**: el icono de enlace externo del botón Default mide 16 y no los 14 del código (`size-3.5`), porque Figma no deja cambiar el tamaño de una instancia anidada en el hueco de icono.
+
+**Hallazgo del producto, no del archivo**: con el logo, el nombre y el icono, «El Corte Inglés» no cabe en una columna de menos de 168 px, y ni siquiera «Amazon» cabe en las tarjetas estrechas del panel de la Agenda (columna de 119). El código ya lo recorta con `truncate` y el archivo ahora lo enseña igual: casi todas las tarjetas de las pantallas dicen «El Corte In…» o menos.
 
 ---
 
