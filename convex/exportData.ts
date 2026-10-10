@@ -1,4 +1,5 @@
 import { query } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
 import { requireUser } from "./auth";
 import { personHasAccess } from "./personShares";
 
@@ -33,6 +34,20 @@ const limpiar = <T extends Record<string, unknown>>(row: T) => {
   void clerkUserId;
   void personId;
   return resto as Omit<T, "_id" | "clerkUserId" | "personId">;
+};
+
+/**
+ * Una idea guardada con el nombre actual de su ocasión en vez del
+ * `importantDateId`: `limpiar` quita el `_id` de las fechas, así que el id
+ * exportado no llevaría a ninguna parte (docs/encargo-ocasiones.md).
+ */
+const conOcasion = (
+  idea: Doc<"savedIdeas">,
+  fechas: Doc<"importantDates">[],
+) => {
+  const { importantDateId, ...resto } = limpiar(idea);
+  const ocasion = fechas.find((f) => f._id === importantDateId)?.label ?? "Sin ocasión";
+  return { ...resto, ocasion };
 };
 
 export const mine = query({
@@ -78,7 +93,7 @@ export const mine = query({
         ...limpiar(person),
         fechas: fechas.map(limpiar),
         historialDeRegalos: historial.map(limpiar),
-        ideasGuardadas: ideasGuardadas.map(limpiar),
+        ideasGuardadas: ideasGuardadas.map((idea) => conOcasion(idea, fechas)),
         ideasGeneradasPorLaIA: ideasGeneradas.map(limpiar),
         compartidoCon: compartidoCon.map((s) => ({
           clerkUserId: s.clerkUserId,
@@ -242,7 +257,8 @@ export const mine = query({
         // Cuándo te avisaron de que alguien te compartió la suya.
         recibidos: avisosRecibidos.map((a) => ({ enviado: a.sentAt })),
       },
-      ideasGuardadasDePersonasYaBorradas: huerfanas.map(limpiar),
+      // Su ficha ya no existe, y sus eventos tampoco.
+      ideasGuardadasDePersonasYaBorradas: huerfanas.map((idea) => conOcasion(idea, [])),
       avisosPorEmailEnviados: avisos.map(limpiar),
       // Contadores antiabuso. Se reinician cada día y no describen a nadie,
       // pero van igual: son filas asociadas a tu identificador.

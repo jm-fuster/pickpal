@@ -41,6 +41,8 @@ interface GiftRecommendationCardProps {
   favoriteStores?: StoreId[];
   favoriteBrands?: string[];
   saved?: boolean;
+  /** «Ya guardada en Navidad» cuando la idea ya está guardada en otra ocasión. */
+  savedElsewhere?: string;
   onSave?: () => void;
   onDiscard?: () => void;
 }
@@ -52,6 +54,7 @@ export function GiftRecommendationCard({
   favoriteStores,
   favoriteBrands,
   saved = false,
+  savedElsewhere,
   onSave,
   onDiscard,
 }: GiftRecommendationCardProps) {
@@ -167,6 +170,9 @@ export function GiftRecommendationCard({
               </div>
             )}
           </div>
+          {savedElsewhere && (
+            <p className="-mt-1 text-xs text-muted-foreground">{savedElsewhere}</p>
+          )}
           <div className="flex min-h-[2.75rem] flex-wrap content-start gap-1">
             {matchedBrands.map((brand) => (
               <Badge

@@ -282,3 +282,35 @@ describe("borrar un evento", () => {
     expect((await leer(t, deCumple))?.importantDateId).toBe(cumple);
   });
 });
+
+describe("exportar los datos", () => {
+  test("cada idea guardada sale con el nombre actual de su ocasión, o «Sin ocasión»", async () => {
+    const t = convexTest(schema, modules);
+    const personId = await persona(t);
+    const navidad = await evento(t, personId, "Navidad");
+    const alice = t.withIdentity(ALICE);
+    await alice.mutation(api.savedIdeas.save, {
+      personId,
+      occasionLabel: "Navidad",
+      importantDateId: navidad,
+      ...IDEA,
+    });
+    const suelta = await alice.mutation(api.savedIdeas.save, {
+      personId,
+      occasionLabel: "Navidad",
+      importantDateId: navidad,
+      ...IDEA,
+      title: "Otra idea",
+    });
+    await alice.mutation(api.savedIdeas.move, { id: suelta, importantDateId: null });
+    await alice.mutation(api.importantDates.update, { id: navidad, label: "Navidad en casa" });
+
+    const exportacion = await alice.query(api.exportData.mine, {});
+    const ideas = exportacion.seresQueridos[0].ideasGuardadas;
+    expect(ideas.map((i) => [i.title, i.ocasion]).sort()).toEqual([
+      ["Otra idea", "Sin ocasión"],
+      ["Rodillo de cerámica", "Navidad en casa"],
+    ]);
+    expect(ideas.every((i) => !("importantDateId" in i))).toBe(true);
+  });
+});

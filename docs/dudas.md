@@ -27,6 +27,49 @@ _Ninguna ahora mismo._
 
 ## Resueltas
 
+- [x] **Ideas guardadas agrupadas por ocasión.** Construida el 10-oct-2026 sobre
+  [`docs/encargo-ocasiones.md`](encargo-ocasiones.md), que es la
+  especificación, y dibujada antes en Figma (página `Saved ideas by occasion`,
+  bajo `◆ PROPOSALS`). Lo que se construyó de verdad:
+
+  - `savedIdeas.importantDateId` (opcional; vacío = «Sin ocasión») con el
+    índice `by_important_date`. `occasionLabel` sigue escribiéndose como foto
+    del nombre al guardar y ninguna pantalla lo lee.
+  - `savedIdeas.save` recibe el id del evento desde el generador y comprueba
+    que es de la misma persona; sin id, para los clientes abiertos durante el
+    despliegue, lo busca por nombre. La dedupe pasa a ser persona y título.
+    `savedIdeas.move` es nueva, con el mismo acceso que quitar y la
+    comprobación de misma persona (regla nueva en `docs/security.md` §2).
+    `importantDates.remove` pasa las ideas del evento a «Sin ocasión», en
+    tandas de 100 por el índice. La normalización de nombres de evento vive
+    ahora en `convex/eventLabels.ts` y la comparten la unicidad de etiquetas y
+    el emparejamiento.
+  - Migración `migrations:linkSavedIdeasToEvents`, en dos despliegues como
+    decía el encargo. **En producción vinculó las 37 ideas que había**: ninguna
+    sin evento, ninguna ambigua y ninguna repetida por persona y título. En
+    dev, 7 de 7. No hay que volver a ejecutarla.
+  - En la ficha, `SavedIdeasCard` agrupa con `groupSavedIdeas` y el menú usa
+    `moveDestinations` (los dos en `src/lib/savedIdeaGroups.ts`, con tests).
+    Quitar un evento pide confirmación solo si tiene ideas. 14 tests de Convex
+    en `convex/savedIdeaOccasions.test.ts` y 11 de la agrupación.
+  - La exportación da `ocasion` (nombre actual del evento o «Sin ocasión») en
+    vez del id, que no llevaba a ninguna parte porque las fechas se exportan
+    sin `_id`.
+
+  Decisiones de implementación que el encargo no fijaba:
+
+  - **Los eventos únicos ya pasados no son destino** del menú de mover (Jorge,
+    10-oct-2026, al ver la propuesta en Figma). Entre ellos, en la tarjeta, van
+    del más reciente al más antiguo.
+  - **Una idea que apunta a un evento que la ficha ya no tiene** cae en «Sin
+    ocasión» en la pantalla. Solo puede pasar en una carrera con el borrado del
+    evento, porque `remove` limpia el vínculo en la misma transacción.
+  - **El conjunto local `savedTitles` del generador ya no se vacía** al cambiar
+    de ocasión: con la dedupe por persona y título, una idea guardada en esta
+    sesión sigue guardada en cualquier ocasión.
+  - **El menú es el `Popover` del proyecto**, no un `dropdown-menu` nuevo, y es
+    el mismo en móvil. «Quitar idea» entró en él.
+
 - [x] **«Mi lista»: la lista compartida.** Construida el 10-oct-2026 sobre las
   31 decisiones de `docs/encargo-lista.md`, que es la especificación. Lo que se
   construyó de verdad:

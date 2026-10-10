@@ -86,11 +86,14 @@ y pasar a Navidad la que encaja mejor allí.
    pasa de «{ocasión} · {precio}» a solo el precio, porque la ocasión ya está
    en la cabecera.
 10. **Mover una idea:** cada idea tiene un menú de acciones con «Mover a otra
-    ocasión». Abre la lista de los eventos de esa persona, con su fecha, más
-    «Sin ocasión». El sitio donde ya está la idea no se ofrece. Se mueve de una
-    en una: sin selección múltiple, sin arrastrar y sin crear eventos desde el
-    menú. Si la persona solo tiene un evento, el menú ofrece ese evento o «Sin
-    ocasión», según dónde esté la idea.
+    ocasión». Abre la lista de los eventos de esa persona que aún van a llegar,
+    con su fecha y en el orden de la tarjeta, más «Sin ocasión». El sitio donde
+    ya está la idea no se ofrece, y los eventos únicos que ya pasaron tampoco
+    (decidido el 10-oct-2026, al dibujarlo en Figma: mover una idea a una
+    graduación de septiembre no tiene sentido). Se mueve de una en una: sin
+    selección múltiple, sin arrastrar y sin crear eventos desde el menú. Si la
+    persona solo tiene un evento, el menú ofrece ese evento o «Sin ocasión»,
+    según dónde esté la idea.
 
     La X de quitar entra en ese mismo menú. Un menú con una sola opción no tiene
     sentido, y quitar es la acción destructiva, así que conviene que quede un

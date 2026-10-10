@@ -4,7 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
-  CalendarDays, CalendarX2, Camera, Check, ExternalLink, Gift, NotebookPen, PencilLine, Repeat2, Ruler, Star, Tags, Trash2, ThumbsUp, Users, X,
+  CalendarDays, CalendarX2, Camera, Check, Gift, NotebookPen, PencilLine, Repeat2, Ruler, Star, Tags, Trash2, Users, X,
 } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
@@ -42,11 +42,11 @@ import { AiNotesNotice } from "@/components/people/AiNotesNotice";
 import { ShareDialog } from "@/components/people/ShareDialog";
 import { AddToHistoryDialog, type HistoryValues } from "@/components/people/AddToHistoryDialog";
 import { PersonListSection } from "@/components/lista/PersonListSection";
+import { SavedIdeasCard } from "@/components/people/SavedIdeasCard";
 import { RELATIONSHIPS, REACTIONS } from "@/lib/options";
 import { cn } from "@/lib/utils";
-import { ALL_STORES, generateStoreSearchUrl, pickEffectiveStores, sanitizeFavoriteStores, STORE_ICONS, STORE_LABELS, type StoreId } from "@/lib/stores";
-import { matchFavoriteBrands } from "@/lib/brands";
-import { BrandStoreLink } from "@/components/gifts/BrandStoreLink";
+import { closestOccasionLabel } from "@/lib/dates";
+import { ALL_STORES, sanitizeFavoriteStores, type StoreId } from "@/lib/stores";
 
 // Los formularios de evento y de historial (react-hook-form + zod, el slider de
 // presupuesto, el selector de fecha) solo se usan al pulsar «Añadir» o
@@ -72,18 +72,12 @@ const EditGiftHistoryInline = dynamic(() =>
 
 const MONTHS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
-const googleSearchUrl = (q: string) =>
-  `https://www.google.com/search?q=${encodeURIComponent(q)}`;
-
 // ─── Inner component — person is guaranteed loaded ────────────────────────────
 
 type Person = NonNullable<FunctionReturnType<typeof api.people.getById>>;
 type Dates = NonNullable<FunctionReturnType<typeof api.importantDates.getByPerson>>;
 type GiftHistory = NonNullable<FunctionReturnType<typeof api.giftHistory.getByPerson>>;
 type SavedIdeas = NonNullable<FunctionReturnType<typeof api.savedIdeas.getByPerson>>;
-
-const formatPriceRange = (min: number, max: number) =>
-  min === max ? `${Math.round(min)}€` : `${Math.round(min)}–${Math.round(max)}€`;
 
 function PersonDetailContent({
   person,
@@ -129,6 +123,7 @@ function PersonDetailContent({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [editingDate, setEditingDate] = useState<Dates[number] | null>(null);
+  const [removingDate, setRemovingDate] = useState<{ date: Dates[number]; ideas: number } | null>(null);
   const [editingGift, setEditingGift] = useState<GiftHistory[number] | null>(null);
 
   // ── Convert saved idea to history ──
@@ -150,6 +145,11 @@ function PersonDetailContent({
     } catch {
       toast.error("No se pudo guardar");
     }
+  };
+
+  const handleRemoveDate = async (dateId: Id<"importantDates">) => {
+    try { await removeDate({ id: dateId }); toast.success("Evento eliminado"); }
+    catch { toast.error("No se pudo eliminar el evento"); }
   };
 
   const handleConvertToHistory = async (values: HistoryValues) => {
@@ -284,6 +284,33 @@ function PersonDetailContent({
         </DialogContent>
       </Dialog>
 
+      {/* Quitar un evento con ideas guardadas: avisa de que pasan a «Sin
+          ocasión» (decisión 12 de docs/encargo-ocasiones.md). */}
+      <Dialog open={removingDate !== null} onOpenChange={(open) => { if (!open) setRemovingDate(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Quitar {removingDate?.date.label}?</DialogTitle>
+            <DialogDescription>
+              {removingDate?.ideas === 1
+                ? "Su idea guardada pasará a «Sin ocasión»."
+                : `Sus ${removingDate?.ideas} ideas guardadas pasarán a «Sin ocasión».`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline">Cancelar</Button>} />
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (removingDate) void handleRemoveDate(removingDate.date._id);
+                setRemovingDate(null);
+              }}
+            >
+              Quitar evento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="grid gap-6 md:grid-cols-2">
         {/* ── Interests + Notes card ── */}
         <Card className="border-border/60 shadow-sm">
@@ -385,9 +412,12 @@ function PersonDetailContent({
                           </Button>
                           <Button
                             variant="ghost" size="icon-sm" aria-label="Quitar evento"
-                            onClick={async () => {
-                              try { await removeDate({ id: d._id }); toast.success("Evento eliminado"); }
-                              catch { toast.error("No se pudo eliminar el evento"); }
+                            onClick={() => {
+                              // Con ideas guardadas se confirma antes, porque
+                              // pasan a «Sin ocasión»; sin ideas, como siempre.
+                              const ideas = savedIdeas.filter((s) => s.importantDateId === d._id).length;
+                              if (ideas > 0) setRemovingDate({ date: d, ideas });
+                              else void handleRemoveDate(d._id);
                             }}
                           >
                             <X className="size-3.5" aria-hidden />
@@ -483,153 +513,24 @@ function PersonDetailContent({
           ficha no la ve (decisión 12 de docs/encargo-lista.md). */}
       <PersonListSection personId={id} personName={headerName} dates={dates} />
 
-      {/* ── Saved ideas card ── */}
-      <Card className="border-border/60 shadow-sm">
-        <CardContent className="space-y-4 p-5">
-          <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-            <ThumbsUp className="size-3.5" aria-hidden />
-            Ideas guardadas
-          </h2>
-          {savedIdeas.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Las ideas que guardes desde el panel de sugerencias aparecerán aquí para convertirlas en historial cuando las regales.
-            </p>
-          ) : (
-            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {savedIdeas.map((s) => {
-                const cats = Array.isArray(s.category) ? s.category : [s.category];
-                // Mismas tiendas que mostró la card al generar: solo las físicas
-                // (e ideas viejas sin tipo) muestran chips; experiencias, planes
-                // y sorpréndeme → Google. Las ideas nuevas ya guardan el snapshot
-                // de tiendas efectivas, así que se muestran tal cual; las viejas
-                // sin ese dato caen al fallback de favoritas.
-                const isPhysicalLike = !s.giftType || s.giftType === "fisica";
-                const storeChips = !isPhysicalLike
-                  ? []
-                  : s.suggestedStores && s.suggestedStores.length > 0
-                    ? sanitizeFavoriteStores(s.suggestedStores)
-                    : favoriteStores;
-                // Marcas favoritas que la idea menciona — misma heurística que la
-                // card de generación. El badge sale para cualquier tipo; el botón
-                // a la tienda de marca, solo en físicas (igual que los chips).
-                const matchedBrands = matchFavoriteBrands(s, localBrands);
-                return (
-                  <li key={s._id}>
-                    <div className="flex h-full flex-col gap-2 rounded-lg border border-border/60 bg-background/60 p-3 text-sm">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 space-y-1">
-                          <p className="font-medium leading-snug line-clamp-2">{s.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {s.occasionLabel} · {formatPriceRange(s.priceMinEuros, s.priceMaxEuros)}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            size="sm"
-                            className="text-xs h-7 px-2 hover:bg-primary/80"
-                            onClick={() => setConvertingIdea(s)}
-                          >
-                            Lo regalé
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label="Quitar idea guardada"
-                            onClick={async () => {
-                              try { await removeSavedIdea({ id: s._id }); }
-                              catch { toast.error("No se pudo eliminar la idea"); }
-                            }}
-                          >
-                            <X className="size-3.5" aria-hidden />
-                          </Button>
-                        </div>
-                      </div>
-                      {s.description && (
-                        <p className="text-xs leading-relaxed text-muted-foreground line-clamp-2">
-                          {s.description}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-1">
-                        {matchedBrands.map((brand) => (
-                          <Badge
-                            key={`brand-${brand}`}
-                            variant="outline"
-                            className="gap-1 text-xs text-brand-secondary border-secondary/40"
-                          >
-                            <Tags className="size-3" aria-hidden />
-                            <span className="sr-only">Marca favorita: </span>
-                            {brand}
-                          </Badge>
-                        ))}
-                        {cats.map((c) => (
-                          <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
-                        ))}
-                      </div>
-                      {s.amazonQuery && (
-                        <div className="mt-auto flex flex-col gap-2 pt-1">
-                          {isPhysicalLike && matchedBrands.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {matchedBrands.map((brand) => (
-                                <BrandStoreLink
-                                  key={`brand-${brand}`}
-                                  brand={brand}
-                                  query={s.amazonQuery}
-                                  title={s.title}
-                                  matchedBrandStores={s.matchedBrandStores}
-                                  size="sm"
-                                />
-                              ))}
-                            </div>
-                          )}
-                          <div className="flex flex-wrap gap-2">
-                          {storeChips.length > 0 ? (
-                            storeChips.map((store) => (
-                              <a
-                                key={store}
-                                href={generateStoreSearchUrl(store, s.amazonQuery, {
-                                  minEuros: s.priceMinEuros,
-                                  maxEuros: s.priceMaxEuros,
-                                })}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`Buscar ${s.title} en ${STORE_LABELS[store]} (abre en una pestaña nueva)`}
-                                className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={STORE_ICONS[store]} alt="" className="size-3.5 shrink-0 rounded-sm object-contain bg-white p-px" aria-hidden />
-                                {STORE_LABELS[store]}
-                                <ExternalLink className="size-3 shrink-0" aria-hidden />
-                              </a>
-                            ))
-                          ) : (
-                            <a
-                              href={googleSearchUrl(s.amazonQuery)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              aria-label={`Buscar ${s.title} (abre en una pestaña nueva)`}
-                              className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
-                            >
-                              Buscar
-                              <ExternalLink className="size-3 shrink-0" aria-hidden />
-                            </a>
-                          )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      {/* ── Saved ideas card, agrupada por ocasión (docs/encargo-ocasiones.md) ── */}
+      <SavedIdeasCard
+        savedIdeas={savedIdeas}
+        dates={dates}
+        favoriteStores={favoriteStores}
+        favoriteBrands={localBrands}
+        onGiven={setConvertingIdea}
+      />
 
-      {/* ── Convert saved idea to history dialog ── */}
+      {/* ── Convert saved idea to history dialog ──
+          La ocasión es el nombre actual del evento de la idea. Sin evento
+          («Sin ocasión») se pregunta, como en la lista, proponiendo la fecha
+          de la ficha más cercana (decisión 13 de docs/encargo-ocasiones.md). */}
       <AddToHistoryDialog
         key={convertingIdea?._id ?? "cerrado"}
         gift={convertingIdea}
-        fixedOccasion={convertingIdea?.occasionLabel}
+        fixedOccasion={dates.find((d) => d._id === convertingIdea?.importantDateId)?.label}
+        defaultOccasion={closestOccasionLabel(dates)}
         onClose={() => setConvertingIdea(null)}
         onConfirm={handleConvertToHistory}
       />

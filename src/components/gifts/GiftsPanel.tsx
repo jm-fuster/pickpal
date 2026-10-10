@@ -125,16 +125,24 @@ export function GiftsPanel({
   // callbacks diferidos del descarte (onDismiss, flush al regenerar/desmontar)
   // con el dato más reciente, no el capturado en el render del toast.
   const savedIdeasRef = useRef(savedIdeasForPerson);
+  const eventsRef = useRef(events);
   useEffect(() => {
     savedIdeasRef.current = savedIdeasForPerson;
-  }, [savedIdeasForPerson]);
+    eventsRef.current = events;
+  }, [savedIdeasForPerson, events]);
 
   // Un dislike a una idea guardada también la quita de la ficha (descartar = no
   // la quiero). Se confirma junto al `removeIdea` diferido, así "Deshacer" no
   // necesita re-guardarla: hasta que el toast se cierra, nada se ha borrado.
+  // Solo si está guardada en la ocasión elegida: la guardada en otra ocasión no
+  // se toca desde aquí (decisión 14 de docs/encargo-ocasiones.md). Se compara
+  // por el evento, no por `occasionLabel`, que es una foto del nombre al
+  // guardar y no sigue a la idea cuando se mueve.
   const discardSavedIdea = (title: string, occasionLabel: string) => {
+    const event = (eventsRef.current ?? []).find((e) => e.label === occasionLabel);
+    if (!event) return;
     const saved = (savedIdeasRef.current ?? []).find(
-      (s) => s.title === title && s.occasionLabel === occasionLabel,
+      (s) => s.title === title && s.importantDateId === event._id,
     );
     if (saved) removeSavedIdea({ id: saved._id }).catch(() => {});
   };
@@ -276,16 +284,23 @@ export function GiftsPanel({
   const showIdeas = ideas ?? (hasCached ? (cached!.ideas as GiftRecommendation[]) : null);
 
   // Una idea sale marcada como "me gusta" (pulgar relleno) si está en el set
-  // local (guardada en esta sesión) o ya persiste en la ficha para esta
-  // ocasión. La clave de persistencia espeja la dedupe del servidor:
-  // (persona, ocasión, título). Sin esto, el pulgar se vaciaba al recargar.
-  const persistedSavedTitles = new Set(
-    (savedIdeasForPerson ?? [])
-      .filter((s) => s.occasionLabel === occasion)
-      .map((s) => s.title),
-  );
+  // local (guardada en esta sesión) o ya persiste en la ficha, en cualquier
+  // ocasión. La clave espeja la dedupe del servidor: misma persona y mismo
+  // título son la misma idea (decisión 14 de docs/encargo-ocasiones.md). Sin
+  // esto, el pulgar se vaciaba al recargar.
+  const selectedEvent = events?.find((e) => e.label === occasion);
+  const persistedSaved = new Map((savedIdeasForPerson ?? []).map((s) => [s.title, s]));
   const isSaved = (title: string) =>
-    savedTitles.has(title) || persistedSavedTitles.has(title);
+    savedTitles.has(title) || persistedSaved.has(title);
+  // Si la idea está guardada en otra ocasión, la card lo dice: «Ya guardada en
+  // Navidad», o «Ya guardada» si está en «Sin ocasión». El generador no la
+  // mueve; eso solo se hace desde la ficha.
+  const savedElsewhere = (title: string): string | undefined => {
+    const saved = persistedSaved.get(title);
+    if (!saved || (selectedEvent && saved.importantDateId === selectedEvent._id)) return undefined;
+    const where = events?.find((e) => e._id === saved.importantDateId)?.label;
+    return where ? `Ya guardada en ${where}` : "Ya guardada";
+  };
 
   const handleSave = async (idea: GiftRecommendation) => {
     if (!occasion) return;
@@ -303,6 +318,7 @@ export function GiftsPanel({
       await saveIdea({
         personId,
         occasionLabel: occasion,
+        importantDateId: selectedEvent?._id,
         title: idea.title,
         description: idea.description,
         priceMinEuros: idea.priceMinEuros,
@@ -392,10 +408,9 @@ export function GiftsPanel({
                 setOccasionChoice(v);
                 setOccasionInvalid(false);
                 setIdeas(null);
-                // savedTitles solo guarda títulos, no (ocasión, título): sin
-                // resetearlo, una idea con el mismo título en la ocasión nueva
-                // saldría como "guardada" (pulgar relleno) sin estarlo.
-                setSavedTitles(new Set());
+                // savedTitles no se vacía: una idea guardada en esta sesión
+                // sigue guardada al cambiar de ocasión, porque misma persona y
+                // mismo título son la misma idea en cualquier ocasión.
               }}
             >
               <SelectTrigger
@@ -532,6 +547,7 @@ export function GiftsPanel({
                 favoriteStores={favoriteStores}
                 favoriteBrands={person.favoriteBrands}
                 saved={isSaved(idea.title)}
+                savedElsewhere={savedElsewhere(idea.title)}
                 onSave={() => handleSave(idea)}
                 onDiscard={() => handleDiscard(idea, i)}
               />

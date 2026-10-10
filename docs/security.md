@@ -65,6 +65,16 @@ comprueba: aunque el lector la guarde en una ficha, tener acceso a esa ficha
 ficha, compartir una ficha enseñaría la lista a gente que su dueño no eligió.
 Ver §11.
 
+**Enlazar dos filas que cuelgan de `people`: misma persona, no solo acceso.**
+Cuando una mutation apunta una fila a otra, las dos tienen que ser de la misma
+persona; tener acceso a las dos fichas no basta. El caso es una idea guardada y
+su evento (`savedIdeas.importantDateId`, desde el 10-oct-2026): `savedIdeas.save`
+y `savedIdeas.move` comprueban `date.personId === idea.personId` además de
+`assertPersonAccess`, con el mismo error si el evento no existe que si es de
+otra ficha. Sin esa comparación, quien tenga la ficha de su madre y la de su
+padre podría colgar una idea de ella en un evento de él. Ver
+[`docs/encargo-ocasiones.md`](encargo-ocasiones.md).
+
 Si añades una tabla nueva con dueño, replica el patrón que corresponda. Si no
 es posible identificar el dueño, **no se puede exponer la operación**.
 

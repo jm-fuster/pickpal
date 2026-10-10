@@ -109,7 +109,7 @@ Cada tarjeta tiene dos botones en la esquina superior derecha: pulgar arriba y p
 | Regenera | Los pendientes se confirman antes de la nueva tirada |
 | Pulsa "Deshacer" | La idea vuelve a su posición; `removeIdea` **no** se llama |
 
-**Descartar una idea ya guardada también la des-guarda.** Si la idea tenía 👍 (existe en `savedIdeas` para esa ocasión), al confirmarse el descarte se llama además a `api.savedIdeas.remove` — descartar = "no la quiero", así que no debe quedar en "Ideas guardadas" de la ficha. Se difiere junto a `removeIdea` (mismo `onDismiss` / cleanup / flush al regenerar), de modo que "Deshacer" la restaura sin necesidad de re-guardarla: hasta que el toast se cierra, nada se ha borrado. El `_id` a borrar se resuelve desde un ref espejo de `savedIdeas.getByPerson` (`discardSavedIdea` en `GiftsPanel`).
+**Descartar una idea ya guardada también la des-guarda, si está guardada en esta ocasión.** Si la idea tenía 👍 y su evento es el elegido en el selector, al confirmarse el descarte se llama además a `api.savedIdeas.remove` — descartar = "no la quiero", así que no debe quedar en "Ideas guardadas" de la ficha. Se difiere junto a `removeIdea` (mismo `onDismiss` / cleanup / flush al regenerar), de modo que "Deshacer" la restaura sin necesidad de re-guardarla: hasta que el toast se cierra, nada se ha borrado. El `_id` a borrar se resuelve desde refs espejo de `savedIdeas.getByPerson` y de los eventos (`discardSavedIdea` en `GiftsPanel`), comparando por `importantDateId` y no por `occasionLabel`, que es una foto del nombre al guardar y no sigue a la idea cuando se mueve. **Una idea guardada en otra ocasión no se toca** desde el generador (decisión 14 de [`encargo-ocasiones.md`](encargo-ocasiones.md)): el descarte solo la quita de la tanda.
 
 #### Campos `discardedTitles` y `dislikedCategories`
 
@@ -136,9 +136,9 @@ await ctx.db.patch(existing._id, {
 2. El icono pasa a `fill="currentColor"` como confirmación visual.
 3. Toast: "Idea guardada en la ficha de [nombre]".
 
-La idea se persiste en la tabla `savedIdeas` vinculada a la persona y la ocasión.
+La idea se persiste en la tabla `savedIdeas` vinculada a la persona y al evento elegido en «¿Para qué ocasión?» (`importantDateId`; el servidor comprueba que el evento es de esa persona).
 
-El estado relleno del pulgar **sobrevive a recargas**: se deriva de `savedTitles` (set local de la sesión) **unido** a las ideas que ya persisten en `savedIdeas.getByPerson` para esa ocasión (`isSaved` en `GiftsPanel`). La clave de "guardada" espeja la dedupe del servidor: (persona, ocasión, título). Antes el pulgar dependía solo del set local y se vaciaba al recargar aunque la idea siguiera guardada.
+El estado relleno del pulgar **sobrevive a recargas**: se deriva de `savedTitles` (set local de la sesión) **unido** a las ideas que ya persisten en `savedIdeas.getByPerson` (`isSaved` en `GiftsPanel`). La clave de "guardada" espeja la dedupe del servidor: **misma persona y mismo título, sea cual sea la ocasión**. Si la idea está guardada en otra ocasión, la tarjeta lo dice bajo el título, «Ya guardada en Navidad» (o «Ya guardada» si está en «Sin ocasión»), y el pulgar no la duplica ni la mueve. Por eso `savedTitles` ya no se vacía al cambiar de ocasión.
 
 #### Tabla `savedIdeas`
 
@@ -146,20 +146,25 @@ Almacena ideas que el usuario quiere recordar para cuando llegue el momento de c
 
 ```
 savedIdeas: {
-  clerkUserId, personId, occasionLabel,
+  clerkUserId, personId, occasionLabel, importantDateId?,
   title, description, priceMinEuros, priceMaxEuros,
   category, amazonQuery, suggestedStores?, giftType?, imageKey?
 }
-index: by_person
+index: by_person, by_user, by_important_date
 ```
 
-#### Conversión a historial de regalos
+`importantDateId` es el evento de la ficha donde está la idea; vacío, «Sin ocasión». `occasionLabel` es una foto del nombre del evento al guardar: ninguna pantalla lo lee. Ver [`encargo-ocasiones.md`](encargo-ocasiones.md).
 
-Desde la ficha de la persona (sección "Ideas guardadas") el usuario puede:
+#### En la ficha: ideas por ocasión y conversión a historial
 
-1. Ver todas las ideas guardadas con título, precio, categorías y ocasión.
-2. Pulsar **"Lo regalé →"** → se abre un diálogo con `giftName` y `occasionLabel` pre-rellenados; el usuario elige reacción (+ año y notas opcionales).
-3. Al confirmar: se crea una entrada en `giftHistory` y se borra la idea de `savedIdeas`.
+Desde la ficha de la persona (sección "Ideas guardadas", componente `SavedIdeasCard`) el usuario puede:
+
+1. Ver las ideas agrupadas por ocasión: solo las ocasiones con ideas, por cercanía de la fecha, los eventos únicos ya pasados con «Ya pasó» y «Sin ocasión» al final. Cada idea lleva título, precio, categorías y tiendas.
+2. Abrir el menú **⋯** de una idea para **moverla a otra ocasión** (los eventos que vienen y «Sin ocasión», nunca el actual ni un único ya pasado) o **quitarla**.
+3. Pulsar **"Lo regalé"** → se abre un diálogo con `giftName` y la ocasión pre-rellenados (el nombre actual del evento; si está en «Sin ocasión», se pregunta proponiendo la fecha más cercana); el usuario elige reacción (+ año y notas opcionales).
+4. Al confirmar: se crea una entrada en `giftHistory` y se borra la idea de `savedIdeas`.
+
+Quitar un evento con ideas pide confirmación y sus ideas pasan a «Sin ocasión».
 
 ---
 
@@ -476,9 +481,12 @@ Los números concretos de RPM/RPD del free tier **ya no aparecen en la doc de Go
 - [ ] Recargar la página (o salir y volver) → las ideas con 👍 siguen rellenas (estado persistido, no solo local)
 - [ ] Pulsar 👎 en una idea ya guardada con 👍 y cerrar el toast → desaparece de sugerencias **y** de "Ideas guardadas" de la ficha
 - [ ] Pulsar 👎 en una idea guardada y luego "Deshacer" → vuelve y sigue guardada en la ficha (no se borró)
-- [ ] Regenerar ideas → las nuevas tarjetas salen hollow (títulos nuevos; `savedTitles` se resetea). Si una coincide en título con una ya guardada para esa ocasión, sale relleno (persistencia)
-- [ ] Ir a la ficha de la persona → aparece sección "Ideas guardadas" con las ideas marcadas con 👍, su badge de marca favorita y, en físicas, el botón a la tienda de la marca
-- [ ] Pulsar "Lo regalé →" en una idea guardada → se abre el diálogo con nombre y ocasión pre-rellenados
+- [ ] Regenerar ideas → las nuevas tarjetas salen hollow (títulos nuevos). Si una coincide en título con una ya guardada, sale relleno (persistencia), y si está guardada en otra ocasión lo dice: «Ya guardada en …»
+- [ ] Cambiar de ocasión con una idea guardada en la anterior → sale rellena y con «Ya guardada en …»; 👎 sobre ella no la quita de la ficha
+- [ ] Ir a la ficha de la persona → aparece sección "Ideas guardadas" agrupada por ocasión, con las ideas marcadas con 👍, su badge de marca favorita y, en físicas, el botón a la tienda de la marca
+- [ ] Menú ⋯ de una idea → «Mover a otra ocasión» ofrece los eventos que vienen y «Sin ocasión», sin el actual; mover la cambia de grupo
+- [ ] Quitar un evento con ideas → pide confirmación con el número de ideas; al confirmar, pasan a «Sin ocasión»
+- [ ] Pulsar "Lo regalé" en una idea guardada → se abre el diálogo con nombre y ocasión pre-rellenados (en «Sin ocasión», pregunta la ocasión)
 - [ ] Confirmar conversión → la idea desaparece de "Ideas guardadas" y aparece en el historial de regalos
 
 ### Multi-tienda
