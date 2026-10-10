@@ -5,6 +5,7 @@ import { validateDateInput } from "./validators";
 import { checkAndIncrement } from "./rateLimit";
 import { Doc, Id } from "./_generated/dataModel";
 import { assertPersonAccess, personHasAccess } from "./personShares";
+import { normalizeLabel } from "./eventLabels";
 
 const CREATE_DATE_DAILY_LIMIT = 100;
 
@@ -23,9 +24,6 @@ function assertValidDate(month: number, day: number, year?: number) {
     throw new ConvexError("Día inválido para ese mes.");
   }
 }
-
-// Comparación tolerante a mayúsculas/espacios para la unicidad de etiquetas.
-const normalizeLabel = (label: string) => label.trim().toLowerCase();
 
 /**
  * Las recomendaciones se indexan por `occasionLabel` (texto del evento), no por
@@ -261,6 +259,19 @@ export const remove = mutation({
     const existing = await ctx.db.get(id);
     if (!existing) throw new ConvexError("Fecha no encontrada.");
     await assertPersonAccess(ctx, existing.personId, clerkUserId);
+    // Sus ideas guardadas pasan a «Sin ocasión» en vez de quedarse apuntando a
+    // un evento que ya no existe (docs/encargo-ocasiones.md, decisión 12). Cada
+    // vuelta relee el índice: las ya parcheadas dejan de salir en él.
+    for (;;) {
+      const batch = await ctx.db
+        .query("savedIdeas")
+        .withIndex("by_important_date", (q) => q.eq("importantDateId", id))
+        .take(100);
+      if (batch.length === 0) break;
+      for (const idea of batch) {
+        await ctx.db.patch(idea._id, { importantDateId: undefined });
+      }
+    }
     await ctx.db.delete(id);
   },
 });

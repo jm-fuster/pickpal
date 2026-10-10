@@ -128,7 +128,14 @@ export default defineSchema({
   savedIdeas: defineTable({
     clerkUserId: v.string(),
     personId: v.id("people"),
+    // Foto del nombre del evento en el momento de guardar. Ninguna pantalla lo
+    // lee desde que la idea apunta al evento por `importantDateId`, y mover la
+    // idea no lo actualiza (docs/encargo-ocasiones.md, decisión 4).
     occasionLabel: v.string(),
+    // Evento de la ficha en el que está la idea. Vacío = «Sin ocasión»: ideas
+    // movidas ahí a mano, ideas cuyo evento se borró y las viejas que la
+    // migración no pudo emparejar por nombre.
+    importantDateId: v.optional(v.id("importantDates")),
     title: v.string(),
     description: v.string(),
     priceMinEuros: v.number(),
@@ -160,7 +167,9 @@ export default defineSchema({
     ),
   })
     .index("by_person", ["personId"])
-    .index("by_user", ["clerkUserId"]),
+    .index("by_user", ["clerkUserId"])
+    // Para que borrar un evento encuentre sus ideas sin recorrer la ficha.
+    .index("by_important_date", ["importantDateId"]),
 
   giftHistory: defineTable({
     // Quién lo registró, no necesariamente quién es dueño de la persona:

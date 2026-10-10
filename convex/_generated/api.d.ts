@@ -12,6 +12,7 @@ import type * as account from "../account.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
+import type * as eventLabels from "../eventLabels.js";
 import type * as exportData from "../exportData.js";
 import type * as giftHistory from "../giftHistory.js";
 import type * as importantDates from "../importantDates.js";
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   crons: typeof crons;
   emails: typeof emails;
+  eventLabels: typeof eventLabels;
   exportData: typeof exportData;
   giftHistory: typeof giftHistory;
   importantDates: typeof importantDates;

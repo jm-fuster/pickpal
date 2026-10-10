@@ -1,5 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+import { findEventByLabel } from "./eventLabels";
 
 const remapMapValidator = v.array(
   v.object({ oldClerkUserId: v.string(), newClerkUserId: v.string() }),
@@ -273,5 +275,72 @@ export const findRemainingOldClerkUserIds = internalQuery({
     }
 
     return remaining;
+  },
+});
+
+/**
+ * Vincula cada idea guardada con su evento (`importantDateId`), buscándolo por
+ * nombre entre los eventos de su persona con la misma normalización que la
+ * unicidad de etiquetas (docs/encargo-ocasiones.md, «Qué hay que construir» §2).
+ * Las que no encuentran evento, porque se renombró o se borró, y las ambiguas,
+ * porque hay dos eventos con el mismo nombre de antes de la regla de
+ * unicidad, se quedan sin vínculo: «Sin ocasión». Las repetidas (misma
+ * persona y mismo título) solo se cuentan; no se fusionan.
+ *
+ * Uso (dry run primero, siempre):
+ *   npx convex run migrations:linkSavedIdeasToEvents '{"dryRun":true}'
+ *   npx convex run migrations:linkSavedIdeasToEvents '{"dryRun":false}'
+ *   (añade --prod para el deployment de producción)
+ *
+ * Idempotente: las ideas ya vinculadas no se tocan. Correr una sola vez, entre
+ * el despliegue que crea el campo y el que enseña la tarjeta agrupada: después
+ * de que exista «Mover a Sin ocasión», repetirla volvería a meter en su evento
+ * las ideas que alguien sacó a mano.
+ */
+export const linkSavedIdeasToEvents = internalMutation({
+  args: { dryRun: v.boolean() },
+  handler: async (ctx, { dryRun }) => {
+    const ideas = await ctx.db.query("savedIdeas").collect();
+    const datesByPerson = new Map<
+      Id<"people">,
+      { _id: Id<"importantDates">; label: string }[]
+    >();
+    const titlesByPerson = new Map<Id<"people">, Map<string, number>>();
+    const counts = { linked: 0, alreadyLinked: 0, noEvent: 0, ambiguous: 0 };
+
+    for (const idea of ideas) {
+      const titles = titlesByPerson.get(idea.personId) ?? new Map<string, number>();
+      titles.set(idea.title, (titles.get(idea.title) ?? 0) + 1);
+      titlesByPerson.set(idea.personId, titles);
+
+      if (idea.importantDateId !== undefined) {
+        counts.alreadyLinked++;
+        continue;
+      }
+      let dates = datesByPerson.get(idea.personId);
+      if (!dates) {
+        dates = await ctx.db
+          .query("importantDates")
+          .withIndex("by_person", (q) => q.eq("personId", idea.personId))
+          .collect();
+        datesByPerson.set(idea.personId, dates);
+      }
+      const match = findEventByLabel(dates, idea.occasionLabel);
+      if (match.kind === "match") {
+        counts.linked++;
+        if (!dryRun) await ctx.db.patch(idea._id, { importantDateId: match.id });
+      } else if (match.kind === "ambiguous") {
+        counts.ambiguous++;
+      } else {
+        counts.noEvent++;
+      }
+    }
+
+    let duplicatePairs = 0;
+    for (const titles of titlesByPerson.values()) {
+      for (const n of titles.values()) if (n > 1) duplicatePairs++;
+    }
+
+    return { dryRun, total: ideas.length, ...counts, duplicatePairs };
   },
 });
