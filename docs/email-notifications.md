@@ -221,12 +221,12 @@ Si el estado en Resend → Domains no es *Verified*, todo envío falla con 403 a
 
 ## Requisitos en Clerk
 
-El JWT template `convex` debe incluir el claim `email`. Sin él:
+El token con el que Convex identifica al usuario debe incluir el claim `email`, y hay dos: el **token de sesión** (el que usa el navegador desde el 10-oct-2026, integración de Convex activada) y la **plantilla JWT `convex`** (la que usan las rutas de la API). Sin el claim:
 
 - `setMine` lanza `"No encontramos tu email..."` cuando se activa el toggle.
 - El cron no puede determinar el destinatario del usuario.
 
-Configuración en Clerk Dashboard → Configure → JWT Templates → convex:
+Configuración en Clerk Dashboard → **Sessions → Claims** (token de sesión, con `"aud": "convex"`, `name` y `given_name`) y → **Configure → JWT Templates → convex**, con los mismos valores de usuario:
 
 ```json
 {

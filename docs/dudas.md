@@ -63,9 +63,10 @@ _Ninguna ahora mismo._
     primera palabra de `name`) y se copia en `listShares` al compartir, con su
     email. No se acepta del cliente. Como el nombre lo elige cada uno en Clerk,
     la tarjeta enseña también el email, que está verificado. Sin nombre en el
-    JWT, la tarjeta usa el email. **Sin comprobar contra el dashboard:** si la
-    plantilla JWT `convex` de Clerk no incluye `given_name`, todas las tarjetas
-    saldrán con el email; se arregla añadiendo el claim a la plantilla.
+    JWT, la tarjeta usa el email. **Comprobado el 10-oct-2026:** la plantilla
+    `convex` y el token de sesión (integración de Convex) llevan `given_name` y
+    `name` en las dos instancias. Si alguno lo perdiera, las tarjetas saldrían con
+    el email.
   - **Cupos:** `create_list_item` y `claim_list_item` a 100/día, `invite_list`
     a 20/día (también para compartir de vuelta) e `invite_lookup` compartido con
     las fichas. Topes de 100 elementos y 20 lectores comprobados antes que el

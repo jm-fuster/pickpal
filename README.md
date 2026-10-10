@@ -157,9 +157,12 @@ Three things in that diagram are the whole point:
 3. **`requireUser(ctx)` in every Convex function**, followed by a per-document
    `clerkUserId` ownership check.
 
-Clerk reaches Convex through a JWT template named `convex`, which
-`convex/auth.config.ts` validates against `CLERK_JWT_ISSUER_DOMAIN` with
-`applicationID: "convex"`. `requireUser` returns `identity.subject`, denormalised
+The browser reaches Convex with Clerk's own session token, which carries
+`aud: "convex"` plus the `email`, `name` and `given_name` claims (Clerk's Convex
+integration, configured under **Sessions → Claims**); the API route handlers mint
+one from a JWT template named `convex` with the same claims. Both are signed by
+the same issuer, which `convex/auth.config.ts` validates against
+`CLERK_JWT_ISSUER_DOMAIN` with `applicationID: "convex"`. `requireUser` returns `identity.subject`, denormalised
 as `clerkUserId` on eight of the nine tables — `importantDates` is the exception,
 since it is scoped through the person it belongs to. `SessionGuard` is a UX
 redirect for a session that vanished, and is not a security boundary.
@@ -212,11 +215,13 @@ is: link, set the two Convex variables, run `npx convex dev` again.
 1. Create a free [Clerk](https://clerk.com) application and copy the publishable
    and secret keys.
 2. In Clerk, go to **Configure → JWT Templates** and create one from the
-   **Convex** preset, then copy its Issuer URL. If you want the email reminders,
-   add an `email` claim to that template too
-   (`"email": "{{user.primary_email_address}}"`) — Convex reads the address from
-   the token (`identity.email` in `convex/settings.ts`), and without the claim the
-   cron has nobody to write to and stays silent.
+   **Convex** preset, then copy its Issuer URL. Then activate the **Convex**
+   integration and, under **Sessions → Claims**, add the same user claims to the
+   session token: `"email": "{{user.primary_email_address}}"`, `"name":
+   "{{user.full_name}}"` and `"given_name": "{{user.first_name}}"` (add `email`
+   to the template too). Convex reads them from the token (`identity.email` in
+   `convex/settings.ts`, the owner's name in `convex/lists.ts`): without `email`
+   the reminder cron has nobody to write to and stays silent.
 3. Create a free [Convex](https://convex.dev) project.
 4. Get a [Google AI Studio](https://aistudio.google.com) API key. Quota is counted
    **per project**, not per key, so use a project of your own.

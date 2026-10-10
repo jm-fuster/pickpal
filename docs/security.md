@@ -281,8 +281,9 @@ a uno solo:
   copian del JWT del dueño al conceder el acceso, no del cliente. El nombre de
   pila lo elige cada usuario en Clerk, así que no prueba nada; el email está
   verificado, y por eso la tarjeta de lista recibida enseña los dos. Si el JWT
-  no trae `given_name` (porque la plantilla `convex` de Clerk no lo incluya o
-  porque el usuario no haya puesto nombre), la tarjeta usa el email.
+  no trae `given_name` (porque los claims del token de sesión o la plantilla
+  `convex` de Clerk no lo incluyan, o porque el usuario no haya puesto nombre),
+  la tarjeta usa el email.
 - **Los enlaces vienen de otro usuario.** El servidor nunca los abre: no hay
   vista previa, así que no hay superficie de SSRF. Solo se aceptan `http:` y
   `https:` (`isAllowedListItemUrl`), porque un `javascript:` en el `href` sería
