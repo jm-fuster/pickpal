@@ -365,7 +365,7 @@ El archivo se auditó con tres criterios del usuario —que no dependa del códi
 
 > My phone reminds me of a birthday on the day, when it is too late to give anything good, and I am worse at the second half: a gift that fits the person. PickPal is the notebook I built to fix that. It keeps the people you care about next to their dates and, when one gets close, drafts nine gift ideas from what you know about them, with a budget for that occasion and links to the stores you actually use.
 >
-> This file is the case, start to finish: the problem, the decisions made before designing, how a date becomes a gift, what a ten-person private beta changed, six paths not taken, and an accessibility pass with its measurements. Behind it sits the design system that made it hold up: 349 variables in four layers with Light and Dark as real modes, 28 component sets documented on six pages, one per family, 67 icons, 25 text styles and 36 product frames, every screen in Light and Dark, with two click-through flows in each theme.
+> This file is the case, start to finish: the problem, the decisions made before designing, how a date becomes a gift, what a ten-person private beta changed, six paths not taken, and an accessibility pass with its measurements. Behind it sits the design system that made it hold up: 349 variables in four layers with Light and Dark as real modes, 28 component sets documented on six pages, one per family, 68 icons, 25 text styles and 36 product frames, every screen in Light and Dark, with two click-through flows in each theme.
 >
 > Documentation in English. The product is Spanish and its copy stays that way, as it ships.
 
@@ -446,7 +446,15 @@ La página tiene la cabecera de `Screens & prototype` con tres notas (qué cambi
 
 **Hallazgo de paso: `Dialog` y `Popover` pintan el borde casi negro.** Su trazo va a `color/text` con opacidad 1, y el producto usa `ring-foreground/10`. Probablemente es la misma pérdida de opacidad en pinturas vinculadas que ya está anotada en las trampas de escritura. En las copias de la propuesta el trazo pasa a `color/border`; los componentes de la librería no se han tocado.
 
-**Cerrado el mismo día:** el menú no ofrece los eventos únicos que ya pasaron, como en la propuesta; el encargo se corrigió (decisión 10). La función se construyó a continuación y el producto ya agrupa las ideas por ocasión (ver § «Variante en lista (Ideas guardadas)»); la página de la propuesta sigue sin moverse a `Screens & prototype`.
+**Cerrado el mismo día:** el menú no ofrece los eventos únicos que ya pasaron, como en la propuesta; el encargo se corrigió (decisión 10). La función se construyó a continuación y el producto ya agrupa las ideas por ocasión (ver § «Variante en lista (Ideas guardadas)»).
+
+#### La ficha de `Screens & prototype` agrupa las ideas por ocasión (10-oct-2026)
+
+Las seis pantallas de la ficha (escritorio 1440, tableta 1024 y móvil 390, en claro y en oscuro) enseñan ya la tarjeta como el producto. No se inventaron eventos: las dos ideas de Marta, que antes decían las dos «Nuestro aniversario», se reparten entre los dos eventos que ya tiene su ficha. Así quedan dos grupos, «Cumpleaños · 24 jun» con los bastones y «Nuestro aniversario · 10 sep» con los cuadernos Muji, en el orden de la próxima fecha. Cada grupo lleva su cabecera (`Label/Label 2` y `Body/Body 4` en `color/text/secondary`, separación 4) y su rejilla, con 28 entre grupos y 12 bajo la cabecera. La rejilla es horizontal en escritorio y tableta y vertical en móvil. La línea de cada idea se queda solo con el precio y la X pasa a ⋯. No había zonas de clic del prototipo por debajo de la tarjeta, así que no hubo que recolocar ninguna. La captura de la ficha en `03 · From a date to a gift` solo cubre los primeros 900 px, donde la tarjeta no aparece, y no se reexportó.
+
+**`icon/ellipsis` entra en la librería.** Pasó de la página de la propuesta a la rejilla de `04 · Iconography`, en orden alfabético entre `dumbbell` y `external-link`, con la descripción del resto del set y su `documentationLink` a la sección. El archivo pasa a **68 iconos**: se corrigieron los ocho textos que decían 67 (la cifra y dos párrafos de «Start here», el cierre de la 07, la nota y dos reglas de Iconography y una tarjeta de Design decisions), y la descripción de Community de arriba. La página de la propuesta se queda sin su sección de componentes y su cabecera ya dice que la ficha de `Screens & prototype` lo enseña.
+
+**Dos defectos que ya estaban en la ficha móvil, sin tocar:** las filas del historial se salen de la tarjeta por la derecha, y en «Datos prácticos» faltan los campos de talla.
 
 ### Figma — arquitectura de variables
 
