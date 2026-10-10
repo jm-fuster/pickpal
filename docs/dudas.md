@@ -91,6 +91,15 @@ _Ninguna ahora mismo._
     una lleva el nombre de su dueño.
   - **Enlaces cortos de Amazon** (`amzn.eu`, `amzn.to`) cuentan como Amazon:
     es lo que genera su botón «Compartir».
+  - **Correo de aviso al lector (añadido el mismo día, tras revisar la
+    decisión 9).** El encargo decía «sin email», y el argumento estaba mal
+    apoyado: Q14 descartaba escribir a gente sin cuenta, no a usuarios. Sin
+    correo, quien abre la app dos veces al año no se enteraría nunca. Va a
+    todas las cuentas, sin interruptor, con el nombre y el email del dueño y
+    nada de la lista; como mucho uno cada 30 días por pareja de dueño y lector
+    (tabla `listInviteEmails`), y la pantalla solo dice «Le avisamos por
+    correo» si de verdad se programó (`invite` y `shareBack` devuelven
+    `{ shareId, emailed }`).
   - **Sin verificar en el navegador con sesión:** las pantallas que exigen
     cuenta (`/mi-lista`, la tarjeta y la sección de la ficha) se probaron con
     tests, typecheck y lint, no con un inicio de sesión real.

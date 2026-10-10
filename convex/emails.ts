@@ -127,6 +127,25 @@ function buildSubject(events: EventToNotify[]): string {
   return `PickPal · ${events.length} eventos próximos`;
 }
 
+function ctaHtml(href: string, label: string, withGiftIcon: boolean): string {
+  const icon = withGiftIcon
+    ? `<span aria-hidden="true"
+          style="display:inline-block;width:16px;height:16px;background-image:url('${GIFT_ICON_DATA_URI}');
+          background-size:16px 16px;background-repeat:no-repeat;background-position:center;
+          vertical-align:middle;margin-right:7px;position:relative;top:-1px;"></span
+        >`
+    : "";
+  return `
+    <div style="text-align:center;margin:28px 0 8px;">
+      <a href="${href}"
+         style="display:inline-block;background-color:#F1704B;color:#ffffff;text-decoration:none;
+                font-size:14px;font-weight:600;padding:12px 24px;border-radius:8px;
+                letter-spacing:0.01em;white-space:nowrap;">
+        ${icon}<span style="vertical-align:middle;">${label}</span>
+      </a>
+    </div>`;
+}
+
 function buildCta(events: EventToNotify[]): string {
   const href =
     events.length === 1
@@ -136,29 +155,22 @@ function buildCta(events: EventToNotify[]): string {
     events.length === 1
       ? `Ideas para ${escapeHtml(events[0].personName)}`
       : "Ver próximos eventos";
-  return `
-    <div style="text-align:center;margin:28px 0 8px;">
-      <a href="${href}"
-         style="display:inline-block;background-color:#F1704B;color:#ffffff;text-decoration:none;
-                font-size:14px;font-weight:600;padding:12px 24px;border-radius:8px;
-                letter-spacing:0.01em;white-space:nowrap;">
-        <span aria-hidden="true"
-          style="display:inline-block;width:16px;height:16px;background-image:url('${GIFT_ICON_DATA_URI}');
-          background-size:16px 16px;background-repeat:no-repeat;background-position:center;
-          vertical-align:middle;margin-right:7px;position:relative;top:-1px;"></span
-        ><span style="vertical-align:middle;">${label}</span>
-      </a>
-    </div>`;
+  return ctaHtml(href, label, true);
 }
 
-function buildHtml(events: EventToNotify[]): string {
-  const cards = events.map(formatEventCard).join("");
-  const intro =
-    events.length === 1
-      ? "Tienes un evento próximo:"
-      : "Tienes varios eventos próximos:";
-  const cta = buildCta(events);
-
+/**
+ * La carcasa común de los correos: página oscura, cabecera con el logo y un
+ * subtítulo, cuerpo y pie. `body` y `footer` llegan ya escapados.
+ */
+function emailShell({
+  subtitle,
+  body,
+  footer,
+}: {
+  subtitle: string;
+  body: string;
+  footer: string;
+}): string {
   return `<!doctype html>
 <html lang="es">
 <head>
@@ -188,7 +200,7 @@ function buildHtml(events: EventToNotify[]): string {
                   </td>
                   <td style="vertical-align:middle;">
                     <div style="font-size:20px;font-weight:700;color:#FBF7EE;letter-spacing:-0.01em;">PickPal</div>
-                    <div style="font-size:12px;color:#a8c0a0;margin-top:2px;">Recordatorio de evento</div>
+                    <div style="font-size:12px;color:#a8c0a0;margin-top:2px;">${subtitle}</div>
                   </td>
                 </tr>
               </table>
@@ -199,9 +211,7 @@ function buildHtml(events: EventToNotify[]): string {
           <tr>
             <td bgcolor="#1E2D24"
               style="background-color:#1E2D24;padding:24px 24px 8px;">
-              <p style="margin:0 0 16px;font-size:15px;color:#a8c0a0;">${intro}</p>
-              ${cards}
-              ${cta}
+              ${body}
             </td>
           </tr>
 
@@ -210,9 +220,7 @@ function buildHtml(events: EventToNotify[]): string {
             <td bgcolor="#1E2D24"
               style="background-color:#1E2D24;border-radius:0 0 12px 12px;padding:12px 24px 24px;">
               <p style="margin:0;font-size:12px;color:#5a7a5e;line-height:1.6;">
-                Si no quieres seguir recibiendo estos recordatorios, desactívalos en tus
-                <a href="${APP_BASE_URL}/settings" style="color:#5a7a5e;text-decoration:underline;">ajustes</a>
-                de PickPal.
+                ${footer}
               </p>
             </td>
           </tr>
@@ -225,10 +233,72 @@ function buildHtml(events: EventToNotify[]): string {
 </html>`;
 }
 
-async function sendViaResend(
-  to: string,
-  events: EventToNotify[],
-): Promise<void> {
+function buildHtml(events: EventToNotify[]): string {
+  const cards = events.map(formatEventCard).join("");
+  const intro =
+    events.length === 1
+      ? "Tienes un evento próximo:"
+      : "Tienes varios eventos próximos:";
+  return emailShell({
+    subtitle: "Recordatorio de evento",
+    body: `<p style="margin:0 0 16px;font-size:15px;color:#a8c0a0;">${intro}</p>
+              ${cards}
+              ${buildCta(events)}`,
+    footer: `Si no quieres seguir recibiendo estos recordatorios, desactívalos en tus
+                <a href="${APP_BASE_URL}/settings" style="color:#5a7a5e;text-decoration:underline;">ajustes</a>
+                de PickPal.`,
+  });
+}
+
+/**
+ * Aviso de que alguien te ha compartido su lista (docs/encargo-lista.md,
+ * decisión 9, cambiada el 10-oct-2026). El nombre lo elige cada usuario en
+ * Clerk, así que no prueba nada: el correo enseña también el email, que está
+ * verificado. No lleva nada de la lista, porque sus elementos los escribe
+ * otra persona y no deben viajar por correo.
+ */
+export function buildListInviteEmail({
+  ownerName,
+  ownerEmail,
+}: {
+  ownerName?: string;
+  ownerEmail?: string;
+}): { subject: string; html: string } {
+  const display = ownerName?.trim() || ownerEmail?.trim() || "Alguien";
+  const oneLine = display.replace(/[\r\n]+/g, " ");
+  const name = escapeHtml(oneLine);
+  const emailLine =
+    ownerName?.trim() && ownerEmail
+      ? `<div style="font-size:13px;color:#a8c0a0;margin-top:2px;">${escapeHtml(ownerEmail)}</div>`
+      : "";
+  const who = ownerEmail ? escapeHtml(ownerEmail) : "otra cuenta de PickPal";
+  const card = `
+    <table cellpadding="0" cellspacing="0" width="100%"
+      style="background-color:#2D4033;border-radius:10px;margin-bottom:10px;">
+      <tr>
+        <td bgcolor="#2D4033"
+          style="padding:16px 18px;background-color:#2D4033;border-radius:10px;">
+          <div style="font-size:15px;font-weight:600;color:#FBF7EE;">${name} te ha compartido su lista</div>
+          ${emailLine}
+          <div style="font-size:13px;color:#a8c0a0;margin-top:10px;line-height:1.5;">Son cosas que le haría ilusión recibir. Guárdala en su ficha y podrás marcar lo que vas a regalarle: no verá lo que marcas.</div>
+        </td>
+      </tr>
+    </table>`;
+  return {
+    subject: `PickPal · ${oneLine} te ha compartido su lista`,
+    html: emailShell({
+      subtitle: "Lista compartida",
+      body: `<p style="margin:0 0 16px;font-size:15px;color:#a8c0a0;">Tienes una lista nueva:</p>
+              ${card}
+              ${ctaHtml(`${APP_BASE_URL}/agenda`, "Ver su lista", false)}`,
+      footer: `Te llega porque ${who} te ha dado acceso a su lista en PickPal. Si no te
+                interesa, pulsa «No me interesa» en la tarjeta de la app. Como mucho
+                recibirás un aviso cada 30 días por cada persona.`,
+    }),
+  };
+}
+
+async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     throw new Error("RESEND_API_KEY no configurada en Convex.");
@@ -241,13 +311,7 @@ async function sendViaResend(
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      from,
-      to,
-      reply_to: REPLY_TO,
-      subject: buildSubject(events),
-      html: buildHtml(events),
-    }),
+    body: JSON.stringify({ from, to, reply_to: REPLY_TO, subject, html }),
   });
 
   if (!res.ok) {
@@ -255,6 +319,34 @@ async function sendViaResend(
     throw new Error(`Resend respondió ${res.status}: ${detail.slice(0, 200)}`);
   }
 }
+
+async function sendViaResend(
+  to: string,
+  events: EventToNotify[],
+): Promise<void> {
+  await sendEmail(to, buildSubject(events), buildHtml(events));
+}
+
+/**
+ * La programa `lists.grantAccess` al conceder un acceso nuevo. Es
+ * `internalAction`: el destinatario sale de `userSettings.email` del lector,
+ * nunca de un argumento del cliente.
+ */
+export const sendListInviteEmail = internalAction({
+  args: {
+    to: v.string(),
+    ownerName: v.optional(v.string()),
+    ownerEmail: v.optional(v.string()),
+  },
+  handler: async (_ctx, { to, ownerName, ownerEmail }) => {
+    const { subject, html } = buildListInviteEmail({ ownerName, ownerEmail });
+    try {
+      await sendEmail(to, subject, html);
+    } catch (err) {
+      console.error("[emails] Falló el aviso de lista compartida:", err);
+    }
+  },
+});
 
 export const sendBatchedReminderEmail = internalAction({
   args: {

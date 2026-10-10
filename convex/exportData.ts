@@ -124,6 +124,18 @@ export const mine = query({
           .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
           .collect(),
       ]);
+    // Avisos por correo de «Mi lista»: cuándo se avisó a quien invitaste y
+    // cuándo te avisaron a ti. Se guardan solo para el tope de uno cada 30 días.
+    const [avisosEnviados, avisosRecibidos] = await Promise.all([
+      ctx.db
+        .query("listInviteEmails")
+        .withIndex("by_owner_and_reader", (q) => q.eq("ownerClerkUserId", clerkUserId))
+        .collect(),
+      ctx.db
+        .query("listInviteEmails")
+        .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
+        .collect(),
+    ]);
     const listasQueTeComparten = await Promise.all(
       listasQueMeComparten.map(async (s) => {
         // Solo si aún puedes ver la ficha: si te la dejaron de compartir, su
@@ -224,6 +236,12 @@ export const mine = query({
       },
       listasQueTeComparten,
       marcasEnListasDeOtros,
+      avisosDeListaPorCorreo: {
+        // A quién avisamos de que le compartiste tu lista, y cuándo.
+        enviados: avisosEnviados.map((a) => ({ clerkUserId: a.readerClerkUserId, enviado: a.sentAt })),
+        // Cuándo te avisaron de que alguien te compartió la suya.
+        recibidos: avisosRecibidos.map((a) => ({ enviado: a.sentAt })),
+      },
       ideasGuardadasDePersonasYaBorradas: huerfanas.map(limpiar),
       avisosPorEmailEnviados: avisos.map(limpiar),
       // Contadores antiabuso. Se reinician cada día y no describen a nadie,

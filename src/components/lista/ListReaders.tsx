@@ -78,7 +78,7 @@ export function ListReaders() {
         toast.error(data.error ?? "No se pudo compartir tu lista.");
         return;
       }
-      toast.success("Lista compartida");
+      toast.success(data.emailed ? "Lista compartida. Le avisamos por correo." : "Lista compartida");
       setEmail("");
     } catch {
       toast.error("No se pudo compartir tu lista.");
@@ -155,7 +155,8 @@ export function ListReaders() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Tiene que tener ya una cuenta en PickPal con ese email.
+            Tiene que tener ya una cuenta en PickPal con ese email. Le avisaremos
+            por correo.
           </p>
         </div>
       </CardContent>

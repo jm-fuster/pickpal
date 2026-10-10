@@ -9,7 +9,7 @@
 ```
 pickpal/
 ├── convex/                          # backend: base de datos y lógica de servidor
-│   ├── schema.ts                    # las 13 tablas
+│   ├── schema.ts                    # las 14 tablas
 │   ├── auth.ts                      # requireUser(ctx) → identity.subject
 │   ├── auth.config.ts               # valida el JWT de Clerk (plantilla "convex")
 │   ├── validators.ts                # revalidación server-side; espeja los Zod de src/lib
@@ -95,10 +95,10 @@ pickpal/
 
 ## Schema de base de datos (Convex)
 
-Trece tablas. Casi todas llevan el `clerkUserId` de su dueño o autor
+Catorce tablas. Casi todas llevan el `clerkUserId` de su dueño o autor
 denormalizado para comprobar el acceso en cada función; `importantDates` cuelga
-de la persona y hereda de ella el control de acceso, y las tres de «Mi lista»
-llevan `ownerClerkUserId` (y `readerClerkUserId` las de permisos y marcas). El detalle de campos vive en
+de la persona y hereda de ella el control de acceso, y las cuatro de «Mi lista»
+llevan `ownerClerkUserId` (y `readerClerkUserId` las de permisos, marcas y avisos). El detalle de campos vive en
 [`convex/schema.ts`](../convex/schema.ts) — aquí solo el mapa, para que no se
 desincronice otra vez.
 
@@ -117,6 +117,7 @@ desincronice otra vez.
 | `listItems` | Lo que un usuario apunta en «Mi lista» | `by_owner` |
 | `listShares` | Quién puede leer cada lista y en qué ficha la guardó | `by_owner`, `by_reader`, `by_owner_and_reader`, `by_person` |
 | `listClaims` | Marcas de «Lo regalo yo»; el dueño de la lista nunca las ve | `by_item`, `by_reader`, `by_owner_and_reader` |
+| `listInviteEmails` | Cuándo se avisó por correo a un lector de una lista, para el tope de un aviso cada 30 días | `by_owner_and_reader`, `by_reader` |
 
 **Decisiones de diseño:**
 

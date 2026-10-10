@@ -126,8 +126,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let emailed = false;
   try {
-    await fetchMutation(api.lists.invite, { readerClerkUserId }, { token });
+    ({ emailed } = await fetchMutation(api.lists.invite, { readerClerkUserId }, { token }));
   } catch (err) {
     if (err instanceof ConvexError) {
       return NextResponse.json(
@@ -139,5 +140,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No se pudo compartir tu lista." }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  // `emailed` dice si se programó el correo de aviso: no se manda si ya se
+  // avisó a esa persona de esta lista en los últimos 30 días.
+  return NextResponse.json({ ok: true, emailed });
 }

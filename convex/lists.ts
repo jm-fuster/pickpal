@@ -5,6 +5,7 @@ import { requireUser } from "./auth";
 import { checkAndIncrement } from "./rateLimit";
 import { validateListItemInput } from "./validators";
 import { INVITE_LOOKUP_DAILY_LIMIT, personHasAccess } from "./personShares";
+import { internal } from "./_generated/api";
 
 /**
  * «Mi lista»: lo que un usuario apunta que le haría ilusión recibir, y quién
@@ -30,6 +31,8 @@ const MAX_OWNER_NAME = 80;
 // Listas que te han compartido. No tiene tope propio (cada dueño elige a
 // quién), así que se acota la lectura.
 const MAX_SHARES_READ = 100;
+// Como mucho un correo de aviso por pareja (dueño, lector) en este plazo.
+export const INVITE_EMAIL_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 
 // ─── Helpers de acceso ───────────────────────────────────────────────────────
 
@@ -151,12 +154,16 @@ async function claimOf(ctx: QueryCtx | MutationCtx, itemId: Id<"listItems">) {
  * lo que verá el lector en la tarjeta de lista recibida. El nombre lo elige
  * el propio usuario en Clerk; el email está verificado, y por eso la tarjeta
  * enseña los dos.
+ *
+ * Un acceso nuevo además avisa al lector por correo (`emailed`), salvo que ya
+ * se le avisara de esta misma lista en los últimos 30 días o no tenga email
+ * guardado. Si ya tenía acceso no pasa nada: ni fila nueva ni correo.
  */
 async function grantAccess(
   ctx: MutationCtx,
   ownerClerkUserId: string,
   readerClerkUserId: string,
-): Promise<Id<"listShares">> {
+): Promise<{ shareId: Id<"listShares">; emailed: boolean }> {
   if (
     readerClerkUserId.length === 0 ||
     readerClerkUserId.length > MAX_CLERK_ID_LENGTH
@@ -168,7 +175,7 @@ async function grantAccess(
   }
 
   const existing = await findShare(ctx, ownerClerkUserId, readerClerkUserId);
-  if (existing) return existing._id;
+  if (existing) return { shareId: existing._id, emailed: false };
 
   const readers = await ctx.db
     .query("listShares")
@@ -193,12 +200,70 @@ async function grantAccess(
     identity?.name?.trim().split(/\s+/)[0] ||
     undefined;
 
-  return ctx.db.insert("listShares", {
+  const ownerName = name ? name.slice(0, MAX_OWNER_NAME) : undefined;
+  const shareId = await ctx.db.insert("listShares", {
     ownerClerkUserId,
     readerClerkUserId,
-    ownerName: name ? name.slice(0, MAX_OWNER_NAME) : undefined,
+    ownerName,
     ownerEmail: identity?.email,
   });
+  const emailed = await scheduleInviteEmail(
+    ctx,
+    ownerClerkUserId,
+    readerClerkUserId,
+    ownerName,
+    identity?.email,
+  );
+  return { shareId, emailed };
+}
+
+/**
+ * Programa el correo de aviso al lector, como mucho uno cada 30 días por
+ * pareja. El plazo se apunta al programarlo, no al enviarlo: si Resend falla,
+ * no se reintenta, pero así nadie puede encadenar invitaciones para mandar
+ * correos. La dirección sale de `userSettings.email` del lector, que se sella
+ * cada vez que entra en la app; nunca de un argumento.
+ */
+async function scheduleInviteEmail(
+  ctx: MutationCtx,
+  ownerClerkUserId: string,
+  readerClerkUserId: string,
+  ownerName: string | undefined,
+  ownerEmail: string | undefined,
+): Promise<boolean> {
+  const settings = await ctx.db
+    .query("userSettings")
+    .withIndex("by_user", (q) => q.eq("clerkUserId", readerClerkUserId))
+    .unique();
+  const to = settings?.email;
+  if (!to) return false;
+
+  const last = await ctx.db
+    .query("listInviteEmails")
+    .withIndex("by_owner_and_reader", (q) =>
+      q
+        .eq("ownerClerkUserId", ownerClerkUserId)
+        .eq("readerClerkUserId", readerClerkUserId),
+    )
+    .unique();
+  const now = Date.now();
+  if (last && now - last.sentAt < INVITE_EMAIL_COOLDOWN_MS) return false;
+  if (last) {
+    await ctx.db.patch(last._id, { sentAt: now });
+  } else {
+    await ctx.db.insert("listInviteEmails", {
+      ownerClerkUserId,
+      readerClerkUserId,
+      sentAt: now,
+    });
+  }
+
+  await ctx.scheduler.runAfter(0, internal.emails.sendListInviteEmail, {
+    to,
+    ownerName,
+    ownerEmail,
+  });
+  return true;
 }
 
 function normalizeItem(args: { title: string; url?: string; note?: string }) {
@@ -671,4 +736,15 @@ export async function deleteListDataForUser(
     .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
     .collect();
   for (const c of readerClaims) await ctx.db.delete(c._id);
+
+  // Cuándo se avisó por correo, como dueño y como lector.
+  const sentInvites = await ctx.db
+    .query("listInviteEmails")
+    .withIndex("by_owner_and_reader", (q) => q.eq("ownerClerkUserId", clerkUserId))
+    .collect();
+  const receivedInvites = await ctx.db
+    .query("listInviteEmails")
+    .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
+    .collect();
+  for (const r of [...sentInvites, ...receivedInvites]) await ctx.db.delete(r._id);
 }

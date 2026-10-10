@@ -244,4 +244,17 @@ export default defineSchema({
     .index("by_item", ["itemId"])
     .index("by_reader", ["readerClerkUserId"])
     .index("by_owner_and_reader", ["ownerClerkUserId", "readerClerkUserId"]),
+
+  // Cuándo se avisó por última vez por correo a un lector de que un dueño le
+  // compartió su lista. Va aparte de `listShares` porque esa fila se borra al
+  // dejar la lista o perder el acceso, y el tope de un aviso cada 30 días por
+  // pareja tiene que sobrevivir a eso: si no, invitar, que pulsen «No me
+  // interesa» y volver a invitar sería una forma de mandar correos sin límite.
+  listInviteEmails: defineTable({
+    ownerClerkUserId: v.string(),
+    readerClerkUserId: v.string(),
+    sentAt: v.number(),
+  })
+    .index("by_owner_and_reader", ["ownerClerkUserId", "readerClerkUserId"])
+    .index("by_reader", ["readerClerkUserId"]),
 });

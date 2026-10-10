@@ -116,6 +116,14 @@ son **del propio usuario**, no de un tercero.
 - **Correo de aviso:** si quien recibe el aviso ha guardado la lista en la
   ficha de esa persona, la tarjeta lleva cuántos elementos no ha marcado nadie.
   Solo la cifra, nunca títulos (§4).
+- **Correo de invitación (desde el 10-oct-2026):** al conceder un acceso nuevo,
+  el lector recibe un correo con el nombre y el email del dueño y un enlace a
+  la app; nada de la lista. Como mucho uno cada 30 días por pareja de dueño y
+  lector, registrado en `listInviteEmails` (que se borra con la cuenta y sale
+  en la exportación). No depende del interruptor de avisos de Ajustes: ese
+  interruptor es el consentimiento para los recordatorios de las fechas
+  propias, y este correo es parte del servicio de listas que el dueño activa
+  al compartir, así que va con la misma base que el resto de la lista.
 - **Al borrar un elemento ya marcado,** quien lo marcó conserva una copia
   (título, enlace y nota) hasta que quita su marca. Si ya lo había dado por
   regalado, la marca desaparece.
@@ -134,7 +142,7 @@ son **del propio usuario**, no de un tercero.
 | Generar recomendaciones de regalo con IA | Ficha de la persona seleccionada | Ejecución de contrato (b) frente al usuario; (f) frente al tercero, como la fila anterior |
 | Enviar avisos de fechas próximas | Email + fechas + nombre del ser querido | Consentimiento (a) — opt-in explícito: el toggle nace **apagado** (`DEFAULT_EMAIL_NOTIFICATIONS_ENABLED = false`) y solo se activa desde `/settings`. Se retira apagándolo allí, y cada correo enlaza a esa pantalla (art. 13.2.c). Ver [`email-notifications.md`](email-notifications.md) · "Por qué el toggle nace apagado". |
 | Compartir la ficha de un ser querido con otro usuario | Ficha completa (incl. alergias), historial e ideas guardadas | Ejecución de contrato (b) — el usuario activa la función explícitamente, con disclosure previa (ver §2.5) |
-| «Mi lista»: guardarla, compartirla y marcar en listas ajenas | Elementos de la lista, nombre y email del dueño, marcas | Ejecución de contrato (b) — el usuario activa la función explícitamente (ver §2.6) |
+| «Mi lista»: guardarla, compartirla, avisar por correo al lector y marcar en listas ajenas | Elementos de la lista, nombre y email del dueño, email del lector, marcas | Ejecución de contrato (b) — el usuario activa la función explícitamente (ver §2.6) |
 | Prevenir abuso (rate limit, logs) | Identificador de usuario, contadores | Interés legítimo (f) |
 | Analítica de uso agregada (Vercel Web Analytics, sin cookies) | Páginas vistas | Interés legítimo (f) |
 
@@ -152,7 +160,7 @@ Compartimos datos con los siguientes proveedores que actúan como encargados:
 | [Convex](https://convex.dev) | Base de datos y backend | EE. UU. (el deployment de producción está en la región por defecto; el de desarrollo, en `eu-west-1`) | DPA incorporado a sus términos, con las SCCs incorporadas por referencia |
 | [Google (Gemini API)](https://ai.google.dev) | Generación de recomendaciones | EE. UU. | DPA de Google como encargado («Data Processing Addendum for Products Where Google is a Data Processor»), que Google aplica a quien usa la API desde el EEE (§4.1). Google LLC está adherida al EU-US DPF |
 | [Vercel](https://vercel.com) | Hosting de la web y analítica de uso *cookieless* (Vercel Web Analytics) | EE. UU. | Adherida al EU-US DPF, así que la transferencia está cubierta |
-| [Resend](https://resend.com) | Envío de los correos de aviso | EE. UU. | DPA vinculante al aceptar sus términos, con las SCCs incorporadas; además, adherida al EU-US DPF. Recibe el email del usuario, el **nombre del ser querido**, el evento, la fecha y la URL del avatar (ver 4.3) y, si el usuario guardó en esa ficha la lista que le compartió esa persona, cuántos elementos no ha marcado nadie (§2.6) |
+| [Resend](https://resend.com) | Envío de los correos de aviso | EE. UU. | DPA vinculante al aceptar sus términos, con las SCCs incorporadas; además, adherida al EU-US DPF. Recibe el email del usuario, el **nombre del ser querido**, el evento, la fecha y la URL del avatar (ver 4.3) y, si el usuario guardó en esa ficha la lista que le compartió esa persona, cuántos elementos no ha marcado nadie (§2.6). Para el aviso de lista compartida, el email del lector y el nombre y el email del dueño (§2.6) |
 | [Pexels](https://www.pexels.com) | Fotos de stock que ilustran las ideas de regalo | EE. UU. | Solo recibe búsquedas genéricas en inglés (server-side) y la IP del navegador al cargar las fotos (ver 4.2) |
 | [Brandfetch](https://brandfetch.com) | Resolver la web oficial de las marcas favoritas + servir sus logos | EE. UU. | Solo recibe el **nombre de la marca** (server-side) y la IP del navegador al cargar el logo (ver 4.2) |
 | [DiceBear](https://www.dicebear.com) | Avatares ilustrados de los seres queridos | UE | Recibe los rasgos elegidos para el dibujo (en el query string) y la IP del navegador (ver 4.2) |
@@ -229,7 +237,7 @@ Los cinco encargados que reciben datos personales desde PickPal (Clerk, Convex, 
 
 | Dato | Plazo |
 |---|---|
-| Cuenta de usuario y datos asociados | Mientras la cuenta esté activa. Al eliminar la cuenta, el purgado es **inmediato y transaccional** (`api.account.deleteMyAccount` recorre las 13 tablas del esquema y después se borra el usuario en Clerk) — no hay periodo de gracia ni papelera. **Excepción:** una ficha que hubieras compartido con otro usuario no se borra si tiene invitados — la propiedad pasa al más antiguo, ver §2.5. **Segunda excepción:** las entradas de historial y las ideas guardadas que el usuario añadió a fichas ajenas se quedan en ellas, porque son parte de una ficha que sigue siendo de otros (`deleteMyAccount` solo borra las `savedIdeas` cuya persona ya no existe). No llevan nombre ni email, solo el `clerkUserId` de una cuenta que ya no existe en Clerk. `/privacidad`, `/terminos` y el texto de Ajustes lo dicen desde el 27-sep-2026; antes prometían borrar «todos tus datos». **«Mi lista» no tiene excepción** (§2.6): se borra entera, con sus accesos, sus marcas y las copias de elementos borrados, y no pasa a nadie. Lo único que sobrevive son las entradas que un lector apuntó en el historial de su propia ficha a partir de la lista. Las copias de seguridad de los proveedores se reciclan según sus propios plazos. |
+| Cuenta de usuario y datos asociados | Mientras la cuenta esté activa. Al eliminar la cuenta, el purgado es **inmediato y transaccional** (`api.account.deleteMyAccount` recorre las 14 tablas del esquema y después se borra el usuario en Clerk) — no hay periodo de gracia ni papelera. **Excepción:** una ficha que hubieras compartido con otro usuario no se borra si tiene invitados — la propiedad pasa al más antiguo, ver §2.5. **Segunda excepción:** las entradas de historial y las ideas guardadas que el usuario añadió a fichas ajenas se quedan en ellas, porque son parte de una ficha que sigue siendo de otros (`deleteMyAccount` solo borra las `savedIdeas` cuya persona ya no existe). No llevan nombre ni email, solo el `clerkUserId` de una cuenta que ya no existe en Clerk. `/privacidad`, `/terminos` y el texto de Ajustes lo dicen desde el 27-sep-2026; antes prometían borrar «todos tus datos». **«Mi lista» no tiene excepción** (§2.6): se borra entera, con sus accesos, sus marcas y las copias de elementos borrados, y no pasa a nadie. Lo único que sobrevive son las entradas que un lector apuntó en el historial de su propia ficha a partir de la lista. Las copias de seguridad de los proveedores se reciclan según sus propios plazos. |
 | Logs de seguridad (errores, rate limit) | Los contadores de rate limit viven en `rateLimitBuckets` / `recommendationUsage` con clave por día UTC y se borran con la cuenta. Los logs de ejecución los retiene el proveedor (Convex / Vercel) según su plan. |
 | Datos enviados a Gemini | No los conservamos tras la respuesta. Google los registra 55 días, solo para detectar abusos, y no entrena con ellos (§4.1). |
 
@@ -262,7 +270,7 @@ Como interesado, tienes derecho a:
 
 Puedes ejercerlos:
 
-1. **Desde la app**: edición, borrado y **portabilidad** están disponibles en la propia interfaz. Ajustes → «Descargar mis datos» devuelve un JSON con las trece tablas que guardan algo del usuario, incluida `personShares` (con quién compartes y quién te comparte a ti) y las tres de «Mi lista», salvo las marcas que otros han hecho en la tuya (§2.6) — el mismo recorrido que hace el borrado de cuenta, para que no puedan desincronizarse (`convex/exportData.ts`, con un test que lo comprueba).
+1. **Desde la app**: edición, borrado y **portabilidad** están disponibles en la propia interfaz. Ajustes → «Descargar mis datos» devuelve un JSON con las catorce tablas que guardan algo del usuario, incluida `personShares` (con quién compartes y quién te comparte a ti) y las cuatro de «Mi lista» (también cuándo se avisó por correo), salvo las marcas que otros han hecho en la tuya (§2.6) — el mismo recorrido que hace el borrado de cuenta, para que no puedan desincronizarse (`convex/exportData.ts`, con un test que lo comprueba).
 2. **Por email** a [pickpal@jorgemolinafuster.com](mailto:pickpal@jorgemolinafuster.com), indicando qué derecho quieres ejercer.
 
 Si consideras que tus derechos no se han atendido correctamente, puedes presentar una reclamación ante la **Agencia Española de Protección de Datos** (https://www.aepd.es).

@@ -11,7 +11,8 @@
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
-import { MAX_ITEMS_PER_LIST, MAX_READERS_PER_LIST } from "./lists";
+import { INVITE_EMAIL_COOLDOWN_MS, MAX_ITEMS_PER_LIST, MAX_READERS_PER_LIST } from "./lists";
+import { buildListInviteEmail } from "./emails";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -37,7 +38,7 @@ async function escenario(t: T) {
     note: "La de higo",
   });
   const libro = await laura.mutation(api.lists.addItem, { title: "Libro de cerámica" });
-  const shareAlex = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+  const { shareId: shareAlex } = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
 
   const alex = t.withIdentity(ALEX);
   const fichaDeAlex = await alex.mutation(api.people.create, {
@@ -51,7 +52,7 @@ async function escenario(t: T) {
 
 /** La madre de Laura también recibe la lista y la asocia a su ficha. */
 async function sumarMama(t: T) {
-  const shareMama = await t
+  const { shareId: shareMama } = await t
     .withIdentity(LAURA)
     .mutation(api.lists.invite, { readerClerkUserId: MAMA.subject });
   const mama = t.withIdentity(MAMA);
@@ -91,7 +92,7 @@ describe("el dueño nunca ve las marcas", () => {
     const t = convexTest(schema, modules);
     const laura = t.withIdentity(LAURA);
     const vela = await laura.mutation(api.lists.addItem, { title: "Vela de cera" });
-    const shareAlex = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    const { shareId: shareAlex } = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
 
     const antes = await laura.query(api.lists.myReaders, {});
 
@@ -183,7 +184,7 @@ describe("quién ve la lista", () => {
     const t = convexTest(schema, modules);
     const laura = t.withIdentity(LAURA);
     await laura.mutation(api.lists.addItem, { title: "Vela de cera" });
-    const share = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    const { shareId: share } = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
     const alex = t.withIdentity(ALEX);
     const ficha = await alex.mutation(api.people.create, { name: "Laura", relationship: "partner", interests: [] });
 
@@ -211,7 +212,7 @@ describe("quién ve la lista", () => {
   test("si pierde el acceso a la ficha, la lista vuelve a quedar pendiente", async () => {
     const t = convexTest(schema, modules);
     const laura = t.withIdentity(LAURA);
-    const share = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    const { shareId: share } = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
 
     // La ficha de Laura es de Sara, que se la comparte a Alex.
     const sara = t.withIdentity(SARA);
@@ -402,7 +403,8 @@ describe("validación y topes", () => {
     const laura = t.withIdentity(LAURA);
     const a = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
     const b = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
-    expect(b).toBe(a);
+    expect(b.shareId).toBe(a.shareId);
+    expect(b.emailed).toBe(false);
     expect(await laura.query(api.lists.myReaders, {})).toHaveLength(1);
   });
 });
@@ -515,5 +517,126 @@ describe("email de recordatorio", () => {
     expect((await evento()).listUnclaimed).toBe(2);
     await alex.mutation(api.lists.claim, { itemId: vela });
     expect((await evento()).listUnclaimed).toBe(1);
+  });
+});
+
+describe("aviso por correo al compartir", () => {
+  // Las acciones programadas se quedan en `_scheduled_functions` sin ejecutarse
+  // mientras los temporizadores estén falseados: así se cuenta qué se programó
+  // sin llamar a Resend.
+  const avisos = (t: T) =>
+    t.run(async (ctx) =>
+      (await ctx.db.system.query("_scheduled_functions").collect()).filter((f) =>
+        f.name.includes("sendListInviteEmail"),
+      ),
+    );
+  const conEmail = (t: T, quien: typeof ALEX | typeof MAMA) =>
+    t.withIdentity(quien).mutation(api.settings.ensureDefaults, {});
+
+  test("avisa una vez al lector, con el nombre y el email de quien comparte", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema, modules);
+    await conEmail(t, ALEX);
+
+    const r = await t.withIdentity(LAURA).mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    expect(r.emailed).toBe(true);
+
+    const programados = await avisos(t);
+    expect(programados).toHaveLength(1);
+    expect(programados[0].args[0]).toEqual({
+      to: ALEX.email,
+      ownerName: "Laura",
+      ownerEmail: LAURA.email,
+    });
+  });
+
+  test("volver a invitar a quien ya tiene acceso no manda otro", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema, modules);
+    await conEmail(t, ALEX);
+    const laura = t.withIdentity(LAURA);
+    await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    const otra = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    expect(otra.emailed).toBe(false);
+    expect(await avisos(t)).toHaveLength(1);
+  });
+
+  test("tras «No me interesa», reinvitar no vuelve a escribir hasta pasados 30 días", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-10T10:00:00Z"));
+    const t = convexTest(schema, modules);
+    await conEmail(t, ALEX);
+    const laura = t.withIdentity(LAURA);
+    const alex = t.withIdentity(ALEX);
+
+    const primera = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    await alex.mutation(api.lists.leave, { shareId: primera.shareId });
+    const segunda = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    expect(segunda.emailed).toBe(false);
+    expect(await avisos(t)).toHaveLength(1);
+
+    vi.setSystemTime(new Date(Date.now() + INVITE_EMAIL_COOLDOWN_MS + 60_000));
+    await alex.mutation(api.lists.leave, { shareId: segunda.shareId });
+    const tercera = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    expect(tercera.emailed).toBe(true);
+    expect(await avisos(t)).toHaveLength(2);
+  });
+
+  test("compartir de vuelta también avisa", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema, modules);
+    await conEmail(t, LAURA);
+    const { shareId } = await t.withIdentity(LAURA).mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+
+    const r = await t.withIdentity(ALEX).mutation(api.lists.shareBack, { shareId });
+    expect(r.emailed).toBe(true);
+    const programados = await avisos(t);
+    expect(programados.map((p) => p.args[0].to)).toEqual([LAURA.email]);
+  });
+
+  test("sin email guardado del lector no se intenta", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema, modules);
+    const r = await t.withIdentity(LAURA).mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    expect(r.emailed).toBe(false);
+    expect(await avisos(t)).toHaveLength(0);
+  });
+
+  test("borrar la cuenta se lleva los registros de avisos", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema, modules);
+    await conEmail(t, ALEX);
+    await t.withIdentity(LAURA).mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    expect((await t.withIdentity(LAURA).query(api.exportData.mine, {})).avisosDeListaPorCorreo.enviados).toHaveLength(1);
+    expect((await t.withIdentity(ALEX).query(api.exportData.mine, {})).avisosDeListaPorCorreo.recibidos).toHaveLength(1);
+
+    await t.withIdentity(LAURA).mutation(api.account.deleteMyAccount, {});
+    const quedan = await t.run((ctx) => ctx.db.query("listInviteEmails").collect());
+    expect(quedan).toEqual([]);
+  });
+});
+
+describe("plantilla del aviso", () => {
+  test("lleva el nombre escapado y el email verificado, y nada de la lista", () => {
+    const { subject, html } = buildListInviteEmail({
+      ownerName: "<b>Laura</b>",
+      ownerEmail: "laura@example.com",
+    });
+    expect(subject).toBe("PickPal · <b>Laura</b> te ha compartido su lista");
+    expect(html).toContain("&lt;b&gt;Laura&lt;/b&gt; te ha compartido su lista");
+    expect(html).not.toContain("<b>Laura</b>");
+    expect(html).toContain("laura@example.com");
+    expect(html).toContain('href="https://pickpal.jorgemolinafuster.com/agenda"');
+  });
+
+  test("sin nombre usa el email y no lo repite", () => {
+    const { subject, html } = buildListInviteEmail({ ownerEmail: "mama@example.com" });
+    expect(subject).toBe("PickPal · mama@example.com te ha compartido su lista");
+    expect(html.split("mama@example.com")).toHaveLength(3); // título y pie, no una línea aparte
+  });
+
+  test("un salto de línea en el nombre no llega al asunto", () => {
+    const { subject } = buildListInviteEmail({ ownerName: "Laura\r\nBcc: x@y.z", ownerEmail: "l@x.es" });
+    expect(subject).not.toMatch(/[\r\n]/);
   });
 });

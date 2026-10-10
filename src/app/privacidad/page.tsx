@@ -100,10 +100,12 @@ export default function PrivacyPage() {
               que tú decides apuntar y no lo usamos para nada más.
             </li>
             <li>
-              <span className="text-foreground">Los avisos por correo:</span>{" "}
+              <span className="text-foreground">Los avisos por correo de tus fechas:</span>{" "}
               tu consentimiento (art. 6.1.a), que das al activarlos en Ajustes.
               Puedes retirarlo cuando quieras desactivándolos allí; cada correo
-              trae el enlace.
+              trae el enlace. El correo que te avisa de que alguien te ha
+              compartido su lista es parte del servicio de listas y no depende
+              de ese interruptor.
             </li>
             <li>
               <span className="text-foreground">Seguridad y uso:</span> los
@@ -152,10 +154,13 @@ export default function PrivacyPage() {
             </li>
             <li>
               <span className="text-foreground">Resend</span> — envía los
-              correos de aviso si activas las notificaciones. Para escribirlos
-              recibe tu email, el nombre del ser querido, el evento y su fecha
-              y, si esa persona te ha compartido su lista, cuántas cosas de
-              ella no ha marcado nadie todavía (la cifra, nunca cuáles son).
+              avisos de tus fechas si activas las notificaciones, y el correo
+              que te avisa de que alguien te ha compartido su lista. Para los
+              primeros recibe tu email, el nombre del ser querido, el evento y
+              su fecha y, si esa persona te ha compartido su lista, cuántas
+              cosas de ella no ha marcado nadie todavía (la cifra, nunca cuáles
+              son). Para el segundo, tu email y el nombre y el email de quien
+              te la comparte.
             </li>
             <li>
               <span className="text-foreground">Brandfetch</span> — busca la web
@@ -272,8 +277,10 @@ export default function PrivacyPage() {
             qué es y, si quieres, un enlace y una nota. Solo la ven las
             personas con cuenta en PickPal a las que tú invitas, hasta un
             máximo de 20. Junto a la lista ven tu nombre y tu email, para saber
-            quién se la comparte. Ninguna sabe quién más la lee. PickPal nunca
-            abre los enlaces que apuntas: solo los guarda.
+            quién se la comparte. Ninguna sabe quién más la lee. Al invitar a
+            alguien le llega un correo que le avisa, con tu nombre y tu email:
+            como mucho uno cada 30 días por persona, aunque vuelvas a invitarla.
+            PickPal nunca abre los enlaces que apuntas: solo los guarda.
           </p>
           <p className="text-sm text-foreground">
             Quien la lee puede marcar lo que va a regalarte.{" "}
@@ -290,15 +297,16 @@ export default function PrivacyPage() {
             elemento ni con tu cuenta.
           </p>
           <p className="text-sm text-foreground">
-            Tu lista no se envía a Google Gemini. El único dato suyo que sale
-            de PickPal es una cifra: el correo de aviso de quien te tiene en su
-            libreta puede decir cuántas cosas de tu lista no ha marcado nadie,
-            nunca cuáles. Si cierras tu cuenta, tu lista se borra entera, con
+            Tu lista no se envía a Google Gemini. De lo que apuntas, lo único
+            que sale de PickPal es una cifra: el correo de aviso de quien te
+            tiene en su libreta puede decir cuántas cosas de tu lista no ha
+            marcado nadie, nunca cuáles. Si cierras tu cuenta, tu lista se borra entera, con
             sus accesos y sus marcas, y no pasa a nadie.
           </p>
           <p className="text-sm text-foreground">
-            Si alguien te comparte su lista, lo que marcas no lo ve quien la
-            escribió. Si dejas una lista o te quitan el acceso, tus marcas se
+            Si alguien te comparte su lista, te llega un correo que te avisa
+            (como mucho uno cada 30 días por persona), y lo que marcas no lo ve
+            quien la escribió. Si dejas una lista o te quitan el acceso, tus marcas se
             borran.
           </p>
         </section>

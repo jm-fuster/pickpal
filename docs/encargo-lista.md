@@ -63,8 +63,16 @@ compra.
    - «Crear ficha de {nombre}», con el nombre ya puesto;
    - «No me interesa», que equivale a dejar la lista.
 
-   No se manda email ni se usa la campana, que es «Próximas fechas» y no debe
-   cambiar de sentido.
+   No se usa la campana, que es «Próximas fechas» y no debe cambiar de sentido.
+
+   **Cambiado el 10-oct-2026:** además de la tarjeta, al lector le llega un
+   correo de aviso con el nombre y el email del dueño y un enlace a la app, sin
+   nada de la lista. Va a todas las cuentas, sin interruptor en Ajustes, porque
+   es parte del servicio de listas y no un recordatorio de fechas propias. Como
+   mucho uno cada 30 días por pareja de dueño y lector, para que invitar, que
+   pulsen «No me interesa» y volver a invitar no sirva para mandar correos. La
+   versión original decía «no se manda email» apoyándose en Q14, pero Q14
+   descartaba escribir a gente **sin cuenta**; quien ya la tiene es otro caso.
 10. **Compartir la tuya de vuelta:** después de asociar, la tarjeta pregunta
     «¿Compartes tu lista con {nombre}?». Un toque basta, sin escribir email, porque
     la cuenta ya se conoce por el permiso recibido. Cuenta contra los mismos límites

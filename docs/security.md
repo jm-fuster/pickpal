@@ -290,6 +290,16 @@ a uno solo:
   XSS en la cuenta de quien lo abre. Se pintan con `target="_blank"
   rel="noopener noreferrer nofollow"` y siempre con el dominio visible
   (`ListItemLink`); un dominio que imita a otro sale en punycode.
+- **El correo de aviso al lector no lleva nada de la lista.** Solo el nombre
+  y el email del dueño (sacados de su JWT, igual que en la tarjeta) y un enlace
+  a la app: los elementos los escribe otra persona y no deben viajar por
+  correo. La dirección sale de `userSettings.email` del lector, nunca de un
+  argumento. Se programa desde `grantAccess` con `ctx.scheduler`, así que solo
+  sale si la transacción que concede el acceso se confirma, y como mucho una
+  vez cada 30 días por pareja (`listInviteEmails`). El plazo se apunta al
+  programarlo, no al enviarlo: si Resend falla no se reintenta, pero nadie
+  puede encadenar invitar y «No me interesa» para mandar correos. El nombre va
+  escapado en el HTML y sin saltos de línea en el asunto.
 - **Quitar el acceso borra las marcas.** `revoke` y `leave` borran las marcas de
   ese lector en esa lista; si no, bloquearían elementos para siempre.
 

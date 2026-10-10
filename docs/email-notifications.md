@@ -149,6 +149,16 @@ El campo `personAvatarUrl` se propaga desde `person.avatarUrl` en `convex/notifi
 
 Si el destinatario guardó en la ficha de esa persona la lista que ella le compartió, la tarjeta añade debajo de la cuenta atrás «{nombre} tiene N cosas en su lista que nadie ha marcado todavía» (en singular con N = 1), enlazada a `/seres-queridos/{personId}#lista`, en `#FBF7EE` y subrayada a 12 px. Solo la cifra, nunca títulos: el correo pasa por Resend (decisión 18 de [`encargo-lista.md`](encargo-lista.md)). La cuenta la hace `lists.countUnclaimedForReader` dentro de `findEventsNeedingEmail`, solo para los eventos que van a enviarse, y viaja en `listUnclaimed`, opcional y ausente si es 0. El HTML lo pinta `listLineHtml`, con sus tests en `convex/emails.test.ts`. Como el aviso solo llega a quien es dueño de la ficha, quien la tiene compartida como invitado no ve esta línea, igual que no recibe el aviso.
 
+
+### Aviso de lista compartida (10-oct-2026)
+
+Un correo distinto del recordatorio, que no pasa por el cron. Cuando alguien concede acceso a su lista (`lists.invite` o `lists.shareBack`), `grantAccess` programa `internal.emails.sendListInviteEmail` con `ctx.scheduler.runAfter(0, …)`: sale solo si la transacción que concede el acceso se confirma.
+
+- **Plantilla:** la misma carcasa oscura que el recordatorio (`emailShell`), con el subtítulo «Lista compartida». Lleva una tarjeta con «{nombre} te ha compartido su lista», el email del dueño debajo (el nombre lo pone cada uno en Clerk; el email está verificado), una frase que explica para qué sirve y el botón «Ver su lista» a `/agenda`, donde está la tarjeta para guardarla. No lleva nada de la lista. La construye `buildListInviteEmail`, con tests en `convex/lists.test.ts`.
+- **Destinatario:** `userSettings.email` del lector, que se sella cada vez que entra en la app. Si no hay, no se intenta.
+- **Sin interruptor:** no depende de `emailNotificationsEnabled`. Ese interruptor es el consentimiento para los recordatorios de fechas propias; este correo es parte del servicio de listas (ver `privacy.md` §2.6).
+- **Tope:** uno cada 30 días por pareja de dueño y lector, en la tabla `listInviteEmails`. Volver a invitar a quien ya tiene acceso no manda nada. El plazo se apunta al programar: si Resend falla, el error queda en los logs de Convex (`[emails] Falló el aviso de lista compartida`) y no se reintenta.
+
 ### Modo oscuro en clientes de correo (resuelto 28-ago-2026)
 
 Gmail en móvil "ayuda" invirtiendo los colores de los emails cuando el sistema está en oscuro, y **aplica filtros a los `<img>` ignorando `filter:none` y el meta `color-scheme`**. Como esta plantilla ya es oscura, la inversión la destrozaba: logo, icono de regalo y avatar salían alterados.

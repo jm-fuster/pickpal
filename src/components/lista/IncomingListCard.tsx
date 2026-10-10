@@ -87,8 +87,8 @@ export function IncomingListCard({
 
   const handleShareBack = () =>
     withBusy(async () => {
-      await shareBack({ shareId: share.shareId });
-      toast.success(`${name} ya ve tu lista`);
+      const { emailed } = await shareBack({ shareId: share.shareId });
+      toast.success(emailed ? `${name} ya ve tu lista. Le avisamos por correo.` : `${name} ya ve tu lista`);
       onDoneAskingBack();
     }, "No se pudo compartir tu lista");
 

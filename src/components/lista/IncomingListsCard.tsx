@@ -13,7 +13,9 @@ const IncomingListCard = dynamic(() =>
 
 /**
  * Aviso de lista recibida, arriba en /agenda y /seres-queridos (decisiones 9
- * y 10 de docs/encargo-lista.md). Es el único aviso: ni email ni campana.
+ * y 10 de docs/encargo-lista.md). Además llega un correo al recibir la lista
+ * (`lists.grantAccess`, como mucho uno cada 30 días por persona); la campana no
+ * cambia, porque es «Próximas fechas».
  *
  * Sale mientras la lista no esté asociada a una ficha que puedas ver. Después
  * de asociarla, la misma tarjeta pregunta si compartes tu lista de vuelta; esa
