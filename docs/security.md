@@ -395,7 +395,11 @@ Antes de declarar un aviso "no arreglable", tres comprobaciones:
 
 ### Avisos aceptados
 
-**Ninguno ahora mismo** — `npm audit` está a cero (19-08-2026).
+| Aviso | Paquete | Por qué se acepta | Cuándo se revisa |
+|---|---|---|---|
+| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) / CVE-2026-93687 (high, DoS: unas llaves muy anidadas desbordan la pila y tumban el proceso). Alerta de Dependabot n.º 85, abierta el 05-10-2026 | `braces` ≤ 3.0.3 | **No hay versión corregida.** `braces@3.0.3` es la última publicada (sin cambios desde septiembre de 2024), y también lo son `micromatch@4.0.8` y `fast-glob@3.3.3`, que lo traen. Llega por dos caminos: `shadcn → fast-glob → micromatch → braces` (la CLI, clasificada como *runtime* por el accidente que explica la última lección de abajo) y `eslint-config-next → @next/eslint-plugin-next → fast-glob → …` (el lint). Ninguno se ejecuta en la app, y los patrones que expanden son los de la propia herramienta, sin entrada de nadie. `npm audit` lo cuenta 9 veces porque repite el aviso por cada paquete de la cadena, y propone bajar `shadcn` a la 1.0.0 y `eslint-config-next` a la 14: no aplicarlo. Se deja **abierto** en Dependabot, no descartado: descartado, Dependabot no abriría el PR cuando salga el parche. Aceptado el 10-10-2026. | Cuando se publique `braces` > 3.0.3 (`npm view braces dist-tags --prefer-online`). Si cabe en el `^3.0.3` de `micromatch`, `npm update braces --prefer-online` lo cierra. |
+
+El 10-10-2026 `npm audit fix` (sin `--force`) cerró a la vez los otros cinco avisos abiertos, todos dentro de los rangos ya permitidos: `proxy-addr` 2.0.8 (crítico, vía el servidor MCP de `shadcn`), `@modelcontextprotocol/sdk` 1.32.1, `sharp` 0.35.5, `source-map-js` 1.2.2 y `postcss-selector-parser` 7.1.6. Ninguno llegaba a la app en producción; se arreglaron igual porque el parche cabía.
 
 ### Historial: lo que se aceptó y por qué dejó de aceptarse
 
