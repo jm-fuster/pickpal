@@ -405,6 +405,17 @@ La pasada de portfolio dejó un sistema de diseño presentable, y el usuario se�
 
 **Dos frases de la página iban por detrás del producto, y se corrigieron a la vez.** «What is open» daba las fichas compartidas por imposibles («every person belongs to one account») casi tres semanas después de lanzarlas; el punto pasa a la sección nueva. Y la línea de tecnologías decía «Gemini 2.5 Flash» cuando la app usa `gemini-3.5-flash` desde el 20 de septiembre, porque Google retiró la 2.5 para claves nuevas (`src/app/api/recommendations/route.ts`). Era la única mención en el archivo. Versión con nombre: «My list on page 07». Para que llegue a Community hay que publicar la actualización desde Figma.
 
+#### La librería y el caso se ponen al día con «Mi lista» (10-oct-2026)
+
+Cuatro sitios del archivo seguían describiendo la app de antes de «Mi lista», y se corrigieron a la vez. Versión con nombre: «Library and case catch up with My list».
+
+- **`03 · Navigation`**: el texto de la página y la descripción de `Sidebar Link` decían «The three links of the desktop sidebar: Agenda, Loved ones and Settings»; ahora son cuatro, con My list.
+- **`05 · Content`**: el texto y la descripción de `Empty State` añaden My list a los sitios donde se usa. Las descripciones son las que ve en el panel de Assets quien duplica el archivo desde Community, así que se cambiaron junto con el texto de la página.
+- **`03 · From a date to a gift`**: las cuatro capturas de escritorio (Agenda, Seres queridos, ficha e ideas) se reexportaron desde las pantallas actuales, con la barra lateral de cuatro entradas. Para la exportación se ocultaron un momento la tarjeta de lista recibida, porque esa historia va de una fecha a un regalo y no de una lista que llega, y la capa `Hotspots`, que al subir la lista se queda donde estaba. **Una sombra tenue en la captura reducida no estaba en la imagen**: copiada a un rectángulo de 1440 × 900, la imagen pesa lo mismo que el marco limpio y se ve limpia. Antes de perseguir un defecto en una miniatura, mirar la imagen a tamaño real.
+- **`07 · What shipped, what is next`**: la entrada de «Mi lista» enlaza con `01 · The problem`, que cuenta las listas de deseos entre los apaños que matan la sorpresa. Esta está hecha contra eso: el dueño no ve las marcas y la lista alimenta la libreta de quien regala en lugar de sustituirla. La 01 no se toca, porque cuenta cómo se apañaba la gente antes de PickPal.
+
+Siguen sin ser componentes de librería la fila de la lista, la tarjeta de lista recibida y el enlace con logo de tienda: viven como marcos locales en las pantallas, como el resto del cromo sin componente. Hacerlos componentes sería una página nueva y queda sin decidir.
+
 ### Figma — arquitectura de variables
 
 El archivo [PickPal — Design System](https://www.figma.com/design/4hQt4BnsEluKsYk5qbKkCz/PickPal---Design-System) espeja este documento y `globals.css`, no al revés: **si Figma contradice el código, gana el código**. Sus 372 variables están organizadas en las cuatro capas del patrón de design tokens, y cada una aliasa a la de abajo sin saltarse eslabones.
