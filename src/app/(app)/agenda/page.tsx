@@ -56,7 +56,10 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <IncomingListsCard />
+      {/* Mismo ancho que la lista de fechas: a partir de xl el panel de ideas
+          es fijo y empieza en left-[48.5rem], así que una tarjeta a todo el
+          ancho quedaría tapada en cuanto se abren las ideas de una fecha. */}
+      <IncomingListsCard className="xl:max-w-[480px] xl:px-1" />
 
       {!ready || upcoming === undefined ? (
         <div className="space-y-3" role="status">

@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { RELATIONSHIPS } from "@/lib/schemas";
 import { userErrorMessage } from "@/lib/errors";
+import { cn } from "@/lib/utils";
 
 type Incoming = FunctionReturnType<typeof api.lists.sharedWithMe>[number];
 
@@ -26,8 +27,12 @@ type Incoming = FunctionReturnType<typeof api.lists.sharedWithMe>[number];
  * de asociarla, la misma tarjeta pregunta si compartes tu lista de vuelta; esa
  * segunda pregunta solo vive en esta visita (`askingBack`), porque una lista
  * asociada ya no está pendiente y la query deja de devolverla como tal.
+ *
+ * `className` va al contenedor raíz y no a un `div` envolvente en la página:
+ * sin listas pendientes el componente no pinta nada, y un envolvente vacío
+ * seguiría ocupando un hueco del `gap` de la página.
  */
-export function IncomingListsCard() {
+export function IncomingListsCard({ className }: { className?: string }) {
   const { isLoaded, isSignedIn } = useAuth();
   const ready = isLoaded && isSignedIn;
   const shares = useQuery(api.lists.sharedWithMe, ready ? {} : "skip");
@@ -46,7 +51,7 @@ export function IncomingListsCard() {
     });
 
   return (
-    <div className="space-y-3">
+    <div className={cn("space-y-3", className)}>
       {visible.map((share) => (
         <IncomingListCard
           key={share.shareId}
