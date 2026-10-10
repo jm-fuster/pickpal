@@ -68,7 +68,7 @@ export function SavedIdeasCard({
               const key = group.kind === "none" ? "sin-ocasion" : group.event._id;
               return (
                 <section key={key} aria-labelledby={`ocasion-${key}`} className="space-y-3">
-                  <h3 id={`ocasion-${key}`} className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">
+                  <h3 id={`ocasion-${key}`} className="flex flex-wrap items-center gap-x-1 gap-y-1 font-sans text-sm">
                     {group.kind === "none" ? (
                       <span className="font-medium text-muted-foreground">Sin ocasión</span>
                     ) : (
