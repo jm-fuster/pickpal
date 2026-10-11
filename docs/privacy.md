@@ -6,7 +6,7 @@
 
 > **Bloqueo resuelto (20-sep-2026):** `pickpal@jorgemolinafuster.com` ya entrega, vía Cloudflare Email Routing sobre el apex `jorgemolinafuster.com` (3 MX de Cloudflare + `v=spf1 include:_spf.mx.cloudflare.net ~all`, reenvío a buzón personal). Comprobado con un envío real desde fuera del dominio. El subdominio `pickpal.jorgemolinafuster.com` sigue siendo un CNAME a Vercel y **no puede** recibir correo; no intentes ponerle MX.
 
-Última actualización: `10 de octubre de 2026`
+Última actualización: `11 de octubre de 2026`
 
 > Cuando se publique la app, este contenido debe servirse en `/privacy` (p. ej. `src/app/(legal)/privacy/page.tsx`) y enlazarse desde el footer y desde la pantalla de registro.
 
@@ -112,7 +112,12 @@ son **del propio usuario**, no de un tercero.
 - **Enlaces:** el servidor nunca abre las URLs que apunta el usuario; solo las
   guarda. No hay vista previa ni petición a la tienda: el logo se resuelve en el
   navegador contra una tabla fija de dominios.
-- **Gemini no recibe la lista.** `buildPrompt` no la lee.
+- **Gemini no recibe la lista.** `buildPrompt` no la lee. Lo que sí puede
+  llegarle es el título de un elemento que un lector pasó a su historial con
+  «Ya se lo he regalado»: desde ese momento es una entrada del historial de su
+  ficha, y `buildPrompt` envía hasta 10 entradas (§4.1). `/privacidad` lo
+  cuenta así desde el 11-oct-2026; antes decía que de la lista solo salía una
+  cifra.
 - **Correo de aviso:** si quien recibe el aviso ha guardado la lista en la
   ficha de esa persona, la tarjeta lleva cuántos elementos no ha marcado nadie.
   Solo la cifra, nunca títulos (§4).
@@ -178,7 +183,7 @@ Cuando el usuario pide recomendaciones, `buildPrompt` ([`src/app/api/recommendat
 | Notas | Sí, **texto libre íntegro** |
 | Tallas (zapato, ropa), alergias / restricciones, cosas que no le gustan | Sí |
 | Presupuesto (min/max), ocasión | Sí |
-| Historial de regalos (hasta 10: nombre, ocasión, año, reacción) | Sí — las `notes` de cada entrada del historial **no** |
+| Historial de regalos (hasta 10: nombre, ocasión, año, reacción) | Sí, incluidas las entradas que vienen de una lista compartida (§2.6) — las `notes` de cada entrada del historial **no** |
 | Categorías de ideas descartadas (`dislikedCategories`, las que el usuario ha ido rechazando) | Sí |
 | Fecha de nacimiento / edad | **No** (solo la etiqueta de la ocasión) |
 

@@ -297,10 +297,13 @@ export default function PrivacyPage() {
             elemento ni con tu cuenta.
           </p>
           <p className="text-sm text-foreground">
-            Tu lista no se envía a Google Gemini. De lo que apuntas, lo único
-            que sale de PickPal es una cifra: el correo de aviso de quien te
-            tiene en su libreta puede decir cuántas cosas de tu lista no ha
-            marcado nadie, nunca cuáles. Si cierras tu cuenta, tu lista se borra entera, con
+            Tu lista no se envía a Google Gemini. Si alguien apunta en su
+            historial que te regaló algo de ella, ese título pasa a su libreta
+            y, como el resto de su historial, puede enviarse a Google Gemini
+            cuando pida ideas para ti. Fuera de eso, de lo que apuntas solo sale
+            de PickPal una cifra: el correo de aviso de quien te tiene en su
+            libreta puede decir cuántas cosas de tu lista no ha marcado nadie,
+            nunca cuáles. Si cierras tu cuenta, tu lista se borra entera, con
             sus accesos y sus marcas, y no pasa a nadie.
           </p>
           <p className="text-sm text-foreground">
@@ -435,7 +438,7 @@ export default function PrivacyPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 10 de octubre de 2026.
+          Última actualización: 11 de octubre de 2026.
         </p>
       </main>
 

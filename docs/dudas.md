@@ -71,13 +71,13 @@ _Ninguna ahora mismo._
     el mismo en móvil. «Quitar idea» entró en él.
 
 - [x] **«Mi lista»: la lista compartida.** Construida el 10-oct-2026 sobre las
-  31 decisiones de `docs/encargo-lista.md`, que es la especificación. Lo que se
+  23 decisiones de `docs/encargo-lista.md`, que es la especificación. Lo que se
   construyó de verdad:
 
   - Tres tablas en `convex/schema.ts`: `listItems` (por dueño), `listShares`
     (dueño, lector, nombre y email del dueño, ficha asociada) y `listClaims`
     (marcas, con copia del elemento si el dueño lo borra). Todo el backend en
-    [`convex/lists.ts`](../convex/lists.ts), con 27 tests en
+    [`convex/lists.ts`](../convex/lists.ts), con 36 tests en
     `convex/lists.test.ts` que empiezan por que el dueño nunca vea las marcas.
   - Ruta `src/app/api/lista/share/route.ts` (GET: emails de quién la ve; POST:
     invitar por email), copiada del flujo de compartir fichas.

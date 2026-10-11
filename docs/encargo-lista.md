@@ -115,6 +115,14 @@ compra.
     ficha entera, y aquí el lector solo ve y marca.
 20. **Gemini no recibe la lista.** `buildPrompt` en
     `src/app/api/recommendations/route.ts` se queda como está.
+
+    **Precisado el 11-oct-2026:** «Ya se lo he regalado» (decisión 16) copia el
+    título al historial de regalos del lector, y `buildPrompt` envía ese
+    historial cuando el lector pide ideas para la ficha. La lista no llega a
+    Gemini, pero el título de un elemento regalado sí puede llegar, como
+    entrada del historial de quien regala. Se decidió contarlo en `/privacidad`
+    en lugar de quitar esas entradas del prompt, porque el historial está ahí
+    para que la IA no vuelva a proponer lo mismo.
 21. **Exportación de datos:** la del dueño incluye sus elementos y quién tiene
     acceso, pero ninguna marca; si las incluyera, bastaría descargarla para saber
     qué le van a regalar. La del lector incluye sus marcas y las listas que le han
