@@ -5,6 +5,7 @@ import {
   computeDaysUntilNextOccurrence,
   formatDayMonth,
   formatDaysUntil,
+  freeEventLabel,
   monthsWindowDays,
   nextOccurrenceDate,
 } from "./dates";
@@ -233,5 +234,35 @@ describe("closestOccasionLabel", () => {
 
   it("sin fechas devuelve vacío", () => {
     expect(closestOccasionLabel([], hoy)).toBe("");
+  });
+});
+
+describe("freeEventLabel", () => {
+  const candidates = ["Cumpleaños", "Cumpleaños (de su lista)"];
+
+  it("usa la primera si está libre", () => {
+    expect(freeEventLabel(candidates, [])).toBe("Cumpleaños");
+    expect(freeEventLabel(candidates, ["Aniversario"])).toBe("Cumpleaños");
+  });
+
+  it("pasa a la siguiente cuando la primera está cogida, sin mirar mayúsculas ni bordes", () => {
+    expect(freeEventLabel(candidates, ["Cumpleaños"])).toBe("Cumpleaños (de su lista)");
+    expect(freeEventLabel(candidates, ["  CUMPLEAÑOS "])).toBe("Cumpleaños (de su lista)");
+  });
+
+  it("numera la última cuando todas están cogidas", () => {
+    expect(freeEventLabel(candidates, ["Cumpleaños", "Cumpleaños (de su lista)"])).toBe(
+      "Cumpleaños (de su lista) 2",
+    );
+    expect(
+      freeEventLabel(candidates, ["Cumpleaños", "Cumpleaños (de su lista)", "Cumpleaños (de su lista) 2"]),
+    ).toBe("Cumpleaños (de su lista) 3");
+  });
+
+  it("recorta para caber en 40 caracteres", () => {
+    const long = ["x".repeat(40)];
+    const label = freeEventLabel(long, ["x".repeat(40)]);
+    expect(label.length).toBeLessThanOrEqual(40);
+    expect(label.endsWith(" 2")).toBe(true);
   });
 });

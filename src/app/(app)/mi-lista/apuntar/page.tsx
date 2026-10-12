@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { BackLink } from "@/components/layout/BackLink";
 import type { ListItemDraft } from "@/components/lista/ListItemForm";
 import { bookmarkletHref, readBookmarkletFragment } from "@/lib/bookmarklet";
+import { clearPendingShare, peekPendingShare } from "@/lib/pendingShare";
 import { MAX_LIST_ITEMS } from "@/lib/listLimits";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Label } from "@/components/ui/label";
@@ -22,10 +23,25 @@ const OWN = "mia";
 
 const noSubscribe = () => () => {};
 
-/** El fragmento con el que se abrió la página, leído una vez en el navegador. */
+/** Lo guardado al pedir sesión (src/lib/pendingShare.ts), si la pestaña lo permite. */
+function pendingHash(): string | null {
+  try {
+    return peekPendingShare(window.sessionStorage);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * El fragmento con el que se abrió la página, leído una vez en el navegador. Si
+ * no trae ninguno, el que se guardó al iniciar sesión: quien llegó sin sesión
+ * perdía lo que traía la dirección al pasar por la página de entrada.
+ */
 function initialFragment(): ListItemDraft | null {
-  if (typeof window === "undefined" || window.location.hash.length <= 1) return null;
-  const data = readBookmarkletFragment(window.location.hash);
+  if (typeof window === "undefined") return null;
+  const hash = window.location.hash.length > 1 ? window.location.hash : pendingHash();
+  if (!hash) return null;
+  const data = readBookmarkletFragment(hash);
   return data.title || data.url ? data : null;
 }
 
@@ -61,6 +77,13 @@ export default function BookmarkletPage() {
     // Fuera el fragmento de la barra de direcciones y del historial.
     const { hash, pathname } = window.location;
     if (hash) window.history.replaceState(null, "", pathname);
+    // Lo guardado al iniciar sesión ya se leyó al crear el estado. Se borra
+    // aquí y no allí: al montar, React puede ejecutar el inicializador dos veces.
+    try {
+      clearPendingShare(window.sessionStorage);
+    } catch {
+      // Sin sessionStorage no hay nada que borrar.
+    }
   }, []);
 
   // React no deja pintar un `javascript:` en un href: se pone a mano.

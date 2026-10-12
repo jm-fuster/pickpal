@@ -11,8 +11,13 @@ import { shareTargetFragment } from "@/lib/shareTarget";
  *
  * Va fuera de `/api` a propósito: el proxy rechaza los POST a `/api` que no
  * son del mismo origen, y el de «Compartir» llega con `Sec-Fetch-Site: none`.
- * No cambia nada en el servidor, así que no hay nada que proteger con eso; la
- * sesión sí la exige el proxy, como en cualquier ruta privada.
+ * No cambia nada en el servidor, así que no hay nada que proteger con eso.
+ *
+ * Es pública a propósito (src/proxy.ts): con la sesión caducada, un POST
+ * mandado a iniciar sesión perdería lo compartido, que va en el cuerpo. La
+ * sesión la exige la página a la que redirige, `/mi-lista/apuntar`, y el
+ * fragmento sobrevive hasta la página de entrada, que lo guarda
+ * (src/lib/pendingShare.ts) para recogerlo al volver.
  */
 export async function POST(request: Request) {
   let form: FormData | null = null;

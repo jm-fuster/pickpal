@@ -158,3 +158,23 @@ export function closestOccasionLabel(
   }
   return best?.label ?? "";
 }
+
+/**
+ * Primera etiqueta libre de una ficha: el servidor rechaza dos eventos con la
+ * misma etiqueta (sin mayúsculas ni espacios de los bordes), así que quien
+ * crea un evento por su cuenta, como «Añadir a su ficha» con el cumpleaños de
+ * una lista, elige antes entre sus candidatas. Si todas están cogidas, la
+ * última lleva un número («… 2», «… 3»), recortada para caber en 40.
+ */
+export function freeEventLabel(candidates: readonly string[], taken: readonly string[]): string {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const used = new Set(taken.map(norm));
+  const free = candidates.find((c) => !used.has(norm(c)));
+  if (free !== undefined) return free;
+  const last = candidates[candidates.length - 1] ?? "";
+  for (let n = 2; ; n++) {
+    const suffix = ` ${n}`;
+    const label = `${last.slice(0, 40 - suffix.length).trimEnd()}${suffix}`;
+    if (!used.has(norm(label))) return label;
+  }
+}

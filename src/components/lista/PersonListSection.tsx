@@ -24,7 +24,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { AddToHistoryDialog, type HistoryValues } from "@/components/people/AddToHistoryDialog";
 import { ListItemLink } from "@/components/lista/ListItemLink";
-import { closestOccasionLabel, formatDayMonth } from "@/lib/dates";
+import { closestOccasionLabel, formatDayMonth, freeEventLabel } from "@/lib/dates";
 import { userErrorMessage } from "@/lib/errors";
 import { budgetTarget, fitsBudget, formatApproxPrice } from "@/lib/price";
 import { MAX_NEW_BADGES } from "@/lib/listSeen";
@@ -167,7 +167,10 @@ function SharedListCard({
     if (!birthday) return;
     setAddingBirthday(true);
     try {
-      await createDate({ personId, label: "Cumpleaños", month: birthday.month, day: birthday.day, recurring: true });
+      // Si la ficha ya tiene un «Cumpleaños» con otra fecha (el servidor no admite
+      // dos etiquetas iguales), este entra con otro nombre en vez de fallar.
+      const label = freeEventLabel(["Cumpleaños", "Cumpleaños (de su lista)"], dates.map((d) => d.label));
+      await createDate({ personId, label, month: birthday.month, day: birthday.day, recurring: true });
       toast.success("Cumpleaños añadido a su ficha");
     } catch (err) {
       toast.error(userErrorMessage(err, "No se pudo añadir la fecha"));

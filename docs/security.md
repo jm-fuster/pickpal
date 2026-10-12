@@ -187,6 +187,7 @@ Rutas públicas actuales:
 - `/` — landing. Quien tiene sesión no llega a verla: el proxy le redirige a `/agenda` antes de servirla, para que la página pueda ser estática.
 - `/sign-in(.*)`, `/sign-up(.*)` — flujo Clerk.
 - `/privacidad` — aviso de privacidad. Debe ser legible antes de crear cuenta y por terceros que aparezcan como "ser querido" en la cuenta de un usuario.
+- `/compartir` — destino del «Compartir» de Android (`share_target`). **Pública desde el 12-oct-2026, a propósito:** llega por POST con lo compartido en el cuerpo, y un POST que el proxy mandara a iniciar sesión lo perdería. No lee nada del usuario, no escribe ni abre nada: redirige con 303 a `/mi-lista/apuntar` con los datos recortados en el fragmento, y esa página sí exige sesión (el fragmento llega hasta `/sign-in`, que lo guarda en `sessionStorage`; ver §11). Su única entrada es el cuerpo del formulario, recortado a 4.000 caracteres por campo, y todo lo que sale pasa por `readBookmarkletFragment` antes de usarse.
 - `/terminos` — términos y condiciones. Mismo motivo: la página dice "al registrarte aceptas estos términos", así que tienen que poder leerse antes de registrarse. Estuvo protegida por omisión (el default-deny la capturó) y los enlaces del footer y del sign-up llevaban a sign-in — **al añadir una página legal nueva, acordarse de esta lista**.
 
 ### 7. Borrado de cuenta (autoservicio)
@@ -410,8 +411,18 @@ a uno solo:
   nada, solo lee lo compartido (recortado a 4.000 caracteres por campo) y
   redirige con 303 a `/mi-lista/apuntar` con los datos en el fragmento, que
   pasa por la misma validación que el del marcador. POST y no GET para que el
-  enlace no quede en los registros de peticiones. Exige sesión como cualquier
-  ruta privada.
+  enlace no quede en los registros de peticiones. **Es pública** (§6): quien la
+  usa con la sesión caducada no pierde lo compartido. La sesión la exige
+  `/mi-lista/apuntar`.
+- **Sin sesión, lo del marcador y de «Compartir» se conserva en el navegador.**
+  El proxy lleva a `/sign-in` de la propia app (`signInUrl` en `clerkMiddleware`;
+  antes, sin la variable de entorno puesta, iba a la página alojada por Clerk,
+  otro dominio). El navegador mantiene el fragmento en esa redirección y
+  `StashPendingShare` lo guarda 30 minutos en `sessionStorage` solo si
+  `readBookmarkletFragment` lo acepta (los fragmentos internos de Clerk no se
+  tocan); `/mi-lista/apuntar` lo recoge al volver y lo borra. Nunca sale del
+  navegador ni se guarda en servidor, y la analítica sigue quitando los
+  fragmentos en `beforeSend`.
 - **Las fotos se sirven desde el almacenamiento de Convex**, así que la CSP
   (Report-Only) admite `https://*.convex.cloud` en `img-src`.
 - **El botón «Apuntar en PickPal» (`src/lib/bookmarklet.ts`) corre en la página

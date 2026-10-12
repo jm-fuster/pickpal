@@ -15,6 +15,13 @@ const isPublicRoute = createRouteMatcher([
   // términos", así que tienen que poder leerse *antes* de registrarse; con el
   // default-deny, el enlace del footer y del sign-up llevaba a sign-in.
   "/terminos",
+  // «Compartir» de Android (share_target del manifiesto). Llega por POST con lo
+  // compartido en el cuerpo, que el servidor nunca ve en una dirección: si el
+  // proxy lo mandara a iniciar sesión, los datos se perderían. La ruta no lee
+  // nada del usuario ni escribe nada: redirige a /mi-lista/apuntar con lo
+  // compartido en el fragmento, y esa sí exige sesión (el fragmento sobrevive
+  // hasta la página de entrada, que lo guarda: src/lib/pendingShare.ts).
+  "/compartir",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
@@ -40,6 +47,14 @@ export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {
     await auth.protect();
   }
+}, {
+  // Sin sesión, a la página de entrada de la propia app y no a la alojada por
+  // Clerk (otro dominio): solo en la propia llega el fragmento de una dirección
+  // del marcador o de «Compartir» y se puede guardar (src/lib/pendingShare.ts).
+  // Es lo mismo que fija NEXT_PUBLIC_CLERK_SIGN_IN_URL en .env.example; aquí
+  // no depende de que el entorno la tenga puesta.
+  signInUrl: "/sign-in",
+  signUpUrl: "/sign-up",
 });
 
 export const config = {

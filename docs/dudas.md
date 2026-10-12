@@ -79,8 +79,10 @@ _Ninguna ahora mismo._
     sigue del más nuevo al más antiguo.
   - **Cumpleaños**: `setBirthday` / `myBirthday` en `listAbout` (la nota pasa
     a ser opcional); `forPerson` devuelve `birthday`, y la ficha ofrece
-    «Añadir a su ficha» con `importantDates.create` (que exige etiqueta única:
-    si ya hay un «Cumpleaños» con otra fecha, sale su error).
+    «Añadir a su ficha» con `importantDates.create` (que exige etiqueta única).
+    Si la ficha ya tiene un «Cumpleaños» con otra fecha, entra como «Cumpleaños
+    (de su lista)» (`freeEventLabel`, con número si también está cogida) en vez
+    de fallar; se arregló el 12-oct-2026.
   - **Bloqueo**: `listBlocks`, `leaveAndBlock`, `myBlocks`, `unblock` y
     `listShares.hidden`. Las invitaciones de alguien bloqueado se guardan
     ocultas y devuelven `emailed` como si el correo hubiera salido (y lo apuntan
@@ -124,9 +126,16 @@ _Ninguna ahora mismo._
     cuando la lista tiene algo; «Apuntar desde la tienda» solo se enseña desde
     `md`; un CSV con cabecera reconocida se reordena a título, enlace y nota, y
     el resto de columnas (precio incluido) se descarta.
-  - **Límite conocido:** si quien pulsa el marcador no tiene la sesión iniciada,
-    el inicio de sesión de Clerk pierde el fragmento y la página se abre sin
-    los datos. La página lo dice.
+  - **Sin sesión (arreglado el 12-oct-2026):** el fragmento ya no se pierde al
+    iniciar sesión. El proxy manda a `/sign-in` de la propia app (`signInUrl`),
+    el navegador conserva el fragmento hasta allí, `StashPendingShare` lo guarda
+    30 minutos en `sessionStorage` (`src/lib/pendingShare.ts`) y
+    `/mi-lista/apuntar` lo recoge al volver y lo borra. Solo vale en la misma
+    pestaña: si la cuenta se confirma desde el enlace de un correo en otra, la
+    página se abre sin datos y sigue diciendo «entra y vuelve a pulsarlo».
+    `/compartir` pasó a ser pública (ver `security.md` §6) porque el POST de
+    Android lleva los datos en el cuerpo y un POST mandado a iniciar sesión
+    los perdía.
 
 - [x] **«Mi lista», fase 1: pegar una lista, lo que más ilusión, «Ya lo
   tengo».** Construida el 11-oct-2026 sobre el anexo de fase 1 de
