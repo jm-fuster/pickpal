@@ -38,8 +38,8 @@ describe("encodeCssUrl", () => {
   });
 });
 
-// La línea de «Mi lista» en la tarjeta del evento (docs/encargo-lista.md,
-// decisión 18): solo una cifra, nunca títulos, y nada si no hay qué contar.
+// Las líneas de «Mi lista» en la tarjeta del evento (docs/encargo-lista.md,
+// decisión 18): solo cifras, nunca títulos, y nada si no hay qué contar.
 describe("listLineHtml", () => {
   const base = { personId: "abc123" as Id<"people">, personName: "Laura" };
 
@@ -67,5 +67,39 @@ describe("listLineHtml", () => {
     expect(
       listLineHtml({ ...base, personName: "<b>Ana</b>", listUnclaimed: 2 }),
     ).toContain("&lt;b&gt;Ana&lt;/b&gt; tiene");
+  });
+
+  // La segunda cifra: lo que tiene marcado quien recibe el correo.
+  it("no pinta nada si las dos cifras son 0", () => {
+    expect(listLineHtml({ ...base, listUnclaimed: 0, listMine: 0 })).toBe("");
+  });
+
+  it("cuenta lo marcado en singular y en plural", () => {
+    expect(listLineHtml({ ...base, listMine: 1 })).toContain(
+      "Tienes 1 cosa de su lista marcada para regalarle",
+    );
+    expect(listLineHtml({ ...base, listMine: 4 })).toContain(
+      "Tienes 4 cosas de su lista marcadas para regalarle",
+    );
+  });
+
+  it("solo lo marcado: una línea, con el mismo enlace y sin la de lo libre", () => {
+    const html = listLineHtml({ ...base, listMine: 2 });
+    expect(html).not.toContain("nadie ha marcado");
+    expect(html.match(/<a /g)).toHaveLength(1);
+    expect(html).toContain(
+      'href="https://pickpal.jorgemolinafuster.com/seres-queridos/abc123#lista"',
+    );
+  });
+
+  it("con las dos cifras salen dos líneas iguales de estilo, primero lo libre", () => {
+    const html = listLineHtml({ ...base, listUnclaimed: 3, listMine: 1 });
+    const enlaces = [...html.matchAll(/<a href="([^"]+)" style="([^"]+)">([^<]+)<\/a>/g)];
+    expect(enlaces.map((m) => m[3])).toEqual([
+      "Laura tiene 3 cosas en su lista que nadie ha marcado todavía",
+      "Tienes 1 cosa de su lista marcada para regalarle",
+    ]);
+    expect(enlaces[0][1]).toBe(enlaces[1][1]);
+    expect(enlaces[0][2]).toBe(enlaces[1][2]);
   });
 });

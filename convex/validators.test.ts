@@ -15,7 +15,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
-import { ALLOWED_STORES, ALLOWED_IMAGE_KEYS } from "./validators";
+import { ALLOWED_STORES, ALLOWED_IMAGE_KEYS, validateListItemPrice } from "./validators";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -276,5 +276,22 @@ describe("update valida el parche, no lo ya guardado", () => {
         avatarUrl: LEGACY,
       }),
     ).rejects.toThrow();
+  });
+});
+
+// «Unos 40 €» de «Mi lista»: céntimos enteros entre 1 céntimo y 10.000 €. El
+// cliente manda lo que quiera, así que aquí entran los valores que un
+// `parseFloat` o una llamada directa a la API pueden dejar pasar.
+describe("validateListItemPrice", () => {
+  test("acepta céntimos enteros dentro del rango", () => {
+    for (const c of [1, 1999, 4000, 1_000_000]) {
+      expect(() => validateListItemPrice(c), String(c)).not.toThrow();
+    }
+  });
+
+  test("rechaza cero, negativos, decimales, NaN, Infinity y más de 10.000 €", () => {
+    for (const c of [0, -100, 39.5, Number.NaN, Number.POSITIVE_INFINITY, 1_000_001]) {
+      expect(() => validateListItemPrice(c), String(c)).toThrow("Precio inválido.");
+    }
   });
 });

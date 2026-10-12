@@ -1,6 +1,7 @@
 import * as z from "./zod";
 import es from "zod/v4/locales/es.js";
 import { isHttpUrl, normalizeLinkInput } from "./links";
+import { parsePriceInput } from "./price";
 import { RELATIONSHIPS } from "./options";
 
 export { REACTIONS, RELATIONSHIPS } from "./options";
@@ -103,6 +104,12 @@ export const listItemSchema = z.object({
       return link === undefined || isHttpUrl(link);
     }, "Tiene que ser una dirección web, como https://…"),
   note: z.string().max(500).optional(),
+  // En euros, como se escribe; se guarda en céntimos (src/lib/price.ts).
+  price: z
+    .string()
+    .max(20)
+    .optional()
+    .refine((v) => parsePriceInput(v) !== "invalid", "Escribe un importe, como 40 o 39,99"),
 });
 
 export type ListItemFormValues = z.infer<typeof listItemSchema>;

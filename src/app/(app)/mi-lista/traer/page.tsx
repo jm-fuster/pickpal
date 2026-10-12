@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ClipboardPaste } from "lucide-react";
+import { ClipboardPaste, FileUp } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { BackLink } from "@/components/layout/BackLink";
 import { ListItemLink } from "@/components/lista/ListItemLink";
 import { parsePastedList, type PastedList } from "@/lib/importers/pastedList";
+import { readListFile } from "@/lib/importers/fileImport";
 import {
   addPastedList,
   createPreview,
@@ -134,6 +135,23 @@ export default function ImportListPage() {
     }
   };
 
+  // Un CSV, TSV o TXT (una hoja exportada de Excel o de otra app). Se lee aquí,
+  // como lo pegado: el archivo no se sube a ningún sitio.
+  const fileInput = useRef<HTMLInputElement>(null);
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    const result = await readListFile(file);
+    if ("error" in result) {
+      setProblem(
+        result.error === "too-large"
+          ? "Ese archivo es demasiado grande. Prueba con una parte de la lista."
+          : "Solo se pueden leer archivos .csv, .tsv o .txt.",
+      );
+      return;
+    }
+    handleText(result.text);
+  };
+
   const existingKeys = new Set(existing.map((i) => dedupeKey(i.title)));
   const existingUrls = new Set(existing.flatMap((i) => (i.url ? [i.url] : [])));
   const inList = (row: PreviewRow) =>
@@ -217,8 +235,9 @@ export default function ImportListPage() {
             <Card className="border-border/60 shadow-sm">
               <CardContent className="space-y-4 p-5">
                 <p className="text-sm text-muted-foreground">
-                  Normalmente, cada línea será una cosa. Trae solo lo que te siga haciendo ilusión.
-                  Se lee en tu navegador: PickPal no entra en la otra app ni abre los enlaces.
+                  Normalmente, cada línea será una cosa. También vale un archivo .csv o .txt, como
+                  una hoja exportada de Excel. Trae solo lo que te siga haciendo ilusión. Se lee en
+                  tu navegador: PickPal no entra en la otra app ni abre los enlaces.
                 </p>
                 <Textarea
                   value=""
@@ -238,6 +257,22 @@ export default function ImportListPage() {
                     <ClipboardPaste aria-hidden />
                     Pegar
                   </Button>
+                  <Button variant="outline" onClick={() => fileInput.current?.click()}>
+                    <FileUp aria-hidden />
+                    Subir un archivo
+                  </Button>
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    accept=".csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values"
+                    className="sr-only"
+                    tabIndex={-1}
+                    aria-hidden
+                    onChange={(e) => {
+                      void onFile(e.target.files?.[0]);
+                      e.target.value = "";
+                    }}
+                  />
                   {preview && (
                     <Button variant="ghost" onClick={() => setShowPaste(false)}>
                       Cancelar

@@ -519,6 +519,24 @@ export function isAllowedListItemUrl(url: string): boolean {
   );
 }
 
+// 10.000 €. Más que eso no es «unos 40 €», es un error de teclado.
+const MAX_LIST_ITEM_PRICE_CENTS = 1_000_000;
+
+/**
+ * El precio aproximado de un elemento de la lista, en céntimos de euro. Entero
+ * para que no lleguen `NaN`, `Infinity` ni decimales de céntimo, y al menos un
+ * céntimo: «sin precio» se guarda sin el campo, no como 0.
+ */
+export function validateListItemPrice(priceCents: number) {
+  if (
+    !Number.isInteger(priceCents) ||
+    priceCents < 1 ||
+    priceCents > MAX_LIST_ITEM_PRICE_CENTS
+  ) {
+    throw new ConvexError("Precio inválido.");
+  }
+}
+
 export function validateListItemInput(input: {
   title: string;
   url?: string;

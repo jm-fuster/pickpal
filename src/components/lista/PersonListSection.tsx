@@ -26,11 +26,15 @@ import { AddToHistoryDialog, type HistoryValues } from "@/components/people/AddT
 import { ListItemLink } from "@/components/lista/ListItemLink";
 import { closestOccasionLabel } from "@/lib/dates";
 import { userErrorMessage } from "@/lib/errors";
+import { budgetTarget, fitsBudget, formatApproxPrice } from "@/lib/price";
+import { MAX_NEW_BADGES } from "@/lib/listSeen";
 import { cn } from "@/lib/utils";
+import { useNewSince } from "@/components/lista/useNewSince";
 
 type SharedList = FunctionReturnType<typeof api.lists.forPerson>[number];
 type SharedItem = SharedList["items"][number];
-type DateLike = { label: string; month: number; day: number; year?: number; recurring?: boolean };
+type Budget = { budgetMin?: number; budgetMax?: number };
+type DateLike = Budget & { label: string; month: number; day: number; year?: number; recurring?: boolean };
 type Giftable = { claimId: Id<"listClaims">; title: string };
 
 /**
@@ -44,10 +48,12 @@ export function PersonListSection({
   personId,
   personName,
   dates,
+  personBudget = {},
 }: {
   personId: Id<"people">;
   personName: string;
   dates: DateLike[];
+  personBudget?: Budget;
 }) {
   const { isLoaded, isSignedIn } = useAuth();
   const ready = isLoaded && isSignedIn;
@@ -68,6 +74,7 @@ export function PersonListSection({
           personId={personId}
           people={people ?? []}
           dates={dates}
+          personBudget={personBudget}
         />
       ))}
     </div>
@@ -80,12 +87,14 @@ function SharedListCard({
   personId,
   people,
   dates,
+  personBudget,
 }: {
   list: SharedList;
   name: string;
   personId: Id<"people">;
   people: Array<{ _id: Id<"people">; name: string }>;
   dates: DateLike[];
+  personBudget: Budget;
 }) {
   const claim = useMutation(api.lists.claim);
   const unclaim = useMutation(api.lists.unclaim);
@@ -147,6 +156,16 @@ function SharedListCard({
   const favorites = list.items.filter((i) => i.favorite);
   const rest = list.items.filter((i) => !i.favorite);
   const groupId = `lista-${list.shareId}`;
+  const fresh = useNewSince(list.shareId, list.items);
+  const badgeNew = fresh.size > 0 && fresh.size <= MAX_NEW_BADGES;
+
+  // Una sola frase, sin juzgar cada fila: cuántas cosas con precio caben en
+  // lo que pensabas gastar. Se calcula aquí; tu presupuesto no sale de tu
+  // navegador ni llega a la dueña.
+  const target = budgetTarget(dates, personBudget);
+  const fitting = target
+    ? list.items.filter((i) => i.priceCents !== null && fitsBudget(i.priceCents, target.budget)).length
+    : 0;
 
   const renderItem = (item: SharedItem) => (
     <li
@@ -157,8 +176,20 @@ function SharedListCard({
         <div className="min-w-0 space-y-1">
           <p className={cn("font-medium leading-snug", item.state === "taken" && "text-muted-foreground")}>
             {item.title}
+            {badgeNew && fresh.has(item._id) && (
+              <Badge variant="outline" className="ml-2 align-middle text-muted-foreground">
+                Nuevo
+              </Badge>
+            )}
           </p>
-          {item.url && <ListItemLink url={item.url} />}
+          {(item.priceCents !== null || item.url) && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {item.priceCents !== null && (
+                <span className="text-xs text-muted-foreground">{formatApproxPrice(item.priceCents)}</span>
+              )}
+              {item.url && <ListItemLink url={item.url} />}
+            </div>
+          )}
           {item.note && (
             <p className="whitespace-pre-line text-xs text-muted-foreground">{item.note}</p>
           )}
@@ -237,6 +268,23 @@ function SharedListCard({
             Lo que {name} ha apuntado que le haría ilusión. No ve lo que marcas.
           </p>
         </div>
+
+        {list.about && (
+          <p className="whitespace-pre-line text-sm text-muted-foreground">
+            <span className="text-foreground">{name}:</span> «{list.about}»
+          </p>
+        )}
+        {fresh.size > MAX_NEW_BADGES && (
+          <p className="text-sm text-muted-foreground">
+            Ha apuntado {fresh.size} cosas desde la última vez que la miraste.
+          </p>
+        )}
+        {fitting > 0 && target && (
+          <p className="text-sm text-muted-foreground">
+            {fitting === 1 ? "1 de sus cosas encaja" : `${fitting} de sus cosas encajan`}{" "}
+            {target.label ? `en lo que pensabas gastar para ${target.label}` : `en el presupuesto que tienes para ${name}`}.
+          </p>
+        )}
 
         {list.items.length === 0 ? (
           <p className="text-sm text-muted-foreground">Todavía no ha apuntado nada.</p>

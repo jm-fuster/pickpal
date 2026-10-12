@@ -217,6 +217,19 @@ export default defineSchema({
     // es una edición del elemento, y quien lo había marcado no tiene por qué
     // ver «lo ha cambiado».
     favorite: v.optional(v.boolean()),
+    // «Unos 40 €»: precio aproximado en céntimos de euro, entero entre 1 y
+    // 1.000.000 (`validateListItemPrice`). Vacío = sin precio. Lo escribe el
+    // dueño a mano; el servidor nunca lo saca del enlace (decisión 3).
+    priceCents: v.optional(v.number()),
+  }).index("by_owner", ["ownerClerkUserId"]),
+
+  // «Una nota para quien te regala»: un texto del dueño para todos sus
+  // lectores (tallas, «nada de plástico»…). Como mucho una fila por dueño, que
+  // `lists.setAbout` reescribe o borra si llega vacía. Se lee con el mismo
+  // permiso que la lista (`listShares`), nunca por la ficha.
+  listAbout: defineTable({
+    ownerClerkUserId: v.string(),
+    note: v.string(),
   }).index("by_owner", ["ownerClerkUserId"]),
 
   // Quién puede leer cada lista. El acceso se comprueba siempre contra esta

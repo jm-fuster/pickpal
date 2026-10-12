@@ -122,7 +122,7 @@ export const mine = query({
     // los datos para saber qué te van a regalar (decisión 21 de
     // docs/encargo-lista.md). Una marca es un dato de quien la hace, y sale en
     // su exportación, en `marcasEnListasDeOtros`.
-    const [elementosDeMiLista, quienVeMiLista, listasQueMeComparten, misMarcas] =
+    const [elementosDeMiLista, quienVeMiLista, listasQueMeComparten, misMarcas, miNota] =
       await Promise.all([
         ctx.db
           .query("listItems")
@@ -140,6 +140,11 @@ export const mine = query({
           .query("listClaims")
           .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
           .collect(),
+        // «Una nota para quien te regala»: como mucho una fila por dueño.
+        ctx.db
+          .query("listAbout")
+          .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", clerkUserId))
+          .first(),
       ]);
     // Avisos por correo de «Mi lista»: cuándo se avisó a quien invitaste y
     // cuándo te avisaron a ti. Se guardan solo para el tope de uno cada 30 días.
@@ -229,7 +234,9 @@ export const mine = query({
         "(no se incluye su contenido completo, solo que las ves). " +
         "\"miLista\" es lo que has apuntado que te haría ilusión y con quién " +
         "la compartes; no incluye qué ha marcado nadie para regalarte. " +
-        "\"loQueMasIlusionTeHaria\" dice si lo pusiste en ese grupo. " +
+        "\"loQueMasIlusionTeHaria\" dice si lo pusiste en ese grupo; " +
+        "\"precioAproximadoEuros\" va en euros, no en céntimos; " +
+        "\"notaParaQuienTeRegala\" es la nota que ven quienes leen tu lista. " +
         "\"marcasEnListasDeOtros\" es lo que has marcado tú en listas ajenas; " +
         "\"yaLoTiene\" dice si su dueño lo quitó porque ya lo tenía.",
       usuario: {
@@ -246,9 +253,12 @@ export const mine = query({
           enlace: i.url ?? null,
           nota: i.note ?? null,
           loQueMasIlusionTeHaria: i.favorite === true,
+          // En euros y no en céntimos, como lo escribiste: «unos 40 €».
+          precioAproximadoEuros: i.priceCents !== undefined ? i.priceCents / 100 : null,
           _creationTime: i._creationTime,
           editadoEn: i.editedAt ?? null,
         })),
+        notaParaQuienTeRegala: miNota?.note ?? null,
         // Igual que `compartidoCon` de las fichas: el `clerkUserId` de cada
         // fila es el dato, a quién le diste acceso.
         compartidaCon: quienVeMiLista.map((s) => ({

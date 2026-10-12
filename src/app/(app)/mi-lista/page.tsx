@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { BookHeart, ClipboardPaste, Ellipsis, PencilLine, Trash2 } from "lucide-react";
+import { BookHeart, Bookmark, ClipboardPaste, Ellipsis, PencilLine, Trash2 } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -19,7 +19,9 @@ import { ListItemLink } from "@/components/lista/ListItemLink";
 import { ListReaders } from "@/components/lista/ListReaders";
 import { userErrorMessage } from "@/lib/errors";
 import { ITEMS_COUNTER_FROM, MAX_LIST_FAVORITES, MAX_LIST_ITEMS } from "@/lib/listLimits";
+import { formatApproxPrice } from "@/lib/price";
 import { cn } from "@/lib/utils";
+import { AboutNote } from "@/components/lista/AboutNote";
 
 // El formulario (react-hook-form + zod) solo aparece al apuntar o editar algo.
 // Va en su propio chunk, que se pide al montar la página: llega mucho antes de
@@ -163,7 +165,14 @@ export default function MyListPage() {
         >
           <div className="min-w-0 flex-1 space-y-1">
             <p className="font-medium leading-snug">{item.title}</p>
-            {item.url && <ListItemLink url={item.url} />}
+            {(item.priceCents !== null || item.url) && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {item.priceCents !== null && (
+                  <span className="text-xs text-muted-foreground">{formatApproxPrice(item.priceCents)}</span>
+                )}
+                {item.url && <ListItemLink url={item.url} />}
+              </div>
+            )}
             {item.note && (
               <p className="whitespace-pre-line text-xs text-muted-foreground">{item.note}</p>
             )}
@@ -246,6 +255,8 @@ export default function MyListPage() {
                 )}
               </div>
 
+              <AboutNote />
+
               {adding ? (
                 <ListItemForm
                   onDone={(addedId) => {
@@ -260,13 +271,23 @@ export default function MyListPage() {
               ) : (
                 <div className="space-y-2">
                   <AddRowButton onClick={() => setAdding(true)}>Apuntar algo</AddRowButton>
-                  <Link
-                    href="/mi-lista/traer"
-                    className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-                  >
-                    <ClipboardPaste className="size-3.5" aria-hidden />
-                    Pegar una lista
-                  </Link>
+                  <div className="flex flex-wrap gap-x-5 gap-y-1">
+                    <Link
+                      href="/mi-lista/traer"
+                      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+                    >
+                      <ClipboardPaste className="size-3.5" aria-hidden />
+                      Pegar una lista
+                    </Link>
+                    {/* Solo en ordenador: en el móvil no hay barra de marcadores. */}
+                    <Link
+                      href="/mi-lista/apuntar"
+                      className="hidden items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline md:inline-flex"
+                    >
+                      <Bookmark className="size-3.5" aria-hidden />
+                      Apuntar desde la tienda
+                    </Link>
+                  </div>
                 </div>
               )}
 

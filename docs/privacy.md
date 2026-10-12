@@ -6,7 +6,7 @@
 
 > **Bloqueo resuelto (20-sep-2026):** `pickpal@jorgemolinafuster.com` ya entrega, vía Cloudflare Email Routing sobre el apex `jorgemolinafuster.com` (3 MX de Cloudflare + `v=spf1 include:_spf.mx.cloudflare.net ~all`, reenvío a buzón personal). Comprobado con un envío real desde fuera del dominio. El subdominio `pickpal.jorgemolinafuster.com` sigue siendo un CNAME a Vercel y **no puede** recibir correo; no intentes ponerle MX.
 
-Última actualización: `11 de octubre de 2026`
+Última actualización: `12 de octubre de 2026`
 
 > Cuando se publique la app, este contenido debe servirse en `/privacy` (p. ej. `src/app/(legal)/privacy/page.tsx`) y enlazarse desde el footer y desde la pantalla de registro.
 
@@ -58,6 +58,7 @@ El usuario introduce información sobre personas de su entorno (amigos, familia,
 - **No usamos cookies analíticas, publicitarias ni de terceros.** La analítica de uso se hace con **Vercel Web Analytics**, sin cookies y con métricas agregadas.
 - **Que no use cookies no la saca del art. 22.2 LSSI.** Según las Directrices 2/2023 del CEPD, también cuenta un script que lee información del dispositivo y la envía, y el de Vercel manda cada visita. Lo que la hace defendible sin banner es el criterio de la [guía de cookies de la AEPD](https://www.aepd.es/sites/default/files/2020-07/guia-cookies.pdf) (2023) para la medición propia, agregada y con fines estadísticos: bajo riesgo si se informa y se deja negarse. Se informa en `/privacidad` («Cookies»). Para negarse hay dos vías desde el 27-sep-2026: el interruptor «Contar mis visitas» de esa misma sección ([`AnalyticsOptOut`](../src/components/analytics-opt-out.tsx)) y las señales Global Privacy Control y Do Not Track del navegador. En cualquiera de los dos casos, `beforeSend` en [`src/components/analytics.tsx`](../src/components/analytics.tsx) descarta la visita. Antes, este punto decía que la analítica «no almacena ni accede a información en el dispositivo» y que por eso no necesitaba nada; era la conclusión equivocada.
 - **El interruptor guarda su estado en `localStorage`** (clave `pickpal-analytics-opt-out`), solo en ese navegador. Guardarlo no requiere consentimiento: es estrictamente necesario para un servicio que el usuario pide expresamente, que es que no se le cuente.
+- **«Nuevo» en las listas recibidas** (desde el 12-oct-2026) guarda en `localStorage` la fecha de alta de lo último visto de cada lista (claves `pickpal:lista-vista:…`). Es parte de la función que el usuario usa al abrir la lista y no sale del navegador, así que tampoco requiere consentimiento; se cuenta en `/privacidad` («Tu lista» y «Cookies»).
 - Si en el futuro se añade analítica basada en cookies (Plausible con cookies, GA, etc.) o publicidad, habrá que añadir banner de consentimiento y actualizar este documento.
 
 ### 2.5 Compartir fichas entre usuarios de PickPal
@@ -120,8 +121,20 @@ son **del propio usuario**, no de un tercero.
   cuenta así desde el 11-oct-2026; antes decía que de la lista solo salía una
   cifra.
 - **Correo de aviso:** si quien recibe el aviso ha guardado la lista en la
-  ficha de esa persona, la tarjeta lleva cuántos elementos no ha marcado nadie.
-  Solo la cifra, nunca títulos (§4).
+  ficha de esa persona, la tarjeta lleva cuántos elementos no ha marcado nadie
+  y, desde el 12-oct-2026, cuántos ha marcado él para regalarle. Solo las dos
+  cifras, nunca títulos (§4).
+- **Fase 2 (12-oct-2026):** precio aproximado por elemento
+  (`listItems.priceCents`, en euros); una nota del dueño para sus lectores
+  (`listAbout`, una fila por dueño, que se borra con la cuenta y sale en su
+  exportación); «Lo que vas a regalar», que reúne para el lector sus propias
+  marcas; y «Nuevo», que se guarda solo en el `localStorage` del lector (la
+  fecha de alta de lo último que vio, con una clave que lleva un resumen de su
+  id, no el id). La comparación del precio con el presupuesto de la ficha se
+  hace en el navegador del lector. El botón «Apuntar en PickPal» lee la página
+  de la tienda en el navegador del usuario y pasa los datos en el fragmento de
+  la URL, que no llega al servidor ni a la analítica (`beforeSend` lo quita);
+  PickPal sigue sin abrir ningún enlace.
 - **Correo de invitación (desde el 10-oct-2026):** al conceder un acceso nuevo,
   el lector recibe un correo con el nombre y el email del dueño y un enlace a
   la app; nada de la lista. Como mucho uno cada 30 días por pareja de dueño y
@@ -176,7 +189,7 @@ Compartimos datos con los siguientes proveedores que actúan como encargados:
 | [Convex](https://convex.dev) | Base de datos y backend | EE. UU. (el deployment de producción está en la región por defecto; el de desarrollo, en `eu-west-1`) | DPA incorporado a sus términos, con las SCCs incorporadas por referencia |
 | [Google (Gemini API)](https://ai.google.dev) | Generación de recomendaciones | EE. UU. | DPA de Google como encargado («Data Processing Addendum for Products Where Google is a Data Processor»), que Google aplica a quien usa la API desde el EEE (§4.1). Google LLC está adherida al EU-US DPF |
 | [Vercel](https://vercel.com) | Hosting de la web y analítica de uso *cookieless* (Vercel Web Analytics) | EE. UU. | Adherida al EU-US DPF, así que la transferencia está cubierta |
-| [Resend](https://resend.com) | Envío de los correos de aviso | EE. UU. | DPA vinculante al aceptar sus términos, con las SCCs incorporadas; además, adherida al EU-US DPF. Recibe el email del usuario, el **nombre del ser querido**, el evento, la fecha y la URL del avatar (ver 4.3) y, si el usuario guardó en esa ficha la lista que le compartió esa persona, cuántos elementos no ha marcado nadie (§2.6). Para el aviso de lista compartida, el email del lector y el nombre y el email del dueño (§2.6) |
+| [Resend](https://resend.com) | Envío de los correos de aviso | EE. UU. | DPA vinculante al aceptar sus términos, con las SCCs incorporadas; además, adherida al EU-US DPF. Recibe el email del usuario, el **nombre del ser querido**, el evento, la fecha y la URL del avatar (ver 4.3) y, si el usuario guardó en esa ficha la lista que le compartió esa persona, cuántos elementos no ha marcado nadie y cuántos ha marcado él (§2.6). Para el aviso de lista compartida, el email del lector y el nombre y el email del dueño (§2.6) |
 | [Pexels](https://www.pexels.com) | Fotos de stock que ilustran las ideas de regalo | EE. UU. | Solo recibe búsquedas genéricas en inglés (server-side) y la IP del navegador al cargar las fotos (ver 4.2) |
 | [Brandfetch](https://brandfetch.com) | Resolver la web oficial de las marcas favoritas + servir sus logos | EE. UU. | Solo recibe el **nombre de la marca** (server-side) y la IP del navegador al cargar el logo (ver 4.2) |
 | [DiceBear](https://www.dicebear.com) | Avatares ilustrados de los seres queridos | UE | Recibe los rasgos elegidos para el dibujo (en el query string) y la IP del navegador (ver 4.2) |

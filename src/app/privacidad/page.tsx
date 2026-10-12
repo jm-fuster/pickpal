@@ -158,8 +158,8 @@ export default function PrivacyPage() {
               que te avisa de que alguien te ha compartido su lista. Para los
               primeros recibe tu email, el nombre del ser querido, el evento y
               su fecha y, si esa persona te ha compartido su lista, cuántas
-              cosas de ella no ha marcado nadie todavía (la cifra, nunca cuáles
-              son). Para el segundo, tu email y el nombre y el email de quien
+              cosas de ella no ha marcado nadie todavía y cuántas has marcado
+              tú para regalarle (las cifras, nunca cuáles son). Para el segundo, tu email y el nombre y el email de quien
               te la comparte.
             </li>
             <li>
@@ -274,8 +274,9 @@ export default function PrivacyPage() {
           <h2 className="text-xl font-medium">Tu lista</h2>
           <p className="text-sm text-foreground">
             En &laquo;Mi lista&raquo; apuntas lo que te haría ilusión recibir:
-            qué es y, si quieres, un enlace, una nota y si es de lo que más
-            ilusión te haría (hasta cinco cosas). Si traes una lista pegada de
+            qué es y, si quieres, un enlace, un precio aproximado, una nota y
+            si es de lo que más ilusión te haría (hasta cinco cosas). También
+            puedes dejar una nota para todos los que la leen. Si traes una lista pegada de
             otra app, de una nota o de un mensaje, se lee en tu navegador: a
             PickPal solo llega lo que eliges apuntar. Solo la ven las
             personas con cuenta en PickPal a las que tú invitas, hasta un
@@ -283,7 +284,10 @@ export default function PrivacyPage() {
             quién se la comparte. Ninguna sabe quién más la lee. Al invitar a
             alguien le llega un correo que le avisa, con tu nombre y tu email:
             como mucho uno cada 30 días por persona, aunque vuelvas a invitarla.
-            PickPal nunca abre los enlaces que apuntas: solo los guarda.
+            PickPal nunca abre los enlaces que apuntas: solo los guarda. Si
+            usas el botón &laquo;Apuntar en PickPal&raquo; en una tienda, es tu
+            navegador el que lee esa página y rellena el formulario; a PickPal
+            solo llega lo que apuntas.
           </p>
           <p className="text-sm text-foreground">
             Quien la lee puede marcar lo que va a regalarte.{" "}
@@ -304,11 +308,18 @@ export default function PrivacyPage() {
             Tu lista no se envía a Google Gemini. Si alguien apunta en su
             historial que te regaló algo de ella, ese título pasa a su libreta
             y, como el resto de su historial, puede enviarse a Google Gemini
-            cuando pida ideas para ti. Fuera de eso, de lo que apuntas solo sale
-            de PickPal una cifra: el correo de aviso de quien te tiene en su
-            libreta puede decir cuántas cosas de tu lista no ha marcado nadie,
-            nunca cuáles. Si cierras tu cuenta, tu lista se borra entera, con
+            cuando pida ideas para ti. Fuera de eso, de lo que apuntas solo
+            salen de PickPal dos cifras: el correo de aviso de quien te tiene en
+            su libreta puede decir cuántas cosas de tu lista no ha marcado
+            nadie y cuántas ha marcado esa persona, nunca cuáles. Si cierras tu cuenta, tu lista se borra entera, con
             sus accesos y sus marcas, y no pasa a nadie.
+          </p>
+          <p className="text-sm text-foreground">
+            En las listas que te comparten, tu navegador recuerda qué fue lo
+            último que viste de cada una para señalarte lo nuevo. Se guarda
+            solo en ese navegador, no llega a PickPal y quien escribió la lista
+            no sabe cuándo la miras. El precio que veas en su lista se compara
+            con tu presupuesto también en tu navegador.
           </p>
           <p className="text-sm text-foreground">
             Si alguien te comparte su lista, te llega un correo que te avisa
@@ -323,7 +334,9 @@ export default function PrivacyPage() {
           <p className="text-sm text-foreground">
             Solo usamos cookies técnicas necesarias para mantener tu sesión
             iniciada (las gestiona Clerk). No usamos cookies de publicidad ni de
-            seguimiento, así que no hace falta un banner de cookies.
+            seguimiento, así que no hace falta un banner de cookies. Tu
+            navegador también guarda, sin cookies, el interruptor de aquí abajo
+            y lo último que viste de cada lista que te comparten.
           </p>
           <p className="text-sm text-foreground">
             La analítica de Vercel funciona sin cookies y solo cuenta visitas
@@ -442,7 +455,7 @@ export default function PrivacyPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 11 de octubre de 2026.
+          Última actualización: 12 de octubre de 2026.
         </p>
       </main>
 

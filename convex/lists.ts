@@ -3,7 +3,7 @@ import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { requireUser } from "./auth";
 import { checkAndIncrement } from "./rateLimit";
-import { validateListItemInput } from "./validators";
+import { validateListItemInput, validateListItemPrice } from "./validators";
 import { INVITE_LOOKUP_DAILY_LIMIT, personHasAccess } from "./personShares";
 import { internal } from "./_generated/api";
 
@@ -13,11 +13,12 @@ import { internal } from "./_generated/api";
  * docs/encargo-lista.md.
  *
  * Hay tres públicos y cada función sirve solo a uno:
- * - **El dueño** ve sus elementos y a quién se los ha compartido. Nada de lo
- *   que le llega lee `listClaims` (decisión 7).
- * - **El lector** ve la lista por el permiso que le dio el dueño
+ * - **El dueño** ve sus elementos, su «nota para quien te regala» y a quién se
+ *   los ha compartido. Nada de lo que le llega lee `listClaims` (decisión 7).
+ * - **El lector** ve la lista y la nota por el permiso que le dio el dueño
  *   (`listShares`), nunca por tener acceso a la ficha a la que la asoció
- *   (decisión 12). Ve qué está cogido, pero no por quién (decisión 13).
+ *   (decisión 12). Ve qué está cogido, pero no por quién (decisión 13), y en
+ *   «Lo que vas a regalar» solo sus propias marcas.
  * - **Nadie más** ve nada, ni siquiera que la lista existe.
  */
 
@@ -38,6 +39,11 @@ const MAX_OWNER_NAME = 80;
 const MAX_SHARES_READ = 100;
 // Como mucho un correo de aviso por pareja (dueño, lector) en este plazo.
 export const INVITE_EMAIL_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
+// «Una nota para quien te regala»: unas líneas, no una carta.
+export const MAX_ABOUT_LENGTH = 300;
+// «Lo que vas a regalar»: tus marcas en todas las listas que te comparten.
+// Cada lista aporta como mucho una por elemento, así que se acota la lectura.
+const MAX_GIFTS_READ = 200;
 
 // ─── Helpers de acceso ───────────────────────────────────────────────────────
 
@@ -148,6 +154,14 @@ async function claimOf(ctx: QueryCtx | MutationCtx, itemId: Id<"listItems">) {
     .query("listClaims")
     .withIndex("by_item", (q) => q.eq("itemId", itemId))
     .first();
+}
+
+/** La «nota para quien te regala» de un dueño, como mucho una (`setAbout`). */
+async function aboutOf(ctx: QueryCtx | MutationCtx, ownerClerkUserId: string) {
+  return ctx.db
+    .query("listAbout")
+    .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", ownerClerkUserId))
+    .unique();
 }
 
 /**
@@ -297,7 +311,43 @@ export const myItems = query({
       url: i.url,
       note: i.note,
       favorite: i.favorite === true,
+      priceCents: i.priceCents ?? null,
     }));
+  },
+});
+
+/** Tu «nota para quien te regala», o `null` si no has escrito ninguna. */
+export const myAbout = query({
+  args: {},
+  handler: async (ctx) => {
+    const clerkUserId = await requireUser(ctx);
+    return (await aboutOf(ctx, clerkUserId))?.note ?? null;
+  },
+});
+
+/**
+ * Escribe, cambia o borra tu «nota para quien te regala». Vacía (o solo
+ * espacios) borra la fila. No lleva cubo de límite diario: reescribe siempre
+ * la misma fila, así que repetirla no llena nada (docs/security.md §4). No
+ * toca `editedAt` de ningún elemento: a quien había marcado algo no le salta
+ * «lo ha cambiado» por cambiar la nota.
+ */
+export const setAbout = mutation({
+  args: { note: v.string() },
+  handler: async (ctx, args) => {
+    const clerkUserId = await requireUser(ctx);
+    const note = args.note.trim();
+    if (note.length > MAX_ABOUT_LENGTH) {
+      throw new ConvexError("La nota es demasiado larga.");
+    }
+    const existing = await aboutOf(ctx, clerkUserId);
+    if (note.length === 0) {
+      if (existing) await ctx.db.delete(existing._id);
+    } else if (existing) {
+      if (existing.note !== note) await ctx.db.patch(existing._id, { note });
+    } else {
+      await ctx.db.insert("listAbout", { ownerClerkUserId: clerkUserId, note });
+    }
   },
 });
 
@@ -327,11 +377,13 @@ export const addItem = mutation({
     title: v.string(),
     url: v.optional(v.string()),
     note: v.optional(v.string()),
+    priceCents: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { priceCents, ...args }) => {
     const clerkUserId = await requireUser(ctx);
     const item = normalizeItem(args);
     validateListItemInput(item);
+    if (priceCents !== undefined) validateListItemPrice(priceCents);
 
     const existing = await ownerItems(ctx, clerkUserId);
     if (existing.length >= MAX_ITEMS_PER_LIST) {
@@ -350,6 +402,7 @@ export const addItem = mutation({
     return ctx.db.insert("listItems", {
       ownerClerkUserId: clerkUserId,
       ...item,
+      priceCents,
     });
   },
 });
@@ -425,31 +478,43 @@ export const importItems = mutation({
   },
 });
 
+/**
+ * Edita un elemento. `priceCents` tiene tres estados: sin el campo se queda el
+ * precio guardado, `null` lo quita y un número lo cambia. Así una pestaña con
+ * el código de antes del precio, que no lo manda, no lo borra al guardar.
+ */
 export const updateItem = mutation({
   args: {
     id: v.id("listItems"),
     title: v.string(),
     url: v.optional(v.string()),
     note: v.optional(v.string()),
+    priceCents: v.optional(v.union(v.number(), v.null())),
   },
-  handler: async (ctx, { id, ...fields }) => {
+  handler: async (ctx, { id, priceCents, ...fields }) => {
     const clerkUserId = await requireUser(ctx);
     const existing = await assertOwnItem(ctx, id, clerkUserId);
     const item = normalizeItem(fields);
     validateListItemInput(item);
+    if (typeof priceCents === "number") validateListItemPrice(priceCents);
+    // `undefined` = no tocarlo; `null` se guarda sin el campo.
+    const price = priceCents === undefined ? undefined : { priceCents: priceCents ?? undefined };
 
     // Guardar sin cambiar nada no cuenta como edición: si no, quien lo había
-    // marcado vería «lo ha cambiado» sin que nada cambiara (decisión 15).
+    // marcado vería «lo ha cambiado» sin que nada cambiara (decisión 15). El
+    // precio solo cuenta si ha llegado.
     if (
       item.title === existing.title &&
       item.url === existing.url &&
-      item.note === existing.note
+      item.note === existing.note &&
+      (price === undefined || price.priceCents === existing.priceCents)
     ) {
       return;
     }
     // `undefined` en un patch borra el campo: vaciar el enlace o la nota lo
-    // quita de verdad. `favorite` no está en `item`, así que editar no lo toca.
-    await ctx.db.patch(id, { ...item, editedAt: Date.now() });
+    // quita de verdad. Por eso el precio solo entra en el patch si ha llegado.
+    // `favorite` no está en `item`, así que editar no lo toca.
+    await ctx.db.patch(id, { ...item, ...price, editedAt: Date.now() });
   },
 });
 
@@ -592,6 +657,10 @@ export const sharedWithMe = query({
  * diste por regalado · `taken` lo regala otra persona, sin decir quién.
  * `favorite`: está en «Lo que más ilusión le haría». En `removed`, `reason`
  * es `"got"` si el dueño lo quitó con «Ya lo tengo».
+ * `addedAt`: cuándo lo apuntó, para que la página marque lo «Nuevo». Solo lo
+ * recibe quien lee; al dueño no le hace falta.
+ * `about`: la «nota para quien te regala» del dueño, por el mismo permiso que
+ * el resto de la lista.
  */
 export const forPerson = query({
   args: { personId: v.id("people") },
@@ -620,6 +689,8 @@ export const forPerson = query({
           url: item.url,
           note: item.note,
           favorite: item.favorite === true,
+          priceCents: item.priceCents ?? null,
+          addedAt: item._creationTime,
           state: !claim
             ? ("free" as const)
             : !mine
@@ -659,11 +730,87 @@ export const forPerson = query({
         shareId: share._id,
         ownerName: share.ownerName ?? null,
         ownerEmail: share.ownerEmail ?? null,
+        about: (await aboutOf(ctx, share.ownerClerkUserId))?.note ?? null,
         items: itemViews,
         removed,
       });
     }
     return lists;
+  },
+});
+
+/**
+ * «Lo que vas a regalar»: lo que has marcado con «Lo regalo yo» y aún no has
+ * dado por regalado, en todas las listas que te comparten. Solo para quien
+ * lee: sale de tus propias marcas (`by_reader`), nunca de las de otros, y no
+ * dice nada de quién más lee cada lista.
+ *
+ * Una marca solo sale si sigues teniendo el permiso del dueño. Perderlo ya
+ * borra tus marcas (decisión 17), pero se vuelve a mirar aquí para no fiarlo
+ * todo a ese borrado. `personId` es la ficha a la que asociaste la lista si
+ * todavía la ves, igual que en `sharedWithMe`. Un elemento que el dueño quitó
+ * sale con `removed` y el título de la copia; `reason` es `"got"` si lo quitó
+ * con «Ya lo tengo».
+ */
+export const myGifts = query({
+  args: {},
+  handler: async (ctx) => {
+    const clerkUserId = await requireUser(ctx);
+    const claims = await ctx.db
+      .query("listClaims")
+      .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
+      .take(MAX_GIFTS_READ);
+
+    // Una lectura por dueño, no por marca.
+    type Lista = {
+      ownerName: string | null;
+      ownerEmail: string | null;
+      personId: Id<"people"> | null;
+      personName: string | null;
+    };
+    const listas = new Map<string, Lista | null>();
+    const listaDe = async (ownerClerkUserId: string) => {
+      if (listas.has(ownerClerkUserId)) return listas.get(ownerClerkUserId)!;
+      const share = await findShare(ctx, ownerClerkUserId, clerkUserId);
+      let lista: Lista | null = null;
+      if (share) {
+        const personId = await validPersonId(ctx, share);
+        const person = personId ? await ctx.db.get(personId) : null;
+        lista = {
+          ownerName: share.ownerName ?? null,
+          ownerEmail: share.ownerEmail ?? null,
+          personId,
+          personName: person?.name ?? null,
+        };
+      }
+      listas.set(ownerClerkUserId, lista);
+      return lista;
+    };
+
+    const gifts = [];
+    for (const c of claims) {
+      if (c.status !== "marked") continue;
+      const lista = await listaDe(c.ownerClerkUserId);
+      if (!lista) continue;
+      const item = c.itemId ? await ctx.db.get(c.itemId) : null;
+      const removed = c.itemId === undefined;
+      const title = item?.title ?? c.snapshot?.title;
+      if (title === undefined) continue;
+      gifts.push({
+        claimId: c._id,
+        title,
+        url: (removed ? c.snapshot?.url : item?.url) ?? null,
+        removed,
+        reason: removed ? (c.snapshot?.reason ?? null) : null,
+        ...lista,
+      });
+    }
+
+    const quien = (g: Lista) => g.personName ?? g.ownerName ?? g.ownerEmail ?? "";
+    return gifts.sort(
+      (a, b) =>
+        quien(a).localeCompare(quien(b), "es") || a.title.localeCompare(b.title, "es"),
+    );
   },
 });
 
@@ -801,8 +948,43 @@ export async function countUnclaimedForReader(
 }
 
 /**
+ * Cuántas cosas de las listas que `readerClerkUserId` asoció a `personId` tiene
+ * marcadas ese mismo lector y aún no ha dado por regalado. Es la segunda cifra
+ * del email de recordatorio: cuenta solo sus propias marcas, nunca las de otros
+ * lectores, y sin títulos. Las de elementos que el dueño quitó no cuentan: ya
+ * no hay nada que regalarle de ahí.
+ */
+export async function countMarkedByReader(
+  ctx: QueryCtx,
+  personId: Id<"people">,
+  readerClerkUserId: string,
+): Promise<number> {
+  const shares = await ctx.db
+    .query("listShares")
+    .withIndex("by_person", (q) => q.eq("personId", personId))
+    .collect();
+  let count = 0;
+  for (const share of shares) {
+    if (share.readerClerkUserId !== readerClerkUserId) continue;
+    const claims = await ctx.db
+      .query("listClaims")
+      .withIndex("by_owner_and_reader", (q) =>
+        q
+          .eq("ownerClerkUserId", share.ownerClerkUserId)
+          .eq("readerClerkUserId", readerClerkUserId),
+      )
+      .collect();
+    for (const c of claims) {
+      if (c.itemId !== undefined && c.status === "marked") count++;
+    }
+  }
+  return count;
+}
+
+/**
  * Todo lo de las listas al borrar la cuenta de `clerkUserId` (decisión 22).
- * Como dueño se va su lista entera, sin transferir: una ficha puede seguir
+ * Como dueño se va su lista entera, con su «nota para quien te regala», sin
+ * transferir: una ficha puede seguir
  * teniendo sentido para otra persona, una lista habla de quien la escribió.
  * Como lector se van sus permisos y sus marcas. Las entradas de historial que
  * creó a partir de la lista son de la ficha y se quedan.
@@ -832,6 +1014,13 @@ export async function deleteListDataForUser(
     for (const c of claims) await ctx.db.delete(c._id);
     await ctx.db.delete(item._id);
   }
+
+  // Su «nota para quien te regala» (como mucho una fila).
+  const about = await ctx.db
+    .query("listAbout")
+    .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", clerkUserId))
+    .collect();
+  for (const a of about) await ctx.db.delete(a._id);
 
   const readerShares = await ctx.db
     .query("listShares")

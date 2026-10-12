@@ -10,12 +10,22 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { listItemSchema, type ListItemFormValues } from "@/lib/schemas";
 import { looksLikeUrl, normalizeLinkInput, prepareListLink, type PreparedLink } from "@/lib/links";
 import { userErrorMessage } from "@/lib/errors";
+import { parsePriceInput, priceInputValue } from "@/lib/price";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-type Item = { _id: Id<"listItems">; title: string; url?: string; note?: string };
+type Item = {
+  _id: Id<"listItems">;
+  title: string;
+  url?: string;
+  note?: string;
+  priceCents?: number | null;
+};
+
+/** Lo que llega ya escrito al apuntar algo nuevo (el botón «Apuntar en PickPal»). */
+export type ListItemDraft = { title?: string; url?: string; priceCents?: number };
 
 /** Lo que se dice bajo «Enlace» después de limpiarlo. Ninguna pista es un error. */
 function linkHint(link: PreparedLink): string | null {
@@ -36,9 +46,11 @@ function linkHint(link: PreparedLink): string | null {
  */
 export function ListItemForm({
   item,
+  initial,
   onDone,
 }: {
   item?: Item;
+  initial?: ListItemDraft;
   /** Al apuntar algo nuevo recibe su id, para que la página lo señale. */
   onDone: (addedId?: Id<"listItems">) => void;
 }) {
@@ -57,9 +69,10 @@ export function ListItemForm({
   } = useForm({
     resolver: zodResolver(listItemSchema),
     defaultValues: {
-      title: item?.title ?? "",
-      url: item?.url ?? "",
+      title: item?.title ?? initial?.title ?? "",
+      url: item?.url ?? initial?.url ?? "",
       note: item?.note ?? "",
+      price: priceInputValue(item ? item.priceCents : initial?.priceCents),
     },
   });
 
@@ -98,12 +111,16 @@ export function ListItemForm({
       url: normalizeLinkInput(values.url),
       note: values.note?.trim() || undefined,
     };
+    const parsed = parsePriceInput(values.price);
+    const priceCents = typeof parsed === "number" ? parsed : null;
     try {
       if (item) {
-        await updateItem({ id: item._id, ...fields });
+        // Siempre explícito al editar: `null` quita el precio y un número lo
+        // pone. Si no se mandara, el servidor lo dejaría como estaba.
+        await updateItem({ id: item._id, ...fields, priceCents });
         onDone();
       } else {
-        const id = await addItem(fields);
+        const id = await addItem(priceCents === null ? fields : { ...fields, priceCents });
         toast.success("Apuntado en tu lista");
         onDone(id);
       }
@@ -178,6 +195,33 @@ export function ListItemForm({
         ) : hint ? (
           <p id={`${prefix}-url-hint`} className="text-xs text-muted-foreground" aria-live="polite">
             {hint}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`${prefix}-price`}>Precio aproximado (opcional)</Label>
+        <div className="relative max-w-40">
+          <Input
+            id={`${prefix}-price`}
+            inputMode="decimal"
+            autoComplete="off"
+            placeholder="40"
+            className="pr-7"
+            aria-invalid={errors.price ? true : undefined}
+            aria-describedby={errors.price ? `${prefix}-price-error` : undefined}
+            {...register("price")}
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground"
+          >
+            €
+          </span>
+        </div>
+        {errors.price ? (
+          <p id={`${prefix}-price-error`} className="text-xs text-destructive">
+            {errors.price.message}
           </p>
         ) : null}
       </div>

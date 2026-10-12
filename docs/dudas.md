@@ -27,6 +27,36 @@ _Ninguna ahora mismo._
 
 ## Resueltas
 
+- [x] **«Mi lista», fase 2.** Construida el 12-oct-2026 sobre el anexo de fase 2
+  de [`docs/encargo-lista.md`](encargo-lista.md) (cambios en las decisiones 2 y
+  18). Lo que se construyó de verdad:
+
+  - **Backend** (`convex/lists.ts`): `priceCents` en `addItem` y en `updateItem`
+    con tres estados (sin mandar, `null`, número); tabla `listAbout` con
+    `setAbout` y `myAbout`; `forPerson` devuelve `about`, `priceCents` y
+    `addedAt`; `myGifts` para el lector; `countMarkedByReader` para la segunda
+    cifra del correo. `validateListItemPrice` en `convex/validators.ts`.
+  - **Navegador**: `src/lib/price.ts` (leer «39,99», «unos 40 €» y elegir el
+    presupuesto con que comparar; una sola función de lectura de precios, que
+    usa también el marcador), `src/lib/listSeen.ts` + `useNewSince` («Nuevo»),
+    `src/lib/bookmarklet.ts` (el marcador como cadena fija, probado contra
+    documentos falsos porque no hay jsdom) y `src/lib/importers/fileImport.ts`
+    (CSV con «;», cabeceras en español, UTF-8, UTF-16 y Windows-1252; las
+    columnas de estado se vacían, como en lo pegado).
+  - **Interfaz**: precio en el formulario y en las filas, `AboutNote`, frase del
+    presupuesto y «Nuevo» en `PersonListSection`, `MyGiftsCard` en `/seres-queridos`,
+    `/mi-lista/apuntar` y «Subir un archivo» en `/mi-lista/traer`.
+  - **Decisiones que el anexo no fijaba:** la frase del presupuesto solo sale si
+    al menos una cosa encaja (sin juzgar lo que no); «Nuevo» guarda la
+    referencia en el navegador al abrir la ficha y la olvida al salir, así que
+    las etiquetas duran la visita; la nota de la dueña solo se ve en «Mi lista»
+    cuando la lista tiene algo; «Apuntar desde la tienda» solo se enseña desde
+    `md`; un CSV con cabecera reconocida se reordena a título, enlace y nota, y
+    el resto de columnas (precio incluido) se descarta.
+  - **Límite conocido:** si quien pulsa el marcador no tiene la sesión iniciada,
+    el inicio de sesión de Clerk pierde el fragmento y la página se abre sin
+    los datos. La página lo dice.
+
 - [x] **«Mi lista», fase 1: pegar una lista, lo que más ilusión, «Ya lo
   tengo».** Construida el 11-oct-2026 sobre el anexo de fase 1 de
   [`docs/encargo-lista.md`](encargo-lista.md), que también recoge los cambios

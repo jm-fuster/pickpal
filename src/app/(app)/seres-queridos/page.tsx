@@ -9,6 +9,7 @@ import { api } from "../../../../convex/_generated/api";
 import { PersonCard } from "@/components/people/PersonCard";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { IncomingListsCard } from "@/components/lista/IncomingListsCard";
+import { MyGiftsCard } from "@/components/lista/MyGiftsCard";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Select,
@@ -58,6 +59,8 @@ export default function PeoplePage() {
       </div>
 
       <IncomingListsCard />
+
+      <MyGiftsCard />
 
       {!isLoaded || people === undefined ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" role="status">

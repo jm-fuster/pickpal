@@ -511,7 +511,12 @@ function PersonDetailContent({
       {/* ── Lista que esta persona te ha compartido («Mi lista» suya) ──
           Solo sale si tú la has asociado a esta ficha; otro invitado de la
           ficha no la ve (decisión 12 de docs/encargo-lista.md). */}
-      <PersonListSection personId={id} personName={headerName} dates={dates} />
+      <PersonListSection
+        personId={id}
+        personName={headerName}
+        dates={dates}
+        personBudget={{ budgetMin: person.budgetMin, budgetMax: person.budgetMax }}
+      />
 
       {/* ── Saved ideas card, agrupada por ocasión (docs/encargo-ocasiones.md) ── */}
       <SavedIdeasCard

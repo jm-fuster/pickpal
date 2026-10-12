@@ -64,19 +64,37 @@ function avatarHtml(name: string, avatarUrl?: string): string {
 /**
  * «Laura tiene 3 cosas en su lista que nadie ha marcado todavía», enlazado a
  * la sección de la lista en su ficha (decisión 18 de docs/encargo-lista.md).
- * Solo la cifra: el correo pasa por Resend y no lleva títulos de la lista.
- * Vacío si no hay lista asociada o si ya está todo marcado.
+ * Debajo, si quien lo recibe tiene cosas de esa lista marcadas con «Lo regalo
+ * yo», una segunda línea con cuántas, con el mismo enlace.
+ * Solo cifras: el correo pasa por Resend y no lleva títulos de la lista.
+ * Vacío si las dos cifras son 0 o no llegan.
  */
 export function listLineHtml(
-  e: Pick<EventToNotify, "personId" | "personName" | "listUnclaimed">,
+  e: Pick<EventToNotify, "personId" | "personName" | "listUnclaimed" | "listMine">,
 ): string {
-  const n = e.listUnclaimed ?? 0;
-  if (n <= 0) return "";
-  const cosas = n === 1 ? "1 cosa" : `${n} cosas`;
+  const libres = e.listUnclaimed ?? 0;
+  const mias = e.listMine ?? 0;
   const href = `${APP_BASE_URL}/seres-queridos/${encodeURIComponent(e.personId)}#lista`;
-  return `<div style="font-size:12px;margin-top:6px;">
-                  <a href="${href}" style="color:#FBF7EE;text-decoration:underline;">${escapeHtml(e.personName)} tiene ${cosas} en su lista que nadie ha marcado todavía</a>
+  const linea = (texto: string) => `<div style="font-size:12px;margin-top:6px;">
+                  <a href="${href}" style="color:#FBF7EE;text-decoration:underline;">${texto}</a>
                 </div>`;
+  const lineas = [];
+  if (libres > 0) {
+    const cosas = libres === 1 ? "1 cosa" : `${libres} cosas`;
+    lineas.push(
+      linea(`${escapeHtml(e.personName)} tiene ${cosas} en su lista que nadie ha marcado todavía`),
+    );
+  }
+  if (mias > 0) {
+    lineas.push(
+      linea(
+        mias === 1
+          ? "Tienes 1 cosa de su lista marcada para regalarle"
+          : `Tienes ${mias} cosas de su lista marcadas para regalarle`,
+      ),
+    );
+  }
+  return lineas.join("\n                ");
 }
 
 function formatEventCard(e: EventToNotify): string {
@@ -363,6 +381,7 @@ export const sendBatchedReminderEmail = internalAction({
         day: v.number(),
         daysUntil: v.number(),
         listUnclaimed: v.optional(v.number()),
+        listMine: v.optional(v.number()),
       }),
     ),
   },
@@ -414,9 +433,10 @@ export const sendTestEmail = internalAction({
       month: 8,
       day: 3,
       daysUntil: 0,
-      // La línea de «Mi lista» solo sale en esta tarjeta, para ver las dos
+      // Las líneas de «Mi lista» solo salen en esta tarjeta, para ver las dos
       // variantes en el mismo correo.
       listUnclaimed: 3,
+      listMine: 1,
     };
 
     const secondary: EventToNotify = {

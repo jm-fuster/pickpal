@@ -7,7 +7,8 @@
 // prueba aquí. Después, quién ve la lista y quién no, qué pasa al perder el
 // acceso, las marcas sobre elementos que cambian, los topes, pegar una lista,
 // «Lo que más ilusión te haría», «Ya lo tengo», compartir de vuelta, el
-// borrado de cuenta, la exportación y la línea del email.
+// borrado de cuenta, la exportación y las líneas del email. Al final, la fase
+// 2: el precio, la nota para quien te regala, «Nuevo» y «Lo que vas a regalar».
 
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -16,6 +17,7 @@ import { api, internal } from "./_generated/api";
 import {
   IMPORT_DAILY_LIMIT,
   INVITE_EMAIL_COOLDOWN_MS,
+  MAX_ABOUT_LENGTH,
   MAX_FAVORITES,
   MAX_ITEMS_PER_LIST,
   MAX_READERS_PER_LIST,
@@ -90,7 +92,7 @@ describe("el dueño nunca ve las marcas", () => {
 
     expect(marcado).toEqual(antes);
     expect(regalado).toEqual(antes);
-    const permitidos = new Set(["_id", "_creationTime", "title", "url", "note", "favorite"]);
+    const permitidos = new Set(["_id", "_creationTime", "title", "url", "note", "favorite", "priceCents"]);
     for (const item of antes) {
       for (const campo of Object.keys(item)) expect(permitidos).toContain(campo);
     }
@@ -154,7 +156,7 @@ describe("el dueño nunca ve las marcas", () => {
   test("ninguna función del dueño lee las marcas, y lists.ts no sale a la red", () => {
     const fuente = fs.readFileSync("convex/lists.ts", "utf8");
     const sinComentarios = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-    for (const nombre of ["myItems", "myReaders", "addItem", "importItems", "updateItem", "setFavorite"]) {
+    for (const nombre of ["myItems", "myAbout", "setAbout", "myReaders", "addItem", "importItems", "updateItem", "setFavorite"]) {
       const inicio = fuente.indexOf(`export const ${nombre} = `);
       expect(inicio, `${nombre} no está en convex/lists.ts`).toBeGreaterThan(-1);
       const fin = fuente.indexOf("\nexport ", inicio + 1);
@@ -804,7 +806,7 @@ describe("ya lo tengo", () => {
       exportacion: { marcasEnListasDeOtros: unknown };
     };
     expect(base.devuelve).toBeNull();
-    expect(base.items).toEqual([{ title: "Libro de cerámica", favorite: false }]);
+    expect(base.items).toEqual([{ title: "Libro de cerámica", favorite: false, priceCents: null }]);
     expect(base.exportacion.marcasEnListasDeOtros).toEqual([]);
     for (const marca of ["ninguna", "marcada", "regalada"] as const) {
       for (const reason of [undefined, "got"] as const) {
@@ -893,7 +895,7 @@ describe("exportación del lector", () => {
     expect(datos.listasQueTeComparten).toMatchObject([
       { de: "Laura", email: LAURA.email, fichaAsociada: "Laura" },
     ]);
-    expect(datos.miLista).toEqual({ elementos: [], compartidaCon: [] });
+    expect(datos.miLista).toEqual({ elementos: [], compartidaCon: [], notaParaQuienTeRegala: null });
   });
 
   test("lleva si la dueña quitó lo que había marcado porque ya lo tenía", async () => {
@@ -957,6 +959,47 @@ describe("email de recordatorio", () => {
     expect((await evento()).listUnclaimed).toBe(2);
     await alex.mutation(api.lists.claim, { itemId: vela });
     expect((await evento()).listUnclaimed).toBe(1);
+  });
+
+  test("la segunda cifra cuenta solo lo que tiene marcado quien lo recibe", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-10T08:00:00Z"));
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, libro, fichaDeAlex } = await escenario(t);
+    const { mama } = await sumarMama(t);
+    const taza = await laura.mutation(api.lists.addItem, { title: "Taza" });
+    await alex.mutation(api.importantDates.create, {
+      personId: fichaDeAlex,
+      label: "Cumpleaños",
+      month: 10,
+      day: 17,
+      recurring: true,
+    });
+    await alex.mutation(api.settings.setMine, {
+      emailNotificationsEnabled: true,
+      emailNotifyDaysBefore: [7],
+    });
+    const evento = async () =>
+      (await t.query(internal.notifications.findEventsNeedingEmail, {}))[0].events[0];
+
+    // Sin marcas, ni el campo.
+    expect(await evento()).not.toHaveProperty("listMine");
+
+    // Lo que marca otra lectora quita una cosa libre, pero no es de Alex.
+    await mama.mutation(api.lists.claim, { itemId: libro });
+    expect(await evento()).toMatchObject({ listUnclaimed: 2 });
+    expect(await evento()).not.toHaveProperty("listMine");
+
+    const deVela = await alex.mutation(api.lists.claim, { itemId: vela });
+    await alex.mutation(api.lists.claim, { itemId: taza });
+    expect(await evento()).toMatchObject({ listMine: 2 });
+    expect(await evento()).not.toHaveProperty("listUnclaimed");
+
+    // Lo ya regalado y lo que la dueña quitó no cuentan.
+    await alex.mutation(api.lists.markGiven, { claimId: deVela });
+    expect(await evento()).toMatchObject({ listMine: 1 });
+    await laura.mutation(api.lists.removeItem, { id: taza });
+    expect(await evento()).not.toHaveProperty("listMine");
   });
 });
 
@@ -1078,5 +1121,276 @@ describe("plantilla del aviso", () => {
   test("un salto de línea en el nombre no llega al asunto", () => {
     const { subject } = buildListInviteEmail({ ownerName: "Laura\r\nBcc: x@y.z", ownerEmail: "l@x.es" });
     expect(subject).not.toMatch(/[\r\n]/);
+  });
+});
+
+describe("precio aproximado", () => {
+  test("se apunta en céntimos, sale a la dueña y a quien lee, y se valida", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, fichaDeAlex } = await escenario(t);
+    const taza = await laura.mutation(api.lists.addItem, { title: "Taza", priceCents: 4000 });
+
+    const mios = await laura.query(api.lists.myItems, {});
+    expect(mios.find((i) => i._id === taza)!.priceCents).toBe(4000);
+    expect(mios.find((i) => i._id === vela)!.priceCents).toBeNull();
+
+    const [lista] = await alex.query(api.lists.forPerson, { personId: fichaDeAlex });
+    expect(lista.items.find((i) => i._id === taza)!.priceCents).toBe(4000);
+    expect(lista.items.find((i) => i._id === vela)!.priceCents).toBeNull();
+
+    for (const priceCents of [0, -1, 39.5, 1_000_001]) {
+      await expect(
+        laura.mutation(api.lists.addItem, { title: "Mal", priceCents }),
+      ).rejects.toMatchObject({ data: "Precio inválido." });
+      await expect(
+        laura.mutation(api.lists.updateItem, { id: taza, title: "Taza", priceCents }),
+      ).rejects.toMatchObject({ data: "Precio inválido." });
+    }
+  });
+
+  test("editar sin mandar el precio no lo borra ni cuenta como cambio", async () => {
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    const id = await laura.mutation(api.lists.addItem, {
+      title: "Vela de cera",
+      url: "https://www.amazon.es/dp/B0VELA",
+      note: "La de higo",
+      priceCents: 4000,
+    });
+
+    // Lo que manda una pestaña con el código de antes del precio.
+    await laura.mutation(api.lists.updateItem, {
+      id,
+      title: "Vela de cera",
+      url: "https://www.amazon.es/dp/B0VELA",
+      note: "La de higo",
+    });
+    // Y el mismo precio otra vez.
+    await laura.mutation(api.lists.updateItem, {
+      id,
+      title: "Vela de cera",
+      url: "https://www.amazon.es/dp/B0VELA",
+      note: "La de higo",
+      priceCents: 4000,
+    });
+
+    const fila = await t.run(async (ctx) => (await ctx.db.get(id))!);
+    expect(fila.priceCents).toBe(4000);
+    expect(fila).not.toHaveProperty("editedAt");
+
+    // Una edición del texto sin precio tampoco lo toca.
+    await laura.mutation(api.lists.updateItem, { id, title: "Vela de cera", note: "Mejor la de vainilla" });
+    expect((await laura.query(api.lists.myItems, {}))[0].priceCents).toBe(4000);
+  });
+
+  test("cambiarlo es una edición; null lo quita", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-12T10:00:00Z"));
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, fichaDeAlex } = await escenario(t);
+    await alex.mutation(api.lists.claim, { itemId: vela });
+    const deVela = async () =>
+      (await alex.query(api.lists.forPerson, { personId: fichaDeAlex }))[0].items.find(
+        (i) => i._id === vela,
+      )!;
+    const mismos = { id: vela, title: "Vela de cera", url: "https://www.amazon.es/dp/B0VELA", note: "La de higo" };
+
+    // Quitar un precio que no había no cambia nada.
+    vi.setSystemTime(new Date("2026-10-12T10:05:00Z"));
+    await laura.mutation(api.lists.updateItem, { ...mismos, priceCents: null });
+    expect((await deVela()).editedSinceMark).toBe(false);
+
+    vi.setSystemTime(new Date("2026-10-12T10:10:00Z"));
+    await laura.mutation(api.lists.updateItem, { ...mismos, priceCents: 2500 });
+    expect(await deVela()).toMatchObject({ priceCents: 2500, editedSinceMark: true });
+
+    await alex.mutation(api.lists.acknowledgeEdit, { claimId: (await deVela()).claimId! });
+    vi.setSystemTime(new Date("2026-10-12T10:15:00Z"));
+    await laura.mutation(api.lists.updateItem, { ...mismos, priceCents: null });
+    expect(await deVela()).toMatchObject({ priceCents: null, editedSinceMark: true });
+    // Quitado de verdad, no guardado como null.
+    expect(await t.run(async (ctx) => "priceCents" in (await ctx.db.get(vela))!)).toBe(false);
+  });
+
+  test("la exportación de la dueña lo lleva en euros", async () => {
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    await laura.mutation(api.lists.addItem, { title: "Taza", priceCents: 1999 });
+    await laura.mutation(api.lists.addItem, { title: "Bufanda" });
+
+    const { miLista } = await laura.query(api.exportData.mine, {});
+    const porTitulo = [...miLista.elementos].sort((a, b) => a.titulo.localeCompare(b.titulo));
+    expect(porTitulo).toMatchObject([
+      { titulo: "Bufanda", precioAproximadoEuros: null },
+      { titulo: "Taza", precioAproximadoEuros: 19.99 },
+    ]);
+  });
+});
+
+describe("una nota para quien te regala", () => {
+  test("la dueña la escribe y la leen sus lectores, nadie más", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, fichaDeAlex } = await escenario(t);
+    const [antes] = await alex.query(api.lists.forPerson, { personId: fichaDeAlex });
+    expect(antes.about).toBeNull();
+    expect(await laura.query(api.lists.myAbout, {})).toBeNull();
+
+    await laura.mutation(api.lists.setAbout, { note: "  Talla M. Nada de plástico, porfa.  " });
+
+    expect(await laura.query(api.lists.myAbout, {})).toBe("Talla M. Nada de plástico, porfa.");
+    const [lista] = await alex.query(api.lists.forPerson, { personId: fichaDeAlex });
+    expect(lista.about).toBe("Talla M. Nada de plástico, porfa.");
+
+    // Ni un tercero ni otro invitado de la ficha de Alex: van por el permiso de Laura.
+    await alex.mutation(api.personShares.invite, { personId: fichaDeAlex, clerkUserId: SARA.subject });
+    expect(await t.withIdentity(SARA).query(api.lists.forPerson, { personId: fichaDeAlex })).toEqual([]);
+    expect(await t.withIdentity(OTRO).query(api.lists.myAbout, {})).toBeNull();
+    // La nota de Alex es suya: escribirla no toca la de Laura.
+    await alex.mutation(api.lists.setAbout, { note: "Libros, siempre" });
+    expect(await laura.query(api.lists.myAbout, {})).toBe("Talla M. Nada de plástico, porfa.");
+  });
+
+  test("vacía se borra, y una sola fila por dueña", async () => {
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    await laura.mutation(api.lists.setAbout, { note: "Talla M" });
+    await laura.mutation(api.lists.setAbout, { note: "Talla L" });
+    expect(await t.run((ctx) => ctx.db.query("listAbout").collect())).toMatchObject([
+      { ownerClerkUserId: LAURA.subject, note: "Talla L" },
+    ]);
+
+    await laura.mutation(api.lists.setAbout, { note: "   " });
+    expect(await laura.query(api.lists.myAbout, {})).toBeNull();
+    expect(await t.run((ctx) => ctx.db.query("listAbout").collect())).toEqual([]);
+    // Borrar una que no existe tampoco falla.
+    await laura.mutation(api.lists.setAbout, { note: "" });
+  });
+
+  test(`hasta ${MAX_ABOUT_LENGTH} caracteres, contados sin los espacios de los bordes`, async () => {
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    await laura.mutation(api.lists.setAbout, { note: `  ${"x".repeat(MAX_ABOUT_LENGTH)}  ` });
+    await expect(
+      laura.mutation(api.lists.setAbout, { note: "y".repeat(MAX_ABOUT_LENGTH + 1) }),
+    ).rejects.toMatchObject({ data: "La nota es demasiado larga." });
+    expect(await laura.query(api.lists.myAbout, {})).toBe("x".repeat(MAX_ABOUT_LENGTH));
+  });
+
+  test("sin sesión no se escribe ni se lee", async () => {
+    const t = convexTest(schema, modules);
+    await expect(t.mutation(api.lists.setAbout, { note: "Hola" })).rejects.toThrow(/Sesión no encontrada/);
+    await expect(t.query(api.lists.myAbout, {})).rejects.toThrow(/Sesión no encontrada/);
+  });
+
+  test("cambiarla no le dice a nadie «lo ha cambiado»", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, fichaDeAlex } = await escenario(t);
+    await alex.mutation(api.lists.claim, { itemId: vela });
+
+    await laura.mutation(api.lists.setAbout, { note: "Talla M" });
+
+    const [lista] = await alex.query(api.lists.forPerson, { personId: fichaDeAlex });
+    expect(lista.items.find((i) => i._id === vela)!.editedSinceMark).toBe(false);
+    expect(await t.run(async (ctx) => "editedAt" in (await ctx.db.get(vela))!)).toBe(false);
+  });
+
+  test("sale en la exportación de la dueña y se va con su cuenta", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex } = await escenario(t);
+    await laura.mutation(api.lists.setAbout, { note: "Talla M" });
+
+    expect((await laura.query(api.exportData.mine, {})).miLista.notaParaQuienTeRegala).toBe("Talla M");
+    // La de otra persona no es un dato de quien la lee.
+    expect((await alex.query(api.exportData.mine, {})).miLista.notaParaQuienTeRegala).toBeNull();
+
+    await laura.mutation(api.account.deleteMyAccount, {});
+    expect(await t.run((ctx) => ctx.db.query("listAbout").collect())).toEqual([]);
+  });
+});
+
+describe("«Nuevo» para quien lee", () => {
+  test("cada elemento lleva cuándo se apuntó", async () => {
+    const t = convexTest(schema, modules);
+    const { alex, vela, fichaDeAlex } = await escenario(t);
+    const [lista] = await alex.query(api.lists.forPerson, { personId: fichaDeAlex });
+    const creada = await t.run(async (ctx) => (await ctx.db.get(vela))!._creationTime);
+    expect(lista.items.find((i) => i._id === vela)!.addedAt).toBe(creada);
+  });
+});
+
+describe("lo que vas a regalar", () => {
+  test("solo lo que tú has marcado y no has dado por regalado, con su ficha", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, libro, fichaDeAlex } = await escenario(t);
+    const taza = await laura.mutation(api.lists.addItem, { title: "Taza", url: "https://www.ikea.com/es/es/p/taza" });
+    const deVela = await alex.mutation(api.lists.claim, { itemId: vela });
+    await alex.mutation(api.lists.claim, { itemId: libro });
+    await alex.mutation(api.lists.claim, { itemId: taza });
+
+    await alex.mutation(api.lists.markGiven, { claimId: deVela });
+    await laura.mutation(api.lists.removeItem, { id: libro, reason: "got" });
+
+    // De la lista de Mamá, que Alex no ha asociado a ninguna ficha.
+    const mama = t.withIdentity(MAMA);
+    const bufanda = await mama.mutation(api.lists.addItem, { title: "Bufanda" });
+    await mama.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    await alex.mutation(api.lists.claim, { itemId: bufanda });
+
+    expect(await alex.query(api.lists.myGifts, {})).toMatchObject([
+      {
+        title: "Libro de cerámica",
+        url: null,
+        removed: true,
+        reason: "got",
+        ownerName: "Laura",
+        ownerEmail: LAURA.email,
+        personId: fichaDeAlex,
+        personName: "Laura",
+      },
+      {
+        title: "Taza",
+        url: "https://www.ikea.com/es/es/p/taza",
+        removed: false,
+        reason: null,
+        personId: fichaDeAlex,
+        personName: "Laura",
+      },
+      // Sin ficha ni nombre, va por el email.
+      { title: "Bufanda", ownerName: null, ownerEmail: MAMA.email, personId: null, personName: null },
+    ]);
+  });
+
+  test("la dueña no ve las marcas de su lista, ni otro lector las tuyas", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, libro } = await escenario(t);
+    const { mama } = await sumarMama(t);
+    await alex.mutation(api.lists.claim, { itemId: vela });
+    await mama.mutation(api.lists.claim, { itemId: libro });
+
+    expect(await laura.query(api.lists.myGifts, {})).toEqual([]);
+    expect(await t.withIdentity(OTRO).query(api.lists.myGifts, {})).toEqual([]);
+
+    const deAlex = await alex.query(api.lists.myGifts, {});
+    expect(deAlex.map((g) => g.title)).toEqual(["Vela de cera"]);
+    const json = JSON.stringify(deAlex);
+    expect(json).not.toContain(MAMA.subject);
+    expect(json).not.toContain(MAMA.email);
+    expect((await mama.query(api.lists.myGifts, {})).map((g) => g.title)).toEqual(["Libro de cerámica"]);
+  });
+
+  test("sin el permiso de la dueña no sale, aunque quedara la marca", async () => {
+    const t = convexTest(schema, modules);
+    const { alex, vela, shareAlex } = await escenario(t);
+    await alex.mutation(api.lists.claim, { itemId: vela });
+
+    // `revoke` y `leave` borran las marcas; aquí solo desaparece el permiso.
+    await t.run((ctx) => ctx.db.delete(shareAlex));
+
+    expect(await alex.query(api.lists.myGifts, {})).toEqual([]);
+  });
+
+  test("sin sesión no hay nada", async () => {
+    const t = convexTest(schema, modules);
+    await expect(t.query(api.lists.myGifts, {})).rejects.toThrow(/Sesión no encontrada/);
   });
 });

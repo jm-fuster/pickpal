@@ -16,10 +16,14 @@ import {
 // puede negar de dos formas: con la señal GPC/DNT del navegador o con el
 // interruptor de /privacidad. Se comprueba en cada evento, así que el cambio
 // vale al momento. Ver docs/privacy.md §2.4.
+//
+// El fragmento (`#…`) se quita siempre: en /mi-lista/apuntar lleva el nombre
+// y el enlace de lo que la dueña está mirando en una tienda, y eso no tiene
+// por qué llegar a la analítica.
 const respectPrivacyChoices: BeforeSend = (event) =>
   asksNotToTrack(navigator) || readAnalyticsOptOut(browserStorage())
     ? null
-    : event;
+    : { ...event, url: event.url.split("#")[0] };
 
 export function Analytics() {
   return <VercelAnalytics beforeSend={respectPrivacyChoices} />;

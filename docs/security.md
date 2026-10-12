@@ -103,6 +103,8 @@ Por qué importa: sin esto un usuario autenticado puede insertar `notes` de 100 
 
   Cierra el gap de que un atacante autenticado llamara directamente a `api.recommendations.upsert` saltándose la API route con un payload masivo.
 - `validateListItemInput` — elementos de «Mi lista»: título ≤ 120 (el mismo tope que `giftName`, porque «Ya se lo he regalado» lo copia al historial), nota ≤ 500 y enlace ≤ 2048 que tiene que ser `http:` o `https:` (`isAllowedListItemUrl`). Ver §11.
+- `validateListItemPrice` — precio aproximado de un elemento de «Mi lista», en céntimos de euro: entero entre 1 y 1.000.000 (10.000 €). Rechaza `NaN`, `Infinity`, decimales de céntimo y 0 («sin precio» se guarda sin el campo). Lo aplican `lists.addItem` y `lists.updateItem`. Ver §11.
+- «Una nota para quien te regala» (`lists.setAbout`): ≤ 300 caracteres después de quitar los espacios de los bordes. Ver §11.
 
 **Salida de Gemini = input no confiable.** El JSON que devuelve la IA pasa por `generateObject` con un schema Zod (`giftRecommendationSchema`), pero antes de tocar la BD vuelve a validarse en `validateRecommendationIdeas`. Defensa en profundidad: el schema Zod podría aflojar sus restricciones por error, o un cliente malicioso podría llamar a `upsert` directamente con datos que nunca pasaron por Gemini.
 
@@ -120,6 +122,8 @@ Aplícalo a cualquier mutation que:
 - Envíe notificaciones / emails.
 
 Buckets actuales: `create_person` (50/día), `create_date` (100/día), `save_idea` (50/día), `invite_person` (20/día — compartir una ficha, ver §9), `invite_lookup` (30/día — comprobar un email antes de invitar, ver §9; lo comparten las fichas y «Mi lista»), `create_list_item` (100/día), `import_list` (5/día — «Pegar una lista»: una unidad por importación, no por fila, porque fila a fila una lista de 100 gastaría el cupo entero de `create_list_item`; `lists.importItems` valida todas las filas antes de insertar ninguna, con el número de fila en el error, y comprueba el tope de 100 elementos antes que el cupo, así que ni una fila inválida ni una lista que no cabe gastan la unidad; ver §11), `claim_list_item` (100/día — marcar «Lo regalo yo»), `invite_list` (20/día — compartir tu lista, por email o de vuelta; ver §11), `recommendationUsage` (10/día, tabla aparte por motivos históricos).
+
+**Sin cubo, a propósito:** `lists.setAbout` («Una nota para quien te regala») no gasta cupo. Reescribe o borra siempre la misma fila de `listAbout` (como mucho una por usuario, con tope de 300 caracteres), así que repetirla no llena nada ni manda nada a nadie: no es superficie de DoS de almacenamiento. Si algún día avisara a los lectores al cambiarla, necesitaría cubo.
 
 **Cuota de recomendaciones = reserva atómica.** `api.recommendationUsage.reserve` (mutation) incrementa el contador **antes** de llamar a Gemini y lanza `ConvexError` si está agotado; al ser una transacción Convex, dos peticiones concurrentes en el límite no pueden superar las 10/día. Si la generación falla (saturación, timeout o validación del schema de Gemini), la API route llama a `refund` para devolver la unidad: como el `return` de éxito va tras el `upsert`, llegar al `catch` garantiza que no se persistió ninguna idea, así que un fallo de formato del proveedor no cuesta una generación. `refund` recibe el `day` UTC que devolvió `reserve` para devolver la unidad al bucket correcto aunque el fallo cruce la medianoche UTC. No existe un `consume` posterior al guardado: el patrón check-luego-consume tenía una carrera de coste y un caso "ideas guardadas pero el usuario ve error".
 
@@ -203,7 +207,7 @@ El `clerkUserId` siempre se lee de la sesión vía `requireUser` — la mutation
 
 **Excepción desde que existe compartir (§9):** `deleteMyAccount` ya no borra incondicionalmente cada `people` del usuario. Si la persona tiene invitados, la propiedad se transfiere al más antiguo (`personShares.transferToOldestInviteeOrNull`) en lugar de borrarla — bloquear el borrado violaría el derecho RGPD a irse, y cascada la castigaría a un tercero por una decisión ajena. Solo se cascada-borra si no queda nadie más con acceso. Además, `deleteMyAccount` llama a `personShares.deleteSharesForUser` para desligar al usuario de toda ficha ajena que le hubieran compartido — la versión en bloque de `personShares.leave`.
 
-**«Mi lista» no tiene esa excepción (§11):** `lists.deleteListDataForUser` borra la lista entera del usuario (elementos, accesos y las marcas que otros hicieron en ella) sin transferirla, y sus accesos y marcas en listas ajenas. Las entradas de historial que un lector creó a partir de la lista son de su ficha y se quedan.
+**«Mi lista» no tiene esa excepción (§11):** `lists.deleteListDataForUser` borra la lista entera del usuario (elementos, su «nota para quien te regala» en `listAbout`, accesos y las marcas que otros hicieron en ella) sin transferirla, y sus accesos y marcas en listas ajenas. Las entradas de historial que un lector creó a partir de la lista son de su ficha y se quedan.
 
 ### 8. Variables de entorno
 
@@ -269,8 +273,8 @@ Diseño completo en [`docs/encargo-lista.md`](encargo-lista.md); código en
 [`convex/lists.ts`](../convex/lists.ts). Hay tres públicos y cada función sirve
 a uno solo:
 
-- **El dueño nunca ve las marcas.** `myItems` y `myReaders` leen solo
-  `listItems` y `listShares`; ninguna query del dueño cruza con `listClaims`, ni
+- **El dueño nunca ve las marcas.** `myItems`, `myAbout` y `myReaders` leen solo
+  `listItems`, `listAbout` y `listShares`; ninguna query del dueño cruza con `listClaims`, ni
   para un contador, y la exportación del dueño tampoco las lleva (§2.6 de
   `privacy.md` explica la base). Es la propiedad que sostiene la función y la
   primera que prueba `convex/lists.test.ts`. Si una query nueva del dueño
@@ -285,6 +289,35 @@ a uno solo:
   fila de `listShares` (dueño, lector), nunca el acceso a la ficha donde el
   lector guardó la lista (§2). Ve que un elemento está cogido, pero no quién lo
   cogió (`state: "taken"` sin `claimId`) ni quién más lee la lista.
+- **«Una nota para quien te regala» es del dueño y la leen sus lectores.** Vive
+  en `listAbout`, como mucho una fila por dueño, y solo la escribe él
+  (`setAbout`, que saca el dueño de la sesión) y la lee él (`myAbout`). Al
+  lector le llega dentro de `forPerson` (`about`), por la misma fila de
+  `listShares` que el resto de la lista: un invitado de la ficha asociada no la
+  ve. Cambiarla no pone `editedAt`, así que a nadie le salta «lo ha cambiado».
+  Se borra con la cuenta (en `deleteListDataForUser`) y sale en la exportación
+  del dueño (`miLista.notaParaQuienTeRegala`), no en la de quien la lee. El
+  cupo está en §4.
+- **El precio tiene tres estados al editar.** `updateItem` recibe `priceCents`
+  como ausente (se queda el guardado), `null` (se quita) o un número (se pone).
+  Ausente no puede significar «quitar»: tras un despliegue, una pestaña con el
+  código anterior manda los otros campos sin precio, y lo borraría. El precio
+  solo entra en la comparación de «no ha cambiado nada» si llega; cambiarlo de
+  verdad pone `editedAt`, como cualquier edición. Lo escribe el dueño a mano o
+  lo trae el marcador «Apuntar en PickPal» en el navegador: el servidor nunca
+  lo saca del enlace. Sale en la exportación del dueño en euros
+  (`precioAproximadoEuros`).
+- **«Lo que vas a regalar» (`myGifts`) es solo de quien lee.** Lee las marcas
+  propias por `by_reader`, nunca las de otros, y solo las `marked`. Cada una
+  vuelve a comprobar que sigue existiendo la fila de `listShares` (dueño,
+  lector) aunque perder el acceso ya borre las marcas, y la ficha sale por
+  `validPersonId`, igual que en `sharedWithMe`. No dice quién más lee cada
+  lista. El dueño que la llama recibe sus propias marcas en listas ajenas,
+  nunca las de su lista, porque no puede marcar la suya.
+- **«Nuevo» (`addedAt`) solo llega a quien lee.** Es el `_creationTime` de cada
+  elemento dentro de `forPerson`; `myItems` no lo cambia. Cuándo miró la lista
+  por última vez se guarda solo en el navegador del lector: el servidor no
+  apunta visitas, así que el dueño no puede saber cuándo la miran.
 - **La asociación a una ficha se valida al leer.** Un lector pierde el acceso a
   una ficha por varios caminos (`people.remove`, `personShares.leave`, la
   transferencia al borrar una cuenta). En vez de engancharse a cada uno,
@@ -308,6 +341,20 @@ a uno solo:
   XSS en la cuenta de quien lo abre. Se pintan con `target="_blank"
   rel="noopener noreferrer nofollow"` y siempre con el dominio visible
   (`ListItemLink`); un dominio que imita a otro sale en punycode.
+- **El botón «Apuntar en PickPal» (`src/lib/bookmarklet.ts`) corre en la página
+  de la tienda, no en PickPal.** Es una cadena fija, sin scripts remotos: no
+  carga nada de PickPal ni de nadie, así que no hay nada que un tercero pueda
+  cambiar. Lee el título, la dirección canónica y, solo si la tienda lo publica
+  en euros, el precio de sus datos estructurados, y abre `/mi-lista/apuntar`
+  con los datos en el fragmento (`#t=…&u=…&p=…`), que no llega al servidor; la
+  analítica lo quita en `beforeSend` y la página lo borra de la barra al
+  leerlo. `readBookmarkletFragment` trata ese fragmento como entrada de
+  cualquiera (cualquiera puede escribir esa dirección): título recortado,
+  enlace solo `http(s)` y pasado por `prepareListLink`, precio con su tope, y
+  nada se guarda sin pulsar «Apuntar», que pasa por `addItem` y sus
+  validaciones. El `href` del botón (`javascript:`) se pone con
+  `setAttribute`, porque React no lo pinta, y se construye con el origen de la
+  página en ese momento, nunca escrito a mano.
 - **Lo que se pega para traer una lista tampoco es de fiar.** Se analiza solo
   en el navegador, con funciones puras sin red ni IA, y nunca se pinta tal
   cual: pasa directamente a la vista previa de filas. El portapapeles solo se
@@ -329,6 +376,12 @@ a uno solo:
   programarlo, no al enviarlo: si Resend falla no se reintenta, pero nadie
   puede encadenar invitar y «No me interesa» para mandar correos. El nombre va
   escapado en el HTML y sin saltos de línea en el asunto.
+- **El correo de la fecha lleva dos cifras y ningún título.** La tarjeta del
+  evento puede llevar cuántas cosas de las listas que el destinatario asoció a
+  esa persona no ha marcado nadie (`countUnclaimedForReader`) y cuántas tiene
+  marcadas él mismo sin dar por regaladas (`countMarkedByReader`). La segunda
+  solo cuenta sus propias marcas, nunca las de otros lectores; las de
+  elementos que el dueño quitó no cuentan. Si las dos son 0 no sale nada.
 - **Quitar el acceso borra las marcas.** `revoke` y `leave` borran las marcas de
   ese lector en esa lista; si no, bloquearían elementos para siempre.
 

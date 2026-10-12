@@ -41,6 +41,10 @@ compra.
    cosas a «Lo que más ilusión te haría». Salen en un grupo aparte, arriba, para
    ella y para quien lee («Lo que más ilusión le haría»), y el resto debajo. Sin
    medidor de 1 a 5 ni orden manual; precio sigue fuera. Ver el anexo de la fase 1.
+
+   **Cambiado el 12-oct-2026 (el precio):** cada elemento puede llevar un precio
+   aproximado, solo en euros, que se ve como «unos 40 €». Ni se ordena ni se
+   filtra por él. Ver el anexo de la fase 2.
 3. **El servidor nunca abre el enlace.** No hay vista previa con imagen o precio,
    porque pedir URLs que escribe un usuario abre la puerta a SSRF. Si el dominio es
    de una de las 11 tiendas de `src/lib/stores.ts`, se muestra su logo; si no, el
@@ -119,6 +123,10 @@ compra.
     Solo aparece si N es mayor que 0. Lleva la cifra, nunca títulos. Los invitados de
     una ficha siguen sin recibir emails de ella; eso no cambia.
 
+    **Cambiado el 12-oct-2026:** debajo puede ir una segunda línea, «Tienes N cosas
+    de su lista marcadas para regalarle», con tus propias marcas pendientes. Sigue
+    sin títulos.
+
 ### Datos
 
 19. **Tablas nuevas.** `personShares` no se toca: da permiso de edición sobre la
@@ -177,8 +185,8 @@ campaña.
 - Invitar a quien todavía no tiene cuenta. Revisado el 11-oct-2026: sigue fuera
   durante la beta.
 - Varias listas u ocasiones.
-- Precio y prioridad. La prioridad entró el 11-oct-2026 (decisión 2); el precio
-  sigue fuera.
+- Precio y prioridad. La prioridad entró el 11-oct-2026 y el precio el
+  12-oct-2026 (decisión 2).
 - Vista previa de enlaces.
 - Enviar la lista a Gemini.
 - Bloquear a alguien que te comparte listas que no quieres.
@@ -388,3 +396,54 @@ petición del servidor a un enlace.
 | Grupos, quien lee | Lo que más ilusión le haría · El resto |
 | Copia de quien lo marcó | Ya lo tiene |
 | Topes | N de 100 · N de 20 · Tu lista ya tiene 100 cosas, el máximo. Quita alguna para apuntar otra. · Tu lista ya la ven 20 personas, el máximo. Quita a alguien para invitar a otra. |
+
+## Anexo: fase 2 (12-oct-2026)
+
+Lo que siguió a la fase 1, elegido por Jorge el 12-oct-2026. Lo que se construyó
+de verdad está en `docs/dudas.md`.
+
+1. **Precio aproximado** (decisión 2). `listItems.priceCents`, en céntimos y solo
+   euros, hasta 10.000 €. Se ve «unos 40 €» en las dos vistas, sin ordenar ni
+   filtrar. `updateItem` lo recibe en tres estados (sin mandar = se queda,
+   `null` = se quita, número = se pone), para que una pestaña con la versión
+   anterior no lo borre al guardar. Cambiarlo es una edición: quien lo había
+   marcado ve «lo ha cambiado».
+2. **La frase del presupuesto** en la ficha de quien lee: «7 de sus cosas
+   encajan en lo que pensabas gastar para {fecha}», con la próxima fecha que
+   tenga presupuesto o, si no hay, el de la ficha. Sin filtro y sin juzgar cada
+   fila. Se calcula en el navegador de quien lee: su presupuesto no sale de ahí.
+3. **«Una nota para quien te regala».** Una línea de la dueña para todos sus
+   lectores, que la ven citada en su ficha. Tabla `listAbout`, una fila por
+   dueña, hasta 300 caracteres; se borra con la cuenta y sale en su exportación.
+4. **«Nuevo»** en la lista de quien lee, para lo apuntado desde su última
+   visita: una etiqueta por fila si son de 1 a 5, una línea si son más. Se
+   guarda solo en su navegador, con la hora del servidor; la dueña no sabe
+   cuándo la miran.
+5. **«Lo que vas a regalar»**: tus marcas de todas las listas, en una card
+   plegada en «Seres queridos». No en la Agenda, que es donde puede mirar la
+   persona con la que vives.
+6. **Segunda cifra en el correo de la fecha** (decisión 18): «Tienes N cosas de
+   su lista marcadas para regalarle». Sigue sin títulos.
+7. **Botón «Apuntar en PickPal»** (`/mi-lista/apuntar`): un marcador del
+   navegador que, en la página de una tienda, lee el nombre, el enlace y, si la
+   tienda lo publica en euros, el precio, y abre el formulario relleno. Los
+   datos viajan en el fragmento de la URL, que no llega al servidor, y la
+   analítica lo quita. Nada se apunta sin pulsar «Apuntar». Solo en ordenador.
+8. **Subir un archivo** .csv, .tsv o .txt en «Pegar una lista». Se lee en el
+   navegador, con el separador «;» y la codificación de Excel en español, y pasa
+   por el mismo análisis que lo pegado.
+
+### Textos de la fase 2
+
+| Dónde | Texto |
+| --- | --- |
+| Formulario | Precio aproximado (opcional) · Escribe un importe, como 40 o 39,99 |
+| Fila, las dos vistas | unos 40 € |
+| Nota de la dueña | Añadir una nota para quien te regala · Una nota para quien te regala · La ve quien tiene acceso a tu lista. · Para quien te regala: «…» |
+| Nota, quien lee | {Nombre}: «…» |
+| Presupuesto | N de sus cosas encajan en lo que pensabas gastar para {fecha} · … en el presupuesto que tienes para {nombre} (singular: 1 de sus cosas encaja) |
+| Nuevo | Nuevo · Ha apuntado N cosas desde la última vez que la miraste. |
+| Lo que vas a regalar | Lo que vas a regalar · Para {nombre} · Ya lo tiene · Ya no está en su lista |
+| Correo de la fecha | Tienes 1 cosa de su lista marcada para regalarle · Tienes N cosas de su lista marcadas para regalarle |
+| Botón de la tienda | Apuntar desde la tienda · Apuntar en PickPal · Arrástralo a tu barra de marcadores; aquí no hace nada. |
+| Archivo | Subir un archivo · Ese archivo es demasiado grande. Prueba con una parte de la lista. · Solo se pueden leer archivos .csv, .tsv o .txt. |
