@@ -96,6 +96,21 @@ Amazon, El Corte Inglés, AliExpress, Temu, Miravia, Decathlon, IKEA,
 PcComponentes, MediaMarkt, Zalando and Druni (`STORE_IDS`, `src/lib/stores.ts`).
 Experiences, time together and surprises get a single search link instead.
 
+**My list, the other half of the notebook.** `/mi-lista` is where you write what
+you would like to receive and share it with the people who give you presents.
+They find it inside the profile they already keep of you and mark what they will
+give; you never see the marks, and nobody learns who else reads. A list can start
+from somewhere else — paste text from another app, a note or a message, upload a
+`.csv`, or use a bookmarklet on a store page — and it is all parsed in the
+browser: PickPal never opens the links. Items carry an approximate price, a note
+and an optional photo (re-encoded in the browser to drop its location data), can
+be put in a manual order, and up to five can be starred as the ones that would
+make you happiest. You can also keep a list for someone with no account, such as
+a child; you see what is taken, never by whom. A reader can stop receiving
+someone's lists without that person ever finding out. The specs are
+[`docs/encargo-lista.md`](docs/encargo-lista.md) and
+[`docs/encargo-listas-ninos.md`](docs/encargo-listas-ninos.md).
+
 **Email reminders**, opt-in and off by default, because the declared legal basis
 is consent. Lead times are a multi-select of 0, 2, 7 and 14 days, defaulting to
 `[14]`, and a user gets one grouped email per run rather than one per date.
@@ -163,13 +178,14 @@ integration, configured under **Sessions → Claims**); the API route handlers m
 one from a JWT template named `convex` with the same claims. Both are signed by
 the same issuer, which `convex/auth.config.ts` validates against
 `CLERK_JWT_ISSUER_DOMAIN` with `applicationID: "convex"`. `requireUser` returns `identity.subject`, denormalised
-as `clerkUserId` on eight of the nine tables — `importantDates` is the exception,
+as `clerkUserId` on every table that has an owner (`ownerClerkUserId` and
+`readerClerkUserId` on the list tables) — `importantDates` is the exception,
 since it is scoped through the person it belongs to. `SessionGuard` is a UX
 redirect for a session that vanished, and is not a security boundary.
 
 ### Rate limiting
 
-Two independent systems, four buckets:
+Two independent systems. The first four buckets:
 
 | Bucket | Limit | Where |
 | --- | --- | --- |
@@ -178,21 +194,30 @@ Two independent systems, four buckets:
 | `create_date` | 100 per day | `rateLimitBuckets` |
 | `save_idea` | 50 per day | `rateLimitBuckets` |
 
+The list features add six more buckets to the same table (`create_list_item`,
+`import_list`, `invite_list`, `create_managed_list`, `list_photo_upload` and
+`claim_list_item`); the figures are in [`docs/security.md`](docs/security.md) §4.
+
 The generation counter is fail-closed and its `reserve`/`refund` mutations are
 guarded by the shared `CONVEX_SERVER_SECRET`, so an authenticated browser client
 cannot call `refund` and reset its own quota.
 
 ### Data and jobs
 
-Nine Convex tables: `people`, `importantDates`, `userSettings`,
+Seventeen Convex tables: `people`, `importantDates`, `userSettings`,
 `emailNotifications`, `recommendationUsage`, `rateLimitBuckets`,
-`recommendations`, `savedIdeas`, `giftHistory`.
+`recommendations`, `savedIdeas`, `giftHistory`, `personShares`, and the seven of
+«Mi lista»: `listItems`, `listAbout`, `listShares`, `listClaims`, `listBlocks`,
+`listInviteEmails` and `managedLists`. The map of what each one is for lives in
+[`docs/estructura.md`](docs/estructura.md).
 
-One cron — `"send daily birthday email reminders"`, `0 8 * * *`, running
-`internal.emails.runDailyEmailNotifications`. It walks the users one at a time,
+Two crons. `"send daily birthday email reminders"`, `0 8 * * *`, runs
+`internal.emails.runDailyEmailNotifications`: it walks the users one at a time,
 sends each of them batched HTML through the Resend REST API without the SDK, and
 writes dedupe rows keyed by date, occurrence year and lead time, so a restart
-cannot send the same reminder twice.
+cannot send the same reminder twice. `"delete list photos that no item uses"`,
+`30 3 * * *`, runs `internal.lists.sweepOrphanPhotos` and removes uploaded photos
+that never ended up on a list item.
 
 ## Stack
 
@@ -365,7 +390,7 @@ lint still flags two raw `<img>` uses for the generated avatars.
 ## Quality gates
 
 ```bash
-npm test        # 176 tests across 13 files
+npm test        # 651 tests across 30 files
 npm run lint
 npm run build
 ```
@@ -389,8 +414,9 @@ push.
 | [`docs/email-notifications.md`](docs/email-notifications.md) | The daily cron end to end, and why the toggle ships off |
 | [`docs/tech-stack.md`](docs/tech-stack.md) | Why Convex over Prisma, Clerk over NextAuth, Resend without its SDK. Its intro still says "Next.js 14+" |
 | [`docs/figma-tokens.md`](docs/figma-tokens.md) | The normative rulebook for the Figma file: the four-layer model, alias rules, and the requirement that every token is born with a description |
+| [`docs/encargo-*.md`](docs) | The brief for each feature, written before the code and closed with the decisions taken in its design interview: shared profiles, saved ideas by occasion, My list (one annex per phase) and lists kept for a child |
 | [`docs/token-map.md`](docs/token-map.md) | Generated by `npm run token-map` |
-| [`docs/design-system.md`](docs/design-system.md) | A decision log: 2,193 lines, no table of contents, and a dated work journal in its second half. Good for the reasoning, bad for looking up a token |
+| [`docs/design-system.md`](docs/design-system.md) | A decision log: 2,400 lines, no table of contents, and a dated work journal in its second half. Good for the reasoning, bad for looking up a token |
 
 [`AGENTS.md`](AGENTS.md) and [`CLAUDE.md`](CLAUDE.md) are this project's
 contributor rulebook. They are short, and they exist to point at the three
