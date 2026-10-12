@@ -552,3 +552,42 @@ export function validateListItemInput(input: {
     throw new ConvexError("Nota demasiado larga.");
   }
 }
+
+// La foto de un elemento de la lista. El navegador la vuelve a codificar antes
+// de subirla (eso le quita los EXIF, GPS incluido, y la deja pequeña); aquí
+// solo se puede mirar lo que Convex apunta del archivo subido, porque una
+// mutation no puede leer su contenido.
+export const LIST_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+export const MAX_LIST_PHOTO_BYTES = 1_500_000;
+
+/**
+ * ¿Vale como foto de un elemento? Mira los metadatos de `_storage`: el tipo
+ * que declaró la subida y el tamaño real. Sin tipo no pasa.
+ */
+export function isAllowedListPhoto(meta: { contentType?: string; size: number }): boolean {
+  return (
+    meta.contentType !== undefined &&
+    (LIST_PHOTO_TYPES as readonly string[]).includes(meta.contentType) &&
+    Number.isFinite(meta.size) &&
+    meta.size > 0 &&
+    meta.size <= MAX_LIST_PHOTO_BYTES
+  );
+}
+
+/**
+ * El cumpleaños del dueño de una lista: día y mes de verdad, sin año. Se mide
+ * contra 2024, bisiesto, para que el 29 de febrero valga, igual que las fechas
+ * recurrentes de las fichas.
+ */
+export function validateBirthday(month: number, day: number) {
+  if (
+    !Number.isInteger(month) ||
+    month < 1 ||
+    month > 12 ||
+    !Number.isInteger(day) ||
+    day < 1 ||
+    day > new Date(2024, month, 0).getDate()
+  ) {
+    throw new ConvexError("Esa fecha no existe.");
+  }
+}

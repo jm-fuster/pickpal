@@ -27,6 +27,41 @@ _Ninguna ahora mismo._
 
 ## Resueltas
 
+- [x] **«Mi lista», fase 3.** Construida el 12-oct-2026 sobre el anexo de fase 3
+  de [`docs/encargo-lista.md`](encargo-lista.md). Lo que se construyó de verdad:
+
+  - **Foto**: `generatePhotoUploadUrl` (cubo `list_photo_upload`, 30 al día),
+    `setItemPhoto` y `removeItemPhoto`. El servidor comprueba tipo y tamaño con
+    los metadatos del almacenamiento; la limpieza de la ubicación la hace el
+    navegador al redibujar la foto (`src/lib/photoPrep.ts`). Una subida
+    rechazada no se puede borrar dentro de la misma mutation (el error deshace
+    también el borrado), así que un cron diario, `lists.sweepOrphanPhotos`
+    (03:30), borra los archivos sin elemento subidos hace entre uno y tres días.
+    Supone que «Mi lista» es lo único que guarda archivos en Convex.
+  - **Orden**: `moveItem` intercambia la posición con la vecina del mismo
+    grupo; la clave es `position ?? -_creationTime`, así que lo nunca movido
+    sigue del más nuevo al más antiguo.
+  - **Cumpleaños**: `setBirthday` / `myBirthday` en `listAbout` (la nota pasa
+    a ser opcional); `forPerson` devuelve `birthday`, y la ficha ofrece
+    «Añadir a su ficha» con `importantDates.create` (que exige etiqueta única:
+    si ya hay un «Cumpleaños» con otra fecha, sale su error).
+  - **Bloqueo**: `listBlocks`, `leaveAndBlock`, `myBlocks`, `unblock` y
+    `listShares.hidden`. Las invitaciones de alguien bloqueado se guardan
+    ocultas y devuelven `emailed` como si el correo hubiera salido (y lo apuntan
+    en `listInviteEmails` con `suppressed`), para que el dueño no note nada; un
+    test compara todo lo que ve el dueño con y sin bloqueo.
+  - **Ocasión de la marca**: `setClaimOccasion`; `forPerson` y `myGifts`
+    devuelven la etiqueta, y «Ya se lo he regalado» la propone.
+  - **Compartir desde Android**: `share_target` en `src/app/manifest.ts` y la
+    ruta `src/app/compartir/route.ts` (POST, 303 a `/mi-lista/apuntar` con el
+    fragmento). La CSP admite imágenes de `*.convex.cloud`.
+  - **Listas para niños**: solo el encargo,
+    [`docs/encargo-listas-ninos.md`](encargo-listas-ninos.md), con nueve
+    decisiones pendientes.
+  - **Sin comprobar en un navegador real**: la subida de fotos (HEIC del iPhone
+    depende del navegador) y el destino de «Compartir», que necesita la app
+    instalada en un Android.
+
 - [x] **«Mi lista», fase 2.** Construida el 12-oct-2026 sobre el anexo de fase 2
   de [`docs/encargo-lista.md`](encargo-lista.md) (cambios en las decisiones 2 y
   18). Lo que se construyó de verdad:

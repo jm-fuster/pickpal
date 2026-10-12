@@ -15,7 +15,13 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
-import { ALLOWED_STORES, ALLOWED_IMAGE_KEYS, validateListItemPrice } from "./validators";
+import {
+  ALLOWED_STORES,
+  ALLOWED_IMAGE_KEYS,
+  isAllowedListPhoto,
+  validateBirthday,
+  validateListItemPrice,
+} from "./validators";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -292,6 +298,46 @@ describe("validateListItemPrice", () => {
   test("rechaza cero, negativos, decimales, NaN, Infinity y más de 10.000 €", () => {
     for (const c of [0, -100, 39.5, Number.NaN, Number.POSITIVE_INFINITY, 1_000_001]) {
       expect(() => validateListItemPrice(c), String(c)).toThrow("Precio inválido.");
+    }
+  });
+});
+
+// La foto de un elemento de «Mi lista». Solo se ven los metadatos de
+// `_storage`: el tipo que declaró la subida y el tamaño.
+describe("isAllowedListPhoto", () => {
+  test("JPG, PNG y WebP de hasta 1,5 MB", () => {
+    for (const contentType of ["image/jpeg", "image/png", "image/webp"]) {
+      expect(isAllowedListPhoto({ contentType, size: 1 }), contentType).toBe(true);
+      expect(isAllowedListPhoto({ contentType, size: 1_500_000 }), contentType).toBe(true);
+    }
+  });
+
+  test("ni otro tipo, ni sin tipo, ni vacía, ni más grande", () => {
+    for (const meta of [
+      { contentType: "image/gif", size: 100 },
+      { contentType: "image/svg+xml", size: 100 },
+      { contentType: "text/html", size: 100 },
+      { contentType: "IMAGE/JPEG", size: 100 },
+      { size: 100 },
+      { contentType: "image/jpeg", size: 0 },
+      { contentType: "image/jpeg", size: 1_500_001 },
+    ]) {
+      expect(isAllowedListPhoto(meta), JSON.stringify(meta)).toBe(false);
+    }
+  });
+});
+
+// El cumpleaños del dueño de una lista: día y mes, sin año.
+describe("validateBirthday", () => {
+  test("acepta días reales, 29 de febrero incluido", () => {
+    for (const [m, d] of [[1, 1], [2, 29], [4, 30], [12, 31]]) {
+      expect(() => validateBirthday(m, d), `${d}/${m}`).not.toThrow();
+    }
+  });
+
+  test("rechaza meses y días que no existen", () => {
+    for (const [m, d] of [[0, 1], [13, 1], [2, 30], [4, 31], [1, 0], [1, 32], [1.5, 1], [1, 1.5], [Number.NaN, 1]]) {
+      expect(() => validateBirthday(m, d), `${d}/${m}`).toThrow("Esa fecha no existe.");
     }
   });
 });

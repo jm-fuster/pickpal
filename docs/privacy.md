@@ -124,6 +124,20 @@ son **del propio usuario**, no de un tercero.
   ficha de esa persona, la tarjeta lleva cuántos elementos no ha marcado nadie
   y, desde el 12-oct-2026, cuántos ha marcado él para regalarle. Solo las dos
   cifras, nunca títulos (§4).
+- **Fase 3 (12-oct-2026):** foto por elemento, subida por el dueño al
+  almacenamiento de Convex (`listItems.photoStorageId`); se reduce y se vuelve
+  a codificar en el navegador antes de subirla (`src/lib/photoPrep.ts`), lo que
+  quita los metadatos del archivo, ubicación GPS incluida; el servidor solo
+  comprueba tipo y tamaño. Se borra al quitarla, al borrar el elemento y con la
+  cuenta, y sale en la exportación como enlace. Cumpleaños del dueño, solo día y
+  mes (`listAbout`), visible para sus lectores. Bloqueos (`listBlocks`): el
+  lector guarda a quién no quiere leer, con el nombre y el email del dueño
+  copiados; las invitaciones siguientes de ese dueño se aceptan sin mostrarse
+  ni avisar, para que el bloqueo no se note. Los bloqueos son del lector: salen
+  en su exportación y se borran con su cuenta y con la del dueño. La ocasión de
+  una marca (`listClaims.importantDateId`) es del lector, como la marca.
+  Compartir desde Android llega por POST a `/compartir`, que solo redirige con
+  los datos en el fragmento: no guarda ni registra nada.
 - **Fase 2 (12-oct-2026):** precio aproximado por elemento
   (`listItems.priceCents`, en euros); una nota del dueño para sus lectores
   (`listAbout`, una fila por dueño, que se borra con la cuenta y sale en su
@@ -266,7 +280,7 @@ Los cinco encargados que reciben datos personales desde PickPal (Clerk, Convex, 
 
 | Dato | Plazo |
 |---|---|
-| Cuenta de usuario y datos asociados | Mientras la cuenta esté activa. Al eliminar la cuenta, el purgado es **inmediato y transaccional** (`api.account.deleteMyAccount` recorre las 14 tablas del esquema y después se borra el usuario en Clerk) — no hay periodo de gracia ni papelera. **Excepción:** una ficha que hubieras compartido con otro usuario no se borra si tiene invitados — la propiedad pasa al más antiguo, ver §2.5. **Segunda excepción:** las entradas de historial y las ideas guardadas que el usuario añadió a fichas ajenas se quedan en ellas, porque son parte de una ficha que sigue siendo de otros (`deleteMyAccount` solo borra las `savedIdeas` cuya persona ya no existe). No llevan nombre ni email, solo el `clerkUserId` de una cuenta que ya no existe en Clerk. `/privacidad`, `/terminos` y el texto de Ajustes lo dicen desde el 27-sep-2026; antes prometían borrar «todos tus datos». **«Mi lista» no tiene excepción** (§2.6): se borra entera, con sus accesos, sus marcas y las copias de elementos borrados, y no pasa a nadie. Lo único que sobrevive son las entradas que un lector apuntó en el historial de su propia ficha a partir de la lista. Las copias de seguridad de los proveedores se reciclan según sus propios plazos. |
+| Cuenta de usuario y datos asociados | Mientras la cuenta esté activa. Al eliminar la cuenta, el purgado es **inmediato y transaccional** (`api.account.deleteMyAccount` recorre las 16 tablas del esquema y después se borra el usuario en Clerk) — no hay periodo de gracia ni papelera. **Excepción:** una ficha que hubieras compartido con otro usuario no se borra si tiene invitados — la propiedad pasa al más antiguo, ver §2.5. **Segunda excepción:** las entradas de historial y las ideas guardadas que el usuario añadió a fichas ajenas se quedan en ellas, porque son parte de una ficha que sigue siendo de otros (`deleteMyAccount` solo borra las `savedIdeas` cuya persona ya no existe). No llevan nombre ni email, solo el `clerkUserId` de una cuenta que ya no existe en Clerk. `/privacidad`, `/terminos` y el texto de Ajustes lo dicen desde el 27-sep-2026; antes prometían borrar «todos tus datos». **«Mi lista» no tiene excepción** (§2.6): se borra entera, con sus accesos, sus marcas y las copias de elementos borrados, y no pasa a nadie. Lo único que sobrevive son las entradas que un lector apuntó en el historial de su propia ficha a partir de la lista. Las copias de seguridad de los proveedores se reciclan según sus propios plazos. |
 | Logs de seguridad (errores, rate limit) | Los contadores de rate limit viven en `rateLimitBuckets` / `recommendationUsage` con clave por día UTC y se borran con la cuenta. Los logs de ejecución los retiene el proveedor (Convex / Vercel) según su plan. |
 | Datos enviados a Gemini | No los conservamos tras la respuesta. Google los registra 55 días, solo para detectar abusos, y no entrena con ellos (§4.1). |
 
@@ -299,7 +313,7 @@ Como interesado, tienes derecho a:
 
 Puedes ejercerlos:
 
-1. **Desde la app**: edición, borrado y **portabilidad** están disponibles en la propia interfaz. Ajustes → «Descargar mis datos» devuelve un JSON con las catorce tablas que guardan algo del usuario, incluida `personShares` (con quién compartes y quién te comparte a ti) y las cuatro de «Mi lista» (también cuándo se avisó por correo), salvo las marcas que otros han hecho en la tuya (§2.6) — el mismo recorrido que hace el borrado de cuenta, para que no puedan desincronizarse (`convex/exportData.ts`, con un test que lo comprueba).
+1. **Desde la app**: edición, borrado y **portabilidad** están disponibles en la propia interfaz. Ajustes → «Descargar mis datos» devuelve un JSON con las dieciséis tablas que guardan algo del usuario, incluida `personShares` (con quién compartes y quién te comparte a ti) y las seis de «Mi lista» (también cuándo se avisó por correo, la nota y el cumpleaños del dueño y a quién has bloqueado), salvo las marcas que otros han hecho en la tuya (§2.6) — el mismo recorrido que hace el borrado de cuenta, para que no puedan desincronizarse (`convex/exportData.ts`, con un test que lo comprueba).
 2. **Por email** a [pickpal@jorgemolinafuster.com](mailto:pickpal@jorgemolinafuster.com), indicando qué derecho quieres ejercer.
 
 Si consideras que tus derechos no se han atendido correctamente, puedes presentar una reclamación ante la **Agencia Española de Protección de Datos** (https://www.aepd.es).

@@ -221,15 +221,37 @@ export default defineSchema({
     // 1.000.000 (`validateListItemPrice`). Vacío = sin precio. Lo escribe el
     // dueño a mano; el servidor nunca lo saca del enlace (decisión 3).
     priceCents: v.optional(v.number()),
-  }).index("by_owner", ["ownerClerkUserId"]),
+    // Foto que sube el dueño (nunca copiada de la tienda: el servidor no abre
+    // enlaces). `lists.setItemPhoto` comprueba tipo y tamaño en los metadatos
+    // de `_storage` y que ninguna otra fila use ya ese archivo; quitar la foto,
+    // borrar el elemento o la cuenta borran el archivo. La copia que guarda
+    // una marca al borrar el elemento nunca lleva foto.
+    photoStorageId: v.optional(v.id("_storage")),
+    // Orden a mano («Subir»/«Bajar»). El orden efectivo es `position ??
+    // -_creationTime`, ascendente: lo nuevo, sin `position`, sale arriba, y
+    // `lists.moveItem` intercambia ese valor con el vecino del mismo grupo.
+    // Mover no pone `editedAt`.
+    position: v.optional(v.number()),
+  })
+    .index("by_owner", ["ownerClerkUserId"])
+    // Para que dos elementos no compartan archivo: si no, quitar la foto de
+    // uno borraría la del otro.
+    .index("by_photo", ["photoStorageId"]),
 
   // «Una nota para quien te regala»: un texto del dueño para todos sus
-  // lectores (tallas, «nada de plástico»…). Como mucho una fila por dueño, que
-  // `lists.setAbout` reescribe o borra si llega vacía. Se lee con el mismo
-  // permiso que la lista (`listShares`), nunca por la ficha.
+  // lectores (tallas, «nada de plástico»…), y desde la fase 3 también su
+  // cumpleaños. Como mucho una fila por dueño, que `lists.setAbout` y
+  // `lists.setBirthday` reescriben; se borra cuando no queda ni nota ni
+  // cumpleaños. Se lee con el mismo permiso que la lista (`listShares`), nunca
+  // por la ficha.
   listAbout: defineTable({
     ownerClerkUserId: v.string(),
-    note: v.string(),
+    // Opcional desde que la fila puede guardar solo el cumpleaños.
+    note: v.optional(v.string()),
+    // Día y mes, sin año: lo que hace falta para acordarse, no la edad. El 29
+    // de febrero vale (`validateBirthday`).
+    birthdayMonth: v.optional(v.number()),
+    birthdayDay: v.optional(v.number()),
   }).index("by_owner", ["ownerClerkUserId"]),
 
   // Quién puede leer cada lista. El acceso se comprueba siempre contra esta
@@ -244,11 +266,30 @@ export default defineSchema({
     // Ficha del lector a la que la ha asociado. Si deja de tener acceso a
     // ella, se trata como sin asociar al leer (decisión 11).
     personId: v.optional(v.id("people")),
+    // El lector bloqueó a este dueño (`listBlocks`) antes de que le volviera a
+    // compartir la lista. La fila existe para que al dueño todo le salga igual
+    // que sin bloqueo (cuenta para el tope de 20, sale en `myReaders`), pero
+    // al lector no le llega por ningún sitio. `lists.unblock` la destapa.
+    hidden: v.optional(v.boolean()),
   })
     .index("by_owner", ["ownerClerkUserId"])
     .index("by_reader", ["readerClerkUserId"])
     .index("by_owner_and_reader", ["ownerClerkUserId", "readerClerkUserId"])
     .index("by_person", ["personId"]),
+
+  // Dueños de los que un lector no quiere recibir más listas. El dueño no lo
+  // sabe nunca: ni un error, ni un contador, ni una línea en su exportación.
+  // Nombre y email se copian de la fila de `listShares` al bloquear, para que
+  // el lector sepa a quién tiene bloqueado cuando esa fila ya no existe.
+  listBlocks: defineTable({
+    readerClerkUserId: v.string(),
+    ownerClerkUserId: v.string(),
+    ownerName: v.optional(v.string()),
+    ownerEmail: v.optional(v.string()),
+  })
+    .index("by_reader", ["readerClerkUserId"])
+    .index("by_reader_and_owner", ["readerClerkUserId", "ownerClerkUserId"])
+    .index("by_owner", ["ownerClerkUserId"]),
 
   // Marcas de «Lo regalo yo». Nunca se devuelven al dueño de la lista, ni en
   // la app ni en su exportación (decisiones 7 y 21).
@@ -271,6 +312,10 @@ export default defineSchema({
         reason: v.optional(v.literal("got")),
       }),
     ),
+    // «Lo regalo yo · para…»: la fecha de la ficha del lector para la que lo
+    // guarda. Solo la escribe y la lee quien marcó; se resuelve al leer, y si
+    // la fecha se borró o el lector ya no ve la ficha, sale como sin ocasión.
+    importantDateId: v.optional(v.id("importantDates")),
   })
     .index("by_item", ["itemId"])
     .index("by_reader", ["readerClerkUserId"])
@@ -285,6 +330,13 @@ export default defineSchema({
     ownerClerkUserId: v.string(),
     readerClerkUserId: v.string(),
     sentAt: v.number(),
+    // El lector tenía bloqueado al dueño y el último correo no salió, aunque
+    // el plazo se apunta igual para que el dueño no note nada. Entonces
+    // `deliveredAt` guarda cuándo salió de verdad el anterior, si salió. Solo
+    // los mira la exportación del lector, para no decirle que le avisaron
+    // cuando no.
+    suppressed: v.optional(v.boolean()),
+    deliveredAt: v.optional(v.number()),
   })
     .index("by_owner_and_reader", ["ownerClerkUserId", "readerClerkUserId"])
     .index("by_reader", ["readerClerkUserId"]),

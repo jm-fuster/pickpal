@@ -274,9 +274,14 @@ export default function PrivacyPage() {
           <h2 className="text-xl font-medium">Tu lista</h2>
           <p className="text-sm text-foreground">
             En &laquo;Mi lista&raquo; apuntas lo que te haría ilusión recibir:
-            qué es y, si quieres, un enlace, un precio aproximado, una nota y
-            si es de lo que más ilusión te haría (hasta cinco cosas). También
-            puedes dejar una nota para todos los que la leen. Si traes una lista pegada de
+            qué es y, si quieres, un enlace, un precio aproximado, una nota, una
+            foto y si es de lo que más ilusión te haría (hasta cinco cosas).
+            También puedes dejar una nota para todos los que la leen y tu
+            cumpleaños (día y mes, sin año). Las fotos se reducen en tu
+            navegador antes de subirlas, y al hacerlo pierden los datos que
+            lleva el archivo, como la ubicación donde se hicieron; se guardan en
+            Convex y se borran al quitarlas, al borrar la cosa o al cerrar tu
+            cuenta. Si traes una lista pegada de
             otra app, de una nota o de un mensaje, se lee en tu navegador: a
             PickPal solo llega lo que eliges apuntar. Solo la ven las
             personas con cuenta en PickPal a las que tú invitas, hasta un
@@ -320,6 +325,12 @@ export default function PrivacyPage() {
             solo en ese navegador, no llega a PickPal y quien escribió la lista
             no sabe cuándo la miras. El precio que veas en su lista se compara
             con tu presupuesto también en tu navegador.
+          </p>
+          <p className="text-sm text-foreground">
+            Si no quieres más listas de alguien, puedes decirlo al dejar la
+            suya: sus invitaciones dejarán de llegarte y a esa persona no se le
+            avisa de nada. Lo deshaces en Ajustes. Lo que marques puedes
+            asociarlo a una fecha de su ficha; eso también es solo tuyo.
           </p>
           <p className="text-sm text-foreground">
             Si alguien te comparte su lista, te llega un correo que te avisa

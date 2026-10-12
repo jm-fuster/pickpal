@@ -10,4 +10,13 @@ crons.cron(
   {},
 );
 
+// Fotos de «Mi lista» subidas que no acabaron en ningún elemento
+// (`lists.sweepOrphanPhotos`).
+crons.cron(
+  "delete list photos that no item uses",
+  "30 3 * * *",
+  internal.lists.sweepOrphanPhotos,
+  {},
+);
+
 export default crons;

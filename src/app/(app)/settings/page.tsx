@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { LoadingFallback } from "@/components/layout/LoadingFallback";
+import { BlockedLists } from "@/components/lista/BlockedLists";
 import {
   ALL_STORES,
   STORE_ICONS,
@@ -433,6 +434,8 @@ export default function SettingsPage() {
           </Link>
         </div>
       </section>
+
+      <BlockedLists />
 
       <section className="space-y-3 rounded-xl border p-5">
         <div className="space-y-1">

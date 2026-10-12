@@ -105,6 +105,8 @@ Por qué importa: sin esto un usuario autenticado puede insertar `notes` de 100 
 - `validateListItemInput` — elementos de «Mi lista»: título ≤ 120 (el mismo tope que `giftName`, porque «Ya se lo he regalado» lo copia al historial), nota ≤ 500 y enlace ≤ 2048 que tiene que ser `http:` o `https:` (`isAllowedListItemUrl`). Ver §11.
 - `validateListItemPrice` — precio aproximado de un elemento de «Mi lista», en céntimos de euro: entero entre 1 y 1.000.000 (10.000 €). Rechaza `NaN`, `Infinity`, decimales de céntimo y 0 («sin precio» se guarda sin el campo). Lo aplican `lists.addItem` y `lists.updateItem`. Ver §11.
 - «Una nota para quien te regala» (`lists.setAbout`): ≤ 300 caracteres después de quitar los espacios de los bordes. Ver §11.
+- `isAllowedListPhoto` — la foto de un elemento de «Mi lista», mirando solo los metadatos de `_storage` (una mutation no puede leer el archivo): `contentType` exactamente `image/jpeg`, `image/png` o `image/webp` (sin tipo no pasa) y tamaño real entre 1 byte y 1.500.000. La aplica `lists.setItemPhoto`. Ver §11.
+- `validateBirthday` — el cumpleaños del dueño de una lista: mes entero 1–12 y un día que exista en ese mes, medido contra 2024 para que el 29 de febrero valga. La aplica `lists.setBirthday`. Ver §11.
 
 **Salida de Gemini = input no confiable.** El JSON que devuelve la IA pasa por `generateObject` con un schema Zod (`giftRecommendationSchema`), pero antes de tocar la BD vuelve a validarse en `validateRecommendationIdeas`. Defensa en profundidad: el schema Zod podría aflojar sus restricciones por error, o un cliente malicioso podría llamar a `upsert` directamente con datos que nunca pasaron por Gemini.
 
@@ -121,9 +123,9 @@ Aplícalo a cualquier mutation que:
 - Llame a APIs externas de pago (cuota).
 - Envíe notificaciones / emails.
 
-Buckets actuales: `create_person` (50/día), `create_date` (100/día), `save_idea` (50/día), `invite_person` (20/día — compartir una ficha, ver §9), `invite_lookup` (30/día — comprobar un email antes de invitar, ver §9; lo comparten las fichas y «Mi lista»), `create_list_item` (100/día), `import_list` (5/día — «Pegar una lista»: una unidad por importación, no por fila, porque fila a fila una lista de 100 gastaría el cupo entero de `create_list_item`; `lists.importItems` valida todas las filas antes de insertar ninguna, con el número de fila en el error, y comprueba el tope de 100 elementos antes que el cupo, así que ni una fila inválida ni una lista que no cabe gastan la unidad; ver §11), `claim_list_item` (100/día — marcar «Lo regalo yo»), `invite_list` (20/día — compartir tu lista, por email o de vuelta; ver §11), `recommendationUsage` (10/día, tabla aparte por motivos históricos).
+Buckets actuales: `create_person` (50/día), `create_date` (100/día), `save_idea` (50/día), `invite_person` (20/día — compartir una ficha, ver §9), `invite_lookup` (30/día — comprobar un email antes de invitar, ver §9; lo comparten las fichas y «Mi lista»), `create_list_item` (100/día), `import_list` (5/día — «Pegar una lista»: una unidad por importación, no por fila, porque fila a fila una lista de 100 gastaría el cupo entero de `create_list_item`; `lists.importItems` valida todas las filas antes de insertar ninguna, con el número de fila en el error, y comprueba el tope de 100 elementos antes que el cupo, así que ni una fila inválida ni una lista que no cabe gastan la unidad; ver §11), `claim_list_item` (100/día — marcar «Lo regalo yo»), `invite_list` (20/día — compartir tu lista, por email o de vuelta; ver §11; también se gasta cuando quien recibe te tiene bloqueado, ver §11), `list_photo_upload` (30/día — direcciones de subida de fotos de «Mi lista»; se gasta en `lists.generatePhotoUploadUrl`, antes de que el navegador suba nada, porque lo que ocupa almacenamiento es la subida y no el apunte), `recommendationUsage` (10/día, tabla aparte por motivos históricos).
 
-**Sin cubo, a propósito:** `lists.setAbout` («Una nota para quien te regala») no gasta cupo. Reescribe o borra siempre la misma fila de `listAbout` (como mucho una por usuario, con tope de 300 caracteres), así que repetirla no llena nada ni manda nada a nadie: no es superficie de DoS de almacenamiento. Si algún día avisara a los lectores al cambiarla, necesitaría cubo.
+**Sin cubo, a propósito:** `lists.setAbout` («Una nota para quien te regala») no gasta cupo. Reescribe o borra siempre la misma fila de `listAbout` (como mucho una por usuario, con tope de 300 caracteres), así que repetirla no llena nada ni manda nada a nadie: no es superficie de DoS de almacenamiento. Si algún día avisara a los lectores al cambiarla, necesitaría cubo. Por lo mismo tampoco gastan cupo `lists.setBirthday` (la misma fila), `lists.moveItem` (reescribe `position` en dos filas que ya existen), `lists.setItemPhoto` y `lists.removeItemPhoto` (apuntan o quitan un archivo ya pagado con `list_photo_upload`), `lists.setClaimOccasion` (un campo de una marca propia), y `lists.leaveAndBlock` y `lists.unblock` (como mucho una fila de `listBlocks` por pareja, y solo con un permiso recibido de por medio).
 
 **Cuota de recomendaciones = reserva atómica.** `api.recommendationUsage.reserve` (mutation) incrementa el contador **antes** de llamar a Gemini y lanza `ConvexError` si está agotado; al ser una transacción Convex, dos peticiones concurrentes en el límite no pueden superar las 10/día. Si la generación falla (saturación, timeout o validación del schema de Gemini), la API route llama a `refund` para devolver la unidad: como el `return` de éxito va tras el `upsert`, llegar al `catch` garantiza que no se persistió ninguna idea, así que un fallo de formato del proveedor no cuesta una generación. `refund` recibe el `day` UTC que devolvió `reserve` para devolver la unidad al bucket correcto aunque el fallo cruce la medianoche UTC. No existe un `consume` posterior al guardado: el patrón check-luego-consume tenía una carrera de coste y un caso "ideas guardadas pero el usuario ve error".
 
@@ -207,7 +209,7 @@ El `clerkUserId` siempre se lee de la sesión vía `requireUser` — la mutation
 
 **Excepción desde que existe compartir (§9):** `deleteMyAccount` ya no borra incondicionalmente cada `people` del usuario. Si la persona tiene invitados, la propiedad se transfiere al más antiguo (`personShares.transferToOldestInviteeOrNull`) en lugar de borrarla — bloquear el borrado violaría el derecho RGPD a irse, y cascada la castigaría a un tercero por una decisión ajena. Solo se cascada-borra si no queda nadie más con acceso. Además, `deleteMyAccount` llama a `personShares.deleteSharesForUser` para desligar al usuario de toda ficha ajena que le hubieran compartido — la versión en bloque de `personShares.leave`.
 
-**«Mi lista» no tiene esa excepción (§11):** `lists.deleteListDataForUser` borra la lista entera del usuario (elementos, su «nota para quien te regala» en `listAbout`, accesos y las marcas que otros hicieron en ella) sin transferirla, y sus accesos y marcas en listas ajenas. Las entradas de historial que un lector creó a partir de la lista son de su ficha y se quedan.
+**«Mi lista» no tiene esa excepción (§11):** `lists.deleteListDataForUser` borra la lista entera del usuario (elementos con sus fotos en `_storage`, su «nota para quien te regala» y su cumpleaños en `listAbout`, accesos, también los ocultos, y las marcas que otros hicieron en ella) sin transferirla, sus accesos y marcas en listas ajenas, y los bloqueos de `listBlocks` de los dos lados: los que puso como lector y los que otros le pusieron como dueño. Estos últimos se borran pero **no se exportan**: son el único caso en que «se borra, luego se exporta» no se cumple, porque exportarle a alguien quién le ha bloqueado es justo lo que el bloqueo promete no decir. El test de paridad no lo nota porque la tabla sí sale en la exportación del lado del lector. Las entradas de historial que un lector creó a partir de la lista son de su ficha y se quedan.
 
 ### 8. Variables de entorno
 
@@ -273,8 +275,8 @@ Diseño completo en [`docs/encargo-lista.md`](encargo-lista.md); código en
 [`convex/lists.ts`](../convex/lists.ts). Hay tres públicos y cada función sirve
 a uno solo:
 
-- **El dueño nunca ve las marcas.** `myItems`, `myAbout` y `myReaders` leen solo
-  `listItems`, `listAbout` y `listShares`; ninguna query del dueño cruza con `listClaims`, ni
+- **El dueño nunca ve las marcas.** `myItems`, `myAbout`, `myBirthday` y `myReaders` leen solo
+  `listItems` (y `_storage` para la foto), `listAbout` y `listShares`; ninguna query del dueño cruza con `listClaims`, ni
   para un contador, y la exportación del dueño tampoco las lleva (§2.6 de
   `privacy.md` explica la base). Es la propiedad que sostiene la función y la
   primera que prueba `convex/lists.test.ts`. Si una query nueva del dueño
@@ -341,6 +343,17 @@ a uno solo:
   XSS en la cuenta de quien lo abre. Se pintan con `target="_blank"
   rel="noopener noreferrer nofollow"` y siempre con el dominio visible
   (`ListItemLink`); un dominio que imita a otro sale en punycode.
+- **Compartir desde Android (`share_target` del manifiesto) llega por POST a
+  `/compartir`** (`src/app/compartir/route.ts`), fuera de `/api` porque el
+  proxy rechaza los POST a `/api` que no son del mismo origen y «Compartir»
+  llega con `Sec-Fetch-Site: none`. No es un hueco CSRF: la ruta no cambia
+  nada, solo lee lo compartido (recortado a 4.000 caracteres por campo) y
+  redirige con 303 a `/mi-lista/apuntar` con los datos en el fragmento, que
+  pasa por la misma validación que el del marcador. POST y no GET para que el
+  enlace no quede en los registros de peticiones. Exige sesión como cualquier
+  ruta privada.
+- **Las fotos se sirven desde el almacenamiento de Convex**, así que la CSP
+  (Report-Only) admite `https://*.convex.cloud` en `img-src`.
 - **El botón «Apuntar en PickPal» (`src/lib/bookmarklet.ts`) corre en la página
   de la tienda, no en PickPal.** Es una cadena fija, sin scripts remotos: no
   carga nada de PickPal ni de nadie, así que no hay nada que un tercero pueda
@@ -384,6 +397,87 @@ a uno solo:
   elementos que el dueño quitó no cuentan. Si las dos son 0 no sale nada.
 - **Quitar el acceso borra las marcas.** `revoke` y `leave` borran las marcas de
   ese lector en esa lista; si no, bloquearían elementos para siempre.
+- **La foto de cada cosa la sube el dueño, y solo él.** El servidor nunca la
+  saca de la tienda (no abre enlaces, ver arriba). Son tres pasos:
+  `generatePhotoUploadUrl` gasta `list_photo_upload` (30/día, §4) y devuelve
+  una dirección de subida de un solo uso; el navegador sube el archivo;
+  `setItemPhoto` lo apunta al elemento tras `assertOwnItem`. Como una mutation
+  no puede leer el archivo, la comprobación es sobre lo que Convex apuntó al
+  recibirlo en `_storage` (`ctx.db.system.get`): tipo declarado JPG, PNG o
+  WebP y tamaño real de como mucho 1,5 MB (`isAllowedListPhoto`, §3). El tipo
+  lo declara quien sube, así que no prueba que el contenido sea una imagen;
+  lo que lo acota es que la foto solo se pinta en un `<img>`, nunca se abre
+  como documento, y que el archivo no puede pasar de 1,5 MB. **Los EXIF (y con
+  ellos el GPS) los quita el navegador** al volver a codificar la imagen antes
+  de subirla. El servidor no puede comprobarlo: un cliente modificado puede
+  subir un JPG con su ubicación, pero solo la del propio dueño y solo en su
+  lista. Un archivo que ya es la foto de otro elemento no vale (índice
+  `by_photo`): si alguien llegara a conocer el id de un archivo ajeno (no se
+  devuelve a nadie, pero la dirección de la foto la ven los lectores y no
+  conviene fiarlo a que no se pueda sacar de ahí), podría apuntárselo a una
+  cosa suya y, al quitarlo, borrar la foto del otro. Cambiar la foto, quitarla
+  (`removeItemPhoto`), borrar el elemento o la cuenta borran el archivo; la
+  copia que guarda una marca al borrar un elemento nunca lleva foto. Ni poner
+  ni quitar la foto ponen `editedAt`. La dirección (`photoUrl`) llega al dueño
+  en `myItems` y al lector en `forPerson`, por el mismo permiso que el resto,
+  y a la exportación del dueño como `fotoUrl`; funciona mientras exista la
+  cuenta.
+- **Lo subido que no acaba en ningún elemento se borra solo.** Si
+  `setItemPhoto` rechaza el archivo, el error deshace la mutation entera,
+  también un borrado del archivo que intentara, así que no puede borrarlo
+  ella. Tampoco se apunta lo que se sube y no se llega a apuntar (la página
+  se cierra, el elemento se borra entre medias). Lo recoge
+  `lists.sweepOrphanPhotos`, una `internalMutation` que corre a diario desde
+  `convex/crons.ts`: mira los archivos de `_storage` subidos entre hace 3 días
+  y hace 1 y borra los que no use ningún elemento (`by_photo`). El día de
+  margen es para no quitarle el archivo a una subida a medias. **Supone que
+  «Mi lista» es lo único que guarda archivos en `_storage`:** si otra función
+  empieza a usarlo, el barrido tiene que saber de ella o le borrará los
+  archivos.
+- **El orden a mano no es una edición.** `moveItem` intercambia el sitio
+  (`position ?? -_creationTime`) con el vecino del mismo grupo y no pone
+  `editedAt`, así que a nadie le salta «lo ha cambiado». Solo lo hace el dueño
+  (`assertOwnItem`), solo lee `listItems` y no gasta cupo (§4). El lector ve la
+  lista en ese orden; no ve `position`.
+- **El cumpleaños del dueño va por el permiso de la lista.** `setBirthday`
+  guarda día y mes (sin año, así que no dice la edad) en la misma fila de
+  `listAbout` que la nota, con `validateBirthday` (§3), y lo lee él con
+  `myBirthday`. Al lector le llega dentro de `forPerson` (`birthday`) por la
+  fila de `listShares`, como la nota: un invitado de la ficha asociada no lo
+  ve. No llega a Gemini ni se copia a la ficha del lector. Sale en la
+  exportación del dueño (`miLista.miCumpleanos`), no en la de quien lo lee, y
+  se va con su cuenta.
+- **Bloquear a quien te comparte su lista no se nota desde fuera.**
+  `leaveAndBlock` hace lo mismo que `leave` (permiso y marcas fuera) y apunta
+  una fila en `listBlocks` con el nombre y el email del permiso. Si el dueño
+  vuelve a compartirla (`invite` o `shareBack`), `grantAccess` sigue
+  exactamente el mismo camino que sin bloqueo: misma comprobación de tope (la
+  fila cuenta para los 20), mismo cupo `invite_list`, mismos errores, y el
+  mismo `emailed`, que se calcula igual (el lector tiene email y no hay aviso
+  en los últimos 30 días) y apunta el plazo en `listInviteEmails` como si el
+  correo hubiera salido. Lo único distinto es que la fila nace con
+  `hidden: true` y el correo no se programa. El dueño la ve en `myReaders` y en
+  su exportación como un lector más; no hay ningún campo, error ni contador que
+  dependa de `hidden` en lo que le llega, y un test compara todo lo que ve con
+  y sin bloqueo. Para el lector, una fila oculta no existe: `sharedWithMe`,
+  `forPerson`, `claim`, `myGifts`, los contadores del correo de la fecha y su
+  exportación la saltan, y `associate`, `leave`, `leaveAndBlock` y `shareBack`
+  contestan «Lista no encontrada.», como con un id ajeno. Sus bloqueos los ve
+  solo él (`myBlocks`) y solo él los quita (`unblock`, que destapa la fila
+  oculta si la hay, sin correo: el plazo ya contó). En su exportación salen
+  como `listasQueNoQuieres`, y en `avisosDeListaPorCorreo.recibidos` no sale
+  un aviso que no salió (`suppressed`; `deliveredAt` guarda el anterior que sí
+  salió). Cómo se borra con la cuenta está en §7.
+- **«Lo regalo yo · para…» es un dato de quien marca.** `setClaimOccasion`
+  exige que la marca sea suya (`assertOwnClaim`) y siga sin dar por regalada,
+  y que la fecha sea de la ficha a la que asoció esa lista y que todavía ve
+  (`validPersonId` sobre su permiso visible): tener acceso a otra ficha no
+  basta, como en «misma persona, no solo acceso» de §2, y el error es el mismo
+  si la fecha no existe que si es de otra ficha. La etiqueta se resuelve al
+  leer: si la fecha se borra o el lector deja de ver la ficha, sale sin
+  ocasión. Solo vuelve a quien marcó (`occasionLabel` en sus propias filas de
+  `forPerson`, y `myGifts`); al dueño y al resto de lectores no les llega nada.
+  Sale en la exportación de quien marcó (`paraOcasion`).
 
 ---
 
@@ -473,7 +567,8 @@ Decisiones explícitas de "ahora no":
 - **El dueño no puede revocar a un invitado.** Solo existe `personShares.leave` (el invitado se va solo). Añadir un `personShares.revoke` (dueño quita a un invitado concreto) es sencillo con la tabla actual, pero no lo pedía el encargo y no hay un caso de uso claro que lo motive todavía — revisar si aparece.
 - **Compartir concede acceso al momento, sin que el invitado acepte.** `personShares.invite` resuelve el email y da acceso en la misma llamada; no hay un estado "pendiente" ni una notificación al invitado de que ahora tiene acceso a una ficha con datos de salud. Aceptable para el caso de uso (hermanos que ya han hablado de compartir antes de escribir el email), pero si se abre a compartir con desconocidos, esto necesita revisarse.
 - **El email tiene que coincidir con una cuenta existente.** No hay invitación por email a alguien sin cuenta todavía (sin flujo de "cuando se registre, dale acceso"). Quien invita ve "No hay ninguna cuenta de PickPal con ese email" y tiene que pedirle a esa persona que se registre primero. Vale igual para compartir «Mi lista» (§11): invitar a quien aún no tiene cuenta quedó fuera de la primera versión porque obliga a escribir a alguien que no es usuario.
-- **No se puede bloquear a quien te comparte listas.** «No me interesa» deja la lista, pero la misma persona puede volver a compartirla y la tarjeta reaparece. Lo acotan el cubo `invite_list` (20/día por quien comparte) y que hace falta conocer el email de la cuenta. Revisar si aparece abuso.
+- **El servidor no comprueba que la foto de un elemento venga sin EXIF.** Lo quita el navegador al volver a codificarla (§11); una mutation no puede leer el archivo, y comprobarlo exigiría una action que lo descargue y lo analice. El riesgo se limita a que un cliente modificado publique la ubicación de su propio dueño en su propia lista. Revisar si las fotos llegan a venir de otro sitio que no sea la cámara o la galería del dueño.
+- **El tipo de una foto es el que declara la subida.** No se miran los bytes del archivo (mismo motivo). Lo acotan el tope de 1,5 MB y que solo se pinta en `<img>`.
 
 ---
 

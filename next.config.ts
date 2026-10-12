@@ -26,7 +26,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev https://challenges.cloudflare.com https://va.vercel-scripts.com",
       "connect-src 'self' https://*.clerk.accounts.dev https://*.convex.cloud wss://*.convex.cloud",
-      "img-src 'self' data: https://api.dicebear.com https://img.clerk.com https://images.pexels.com https://cdn.brandfetch.io",
+      "img-src 'self' data: https://api.dicebear.com https://img.clerk.com https://images.pexels.com https://cdn.brandfetch.io https://*.convex.cloud",
       "style-src 'self' 'unsafe-inline'",
       "frame-src https://challenges.cloudflare.com",
       "worker-src 'self' blob:",

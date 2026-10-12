@@ -22,6 +22,8 @@ import { ITEMS_COUNTER_FROM, MAX_LIST_FAVORITES, MAX_LIST_ITEMS } from "@/lib/li
 import { formatApproxPrice } from "@/lib/price";
 import { cn } from "@/lib/utils";
 import { AboutNote } from "@/components/lista/AboutNote";
+import { OwnerBirthday } from "@/components/lista/OwnerBirthday";
+import { usePhotoUpload } from "@/components/lista/usePhotoUpload";
 
 // El formulario (react-hook-form + zod) solo aparece al apuntar o editar algo.
 // Va en su propio chunk, que se pide al montar la página: llega mucho antes de
@@ -46,6 +48,12 @@ export default function MyListPage() {
   const items = useQuery(api.lists.myItems, isLoaded && isSignedIn ? {} : "skip");
   const removeItem = useMutation(api.lists.removeItem);
   const setFavorite = useMutation(api.lists.setFavorite);
+  const moveItem = useMutation(api.lists.moveItem);
+  const removeItemPhoto = useMutation(api.lists.removeItemPhoto);
+  const { upload, uploadingId } = usePhotoUpload();
+  // Un solo selector de archivos para toda la página; recuerda para qué fila se abrió.
+  const photoInput = useRef<HTMLInputElement>(null);
+  const photoFor = useRef<Id<"listItems"> | null>(null);
 
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<Id<"listItems"> | null>(null);
@@ -143,6 +151,28 @@ export default function MyListPage() {
     }
   };
 
+  const handleMove = async (item: Item, direction: "up" | "down") => {
+    try {
+      await moveItem({ id: item._id, direction });
+    } catch (err) {
+      toast.error(userErrorMessage(err, "No se pudo mover"));
+    }
+  };
+
+  const pickPhoto = (item: Item) => {
+    photoFor.current = item._id;
+    photoInput.current?.click();
+  };
+
+  const handleRemovePhoto = async (item: Item) => {
+    try {
+      await removeItemPhoto({ id: item._id });
+      toast.success("Foto quitada");
+    } catch (err) {
+      toast.error(userErrorMessage(err, "No se pudo quitar la foto"));
+    }
+  };
+
   const visible = items?.filter((i) => !hiddenIds.has(i._id)) ?? [];
   const favorites = visible.filter((i) => i.favorite);
   const rest = visible.filter((i) => !i.favorite);
@@ -152,7 +182,7 @@ export default function MyListPage() {
   const favoriteCount = items?.filter((i) => i.favorite).length ?? 0;
   const full = count >= MAX_LIST_ITEMS;
 
-  const renderRow = (item: Item) => (
+  const renderRow = (item: Item, index: number, group: Item[]) => (
     <li key={item._id} id={`elemento-${item._id}`}>
       {editingId === item._id ? (
         <ListItemForm item={item} onDone={() => setEditingId(null)} />
@@ -163,8 +193,19 @@ export default function MyListPage() {
             highlightId === item._id && "bg-secondary/10",
           )}
         >
+          {item.photoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.photoUrl}
+              alt=""
+              className="size-14 shrink-0 rounded-md border border-border/60 object-cover"
+            />
+          )}
           <div className="min-w-0 flex-1 space-y-1">
             <p className="font-medium leading-snug">{item.title}</p>
+            {uploadingId === item._id && (
+              <p className="text-xs text-muted-foreground" role="status">Subiendo la foto…</p>
+            )}
             {(item.priceCents !== null || item.url) && (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 {item.priceCents !== null && (
@@ -191,6 +232,11 @@ export default function MyListPage() {
               item={item}
               favoritesFull={favoriteCount >= MAX_LIST_FAVORITES}
               onFavorite={(favorite) => handleFavorite(item, favorite)}
+              canMoveUp={index > 0}
+              canMoveDown={index < group.length - 1}
+              onMove={(direction) => handleMove(item, direction)}
+              onPhoto={() => pickPhoto(item)}
+              onRemovePhoto={() => handleRemovePhoto(item)}
               onGot={() => handleRemove(item, "got")}
               onRemove={() => handleRemove(item, undefined)}
             />
@@ -255,7 +301,10 @@ export default function MyListPage() {
                 )}
               </div>
 
-              <AboutNote />
+              <div className="flex flex-col gap-1.5">
+                <AboutNote />
+                <OwnerBirthday />
+              </div>
 
               {adding ? (
                 <ListItemForm
@@ -317,6 +366,21 @@ export default function MyListPage() {
 
         <ListReaders />
       </div>
+
+      <input
+        ref={photoInput}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          const id = photoFor.current;
+          e.target.value = "";
+          if (file && id) void upload(id, file);
+        }}
+      />
     </main>
   );
 }
@@ -330,12 +394,22 @@ function OwnerItemMenu({
   item,
   favoritesFull,
   onFavorite,
+  canMoveUp,
+  canMoveDown,
+  onMove,
+  onPhoto,
+  onRemovePhoto,
   onGot,
   onRemove,
 }: {
   item: Item;
   favoritesFull: boolean;
   onFavorite: (favorite: boolean) => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMove: (direction: "up" | "down") => void;
+  onPhoto: () => void;
+  onRemovePhoto: () => void;
   onGot: () => void;
   onRemove: () => void;
 }) {
@@ -370,6 +444,24 @@ function OwnerItemMenu({
             </span>
           )}
         </button>
+        {(canMoveUp || canMoveDown) && (
+          <>
+            <button type="button" className={row} disabled={!canMoveUp} onClick={() => run(() => onMove("up"))}>
+              Subir un puesto
+            </button>
+            <button type="button" className={row} disabled={!canMoveDown} onClick={() => run(() => onMove("down"))}>
+              Bajar un puesto
+            </button>
+          </>
+        )}
+        <button type="button" className={row} onClick={() => run(onPhoto)}>
+          {item.photoUrl ? "Cambiar la foto" : "Añadir una foto"}
+        </button>
+        {item.photoUrl && (
+          <button type="button" className={row} onClick={() => run(onRemovePhoto)}>
+            Quitar la foto
+          </button>
+        )}
         <button type="button" className={row} onClick={() => run(onGot)}>
           Ya lo tengo
         </button>

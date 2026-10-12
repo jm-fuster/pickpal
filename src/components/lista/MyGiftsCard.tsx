@@ -3,12 +3,19 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
 import { ChevronDown, Gift } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { ListItemLink } from "@/components/lista/ListItemLink";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { userErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
+
+// Valor del selector para «sin ocasión»: el Select no admite un valor vacío.
+const NONE = "ninguna";
 
 /**
  * «Lo que vas a regalar»: tus marcas de «Lo regalo yo» en todas las listas que
@@ -22,6 +29,18 @@ export function MyGiftsCard() {
   const { isLoaded, isSignedIn } = useAuth();
   const gifts = useQuery(api.lists.myGifts, isLoaded && isSignedIn ? {} : "skip");
   const [open, setOpen] = useState(false);
+  const setClaimOccasion = useMutation(api.lists.setClaimOccasion);
+
+  const handleOccasion = async (claimId: Id<"listClaims">, value: string) => {
+    try {
+      await setClaimOccasion({
+        claimId,
+        importantDateId: value === NONE ? null : (value as Id<"importantDates">),
+      });
+    } catch (err) {
+      toast.error(userErrorMessage(err, "No se pudo guardar la ocasión"));
+    }
+  };
 
   if (!gifts || gifts.length === 0) return null;
 
@@ -66,16 +85,39 @@ export function MyGiftsCard() {
                       </p>
                     )}
                   </div>
-                  {g.personId ? (
-                    <Link
-                      href={`/seres-queridos/${g.personId}#lista`}
-                      className="shrink-0 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                    >
-                      Para {who}
-                    </Link>
-                  ) : (
-                    <span className="shrink-0 text-xs text-muted-foreground">Para {who}</span>
-                  )}
+                  <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
+                    {g.personId ? (
+                      <Link
+                        href={`/seres-queridos/${g.personId}#lista`}
+                        className="shrink-0 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                      >
+                        Para {who}
+                      </Link>
+                    ) : (
+                      <span className="shrink-0 text-xs text-muted-foreground">Para {who}</span>
+                    )}
+                    {/* Para qué fecha de su ficha: se propone al pasarlo al historial. */}
+                    {!g.removed && g.occasions.length > 0 && (
+                      <Select
+                        value={g.importantDateId ?? NONE}
+                        onValueChange={(v) => {
+                          if (v) void handleOccasion(g.claimId, v);
+                        }}
+                      >
+                        <SelectTrigger size="sm" aria-label={`Para qué ocasión es ${g.title}`} className="min-w-36">
+                          <span className={g.occasionLabel ? "" : "text-subtle-foreground"}>
+                            {g.occasionLabel ?? "Para qué ocasión…"}
+                          </span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE}>Sin ocasión</SelectItem>
+                          {g.occasions.map((o) => (
+                            <SelectItem key={o._id} value={o._id}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                 </li>
               );
             })}

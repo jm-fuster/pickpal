@@ -9,6 +9,9 @@
 // «Lo que más ilusión te haría», «Ya lo tengo», compartir de vuelta, el
 // borrado de cuenta, la exportación y las líneas del email. Al final, la fase
 // 2: el precio, la nota para quien te regala, «Nuevo» y «Lo que vas a regalar».
+// Y la fase 3: la foto de cada cosa, el orden a mano, el cumpleaños de quien
+// comparte, bloquear a quien te comparte su lista sin que lo sepa y «Lo regalo
+// yo · para…».
 
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -21,8 +24,10 @@ import {
   MAX_FAVORITES,
   MAX_ITEMS_PER_LIST,
   MAX_READERS_PER_LIST,
+  PHOTO_UPLOAD_DAILY_LIMIT,
 } from "./lists";
 import { buildListInviteEmail } from "./emails";
+import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -92,7 +97,7 @@ describe("el dueño nunca ve las marcas", () => {
 
     expect(marcado).toEqual(antes);
     expect(regalado).toEqual(antes);
-    const permitidos = new Set(["_id", "_creationTime", "title", "url", "note", "favorite", "priceCents"]);
+    const permitidos = new Set(["_id", "_creationTime", "title", "url", "note", "favorite", "priceCents", "photoUrl"]);
     for (const item of antes) {
       for (const campo of Object.keys(item)) expect(permitidos).toContain(campo);
     }
@@ -156,7 +161,11 @@ describe("el dueño nunca ve las marcas", () => {
   test("ninguna función del dueño lee las marcas, y lists.ts no sale a la red", () => {
     const fuente = fs.readFileSync("convex/lists.ts", "utf8");
     const sinComentarios = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-    for (const nombre of ["myItems", "myAbout", "setAbout", "myReaders", "addItem", "importItems", "updateItem", "setFavorite"]) {
+    for (const nombre of [
+      "myItems", "myAbout", "setAbout", "myBirthday", "setBirthday", "myReaders", "addItem",
+      "importItems", "updateItem", "setFavorite", "moveItem", "generatePhotoUploadUrl",
+      "setItemPhoto", "removeItemPhoto",
+    ]) {
       const inicio = fuente.indexOf(`export const ${nombre} = `);
       expect(inicio, `${nombre} no está en convex/lists.ts`).toBeGreaterThan(-1);
       const fin = fuente.indexOf("\nexport ", inicio + 1);
@@ -806,7 +815,7 @@ describe("ya lo tengo", () => {
       exportacion: { marcasEnListasDeOtros: unknown };
     };
     expect(base.devuelve).toBeNull();
-    expect(base.items).toEqual([{ title: "Libro de cerámica", favorite: false, priceCents: null }]);
+    expect(base.items).toEqual([{ title: "Libro de cerámica", favorite: false, priceCents: null, photoUrl: null }]);
     expect(base.exportacion.marcasEnListasDeOtros).toEqual([]);
     for (const marca of ["ninguna", "marcada", "regalada"] as const) {
       for (const reason of [undefined, "got"] as const) {
@@ -895,7 +904,12 @@ describe("exportación del lector", () => {
     expect(datos.listasQueTeComparten).toMatchObject([
       { de: "Laura", email: LAURA.email, fichaAsociada: "Laura" },
     ]);
-    expect(datos.miLista).toEqual({ elementos: [], compartidaCon: [], notaParaQuienTeRegala: null });
+    expect(datos.miLista).toEqual({
+      elementos: [],
+      compartidaCon: [],
+      notaParaQuienTeRegala: null,
+      miCumpleanos: null,
+    });
   });
 
   test("lleva si la dueña quitó lo que había marcado porque ya lo tenía", async () => {
@@ -1392,5 +1406,805 @@ describe("lo que vas a regalar", () => {
   test("sin sesión no hay nada", async () => {
     const t = convexTest(schema, modules);
     await expect(t.query(api.lists.myGifts, {})).rejects.toThrow(/Sesión no encontrada/);
+  });
+});
+
+// ─── Fase 3 ──────────────────────────────────────────────────────────────────
+
+/**
+ * Sube un archivo como lo haría la página. convex-test no guarda el tipo de la
+ * subida en `_storage`, así que se apunta a mano en sus metadatos (el `patch`
+ * de dos argumentos va por el id, sin mirar la tabla). `relleno` cambia el
+ * contenido para que cada archivo tenga su propia dirección.
+ */
+async function subir(t: T, contentType: string | undefined, size = 2000, relleno = 1) {
+  return t.run(async (ctx) => {
+    const id = await ctx.storage.store(new Blob([new Uint8Array(size).fill(relleno)]));
+    if (contentType !== undefined) {
+      await ctx.db.patch(id as unknown as Id<"listItems">, { contentType } as never);
+    }
+    return id;
+  });
+}
+const existe = (t: T, id: Id<"_storage">) =>
+  t.run(async (ctx) => (await ctx.db.system.get("_storage", id)) !== null);
+
+describe("foto de cada cosa", () => {
+  test("la dueña la sube, la ven ella y quien lee, y quitarla borra el archivo", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, fichaDeAlex } = await escenario(t);
+
+    expect(typeof (await laura.mutation(api.lists.generatePhotoUploadUrl, {}))).toBe("string");
+    const foto = await subir(t, "image/jpeg");
+    expect(await laura.mutation(api.lists.setItemPhoto, { id: vela, storageId: foto })).toBeNull();
+
+    const url = (await laura.query(api.lists.myItems, {})).find((i) => i._id === vela)!.photoUrl;
+    expect(url).toMatch(/^https:\/\//);
+    const [lista] = await alex.query(api.lists.forPerson, { personId: fichaDeAlex });
+    expect(lista.items.find((i) => i._id === vela)!.photoUrl).toBe(url);
+    expect(lista.items.find((i) => i._id !== vela)!.photoUrl).toBeNull();
+
+    await laura.mutation(api.lists.removeItemPhoto, { id: vela });
+    expect((await laura.query(api.lists.myItems, {})).find((i) => i._id === vela)!.photoUrl).toBeNull();
+    expect(await existe(t, foto)).toBe(false);
+    expect(await t.run(async (ctx) => "photoStorageId" in (await ctx.db.get(vela))!)).toBe(false);
+    // Quitar una que ya no está no falla.
+    await laura.mutation(api.lists.removeItemPhoto, { id: vela });
+  });
+
+  test("cambiarla borra la anterior; poner la misma otra vez no hace nada", async () => {
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    const id = await laura.mutation(api.lists.addItem, { title: "Vela de cera" });
+    const primera = await subir(t, "image/png", 2000, 1);
+    const segunda = await subir(t, "image/webp", 2000, 2);
+
+    await laura.mutation(api.lists.setItemPhoto, { id, storageId: primera });
+    await laura.mutation(api.lists.setItemPhoto, { id, storageId: primera });
+    expect(await existe(t, primera)).toBe(true);
+    await laura.mutation(api.lists.setItemPhoto, { id, storageId: segunda });
+
+    expect(await existe(t, primera)).toBe(false);
+    expect(await existe(t, segunda)).toBe(true);
+    expect(await t.run(async (ctx) => (await ctx.db.get(id))!.photoStorageId)).toBe(segunda);
+  });
+
+  test("rechaza otro tipo, sin tipo, más de 1,5 MB, un archivo que no existe y el de otra cosa", async () => {
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    const vela = await laura.mutation(api.lists.addItem, { title: "Vela de cera" });
+    const libro = await laura.mutation(api.lists.addItem, { title: "Libro" });
+    const deLibro = await subir(t, "image/jpeg", 2000, 9);
+    await laura.mutation(api.lists.setItemPhoto, { id: libro, storageId: deLibro });
+    const borrado = await subir(t, "image/jpeg", 2000, 8);
+    await t.run((ctx) => ctx.storage.delete(borrado));
+
+    const malas = [
+      await subir(t, "image/gif"),
+      await subir(t, "image/svg+xml"),
+      await subir(t, "text/html"),
+      await subir(t, undefined),
+      await subir(t, "image/jpeg", 1_500_001),
+      borrado,
+      deLibro,
+    ];
+    for (const storageId of malas) {
+      await expect(
+        laura.mutation(api.lists.setItemPhoto, { id: vela, storageId }),
+      ).rejects.toMatchObject({
+        data: "Esa foto no vale: tiene que ser JPG, PNG o WebP de menos de 1,5 MB.",
+      });
+    }
+    expect(await t.run(async (ctx) => "photoStorageId" in (await ctx.db.get(vela))!)).toBe(false);
+    // La de la otra cosa sigue siendo suya.
+    expect(await existe(t, deLibro)).toBe(true);
+    // El límite exacto sí vale.
+    await laura.mutation(api.lists.setItemPhoto, {
+      id: vela,
+      storageId: await subir(t, "image/jpeg", 1_500_000),
+    });
+  });
+
+  test("solo la dueña pone o quita fotos", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela } = await escenario(t);
+    const foto = await subir(t, "image/jpeg");
+    for (const quien of [ALEX, OTRO]) {
+      await expect(t.withIdentity(quien).mutation(api.lists.setItemPhoto, { id: vela, storageId: foto })).rejects.toThrow(
+        /Elemento no encontrado/,
+      );
+    }
+    await laura.mutation(api.lists.setItemPhoto, { id: vela, storageId: foto });
+    await expect(alex.mutation(api.lists.removeItemPhoto, { id: vela })).rejects.toThrow(
+      /Elemento no encontrado/,
+    );
+    await expect(t.mutation(api.lists.generatePhotoUploadUrl, {})).rejects.toThrow(/Sesión no encontrada/);
+    await expect(t.mutation(api.lists.setItemPhoto, { id: vela, storageId: foto })).rejects.toThrow(
+      /Sesión no encontrada/,
+    );
+    expect(await existe(t, foto)).toBe(true);
+  });
+
+  test("ponerla o quitarla no le dice a nadie «lo ha cambiado»", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-12T10:00:00Z"));
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, fichaDeAlex } = await escenario(t);
+    await alex.mutation(api.lists.claim, { itemId: vela });
+    const deVela = async () =>
+      (await alex.query(api.lists.forPerson, { personId: fichaDeAlex }))[0].items.find((i) => i._id === vela)!;
+
+    vi.setSystemTime(new Date("2026-10-12T10:05:00Z"));
+    await laura.mutation(api.lists.setItemPhoto, { id: vela, storageId: await subir(t, "image/jpeg") });
+    expect(await deVela()).toMatchObject({ state: "mine", editedSinceMark: false });
+    vi.setSystemTime(new Date("2026-10-12T10:10:00Z"));
+    await laura.mutation(api.lists.removeItemPhoto, { id: vela });
+    expect((await deVela()).editedSinceMark).toBe(false);
+    expect(await t.run(async (ctx) => "editedAt" in (await ctx.db.get(vela))!)).toBe(false);
+  });
+
+  test("borrar la cosa borra la foto, y la copia de quien la marcó no la lleva", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, fichaDeAlex } = await escenario(t);
+    const foto = await subir(t, "image/jpeg");
+    await laura.mutation(api.lists.setItemPhoto, { id: vela, storageId: foto });
+    await alex.mutation(api.lists.claim, { itemId: vela });
+
+    await laura.mutation(api.lists.removeItem, { id: vela });
+
+    expect(await existe(t, foto)).toBe(false);
+    const [lista] = await alex.query(api.lists.forPerson, { personId: fichaDeAlex });
+    expect(lista.removed).toHaveLength(1);
+    expect(Object.keys(lista.removed[0]).sort()).toEqual(["claimId", "note", "reason", "title", "url"]);
+    const [claim] = await t.run((ctx) => ctx.db.query("listClaims").collect());
+    expect(Object.keys(claim.snapshot!).sort()).toEqual(["note", "title", "url"]);
+  });
+
+  test("borrar la cuenta borra sus fotos", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, vela, libro } = await escenario(t);
+    const fotos = [await subir(t, "image/jpeg", 2000, 1), await subir(t, "image/png", 2000, 2)];
+    await laura.mutation(api.lists.setItemPhoto, { id: vela, storageId: fotos[0] });
+    await laura.mutation(api.lists.setItemPhoto, { id: libro, storageId: fotos[1] });
+
+    await laura.mutation(api.account.deleteMyAccount, {});
+
+    expect(await existe(t, fotos[0])).toBe(false);
+    expect(await existe(t, fotos[1])).toBe(false);
+  });
+
+  test(`${PHOTO_UPLOAD_DAILY_LIMIT} direcciones de subida al día`, async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-12T10:00:00Z"));
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    for (let i = 0; i < PHOTO_UPLOAD_DAILY_LIMIT; i++) {
+      await laura.mutation(api.lists.generatePhotoUploadUrl, {});
+    }
+    await expect(laura.mutation(api.lists.generatePhotoUploadUrl, {})).rejects.toThrow(/Límite diario/);
+  });
+
+  test("la exportación de la dueña lleva la dirección de la foto", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela } = await escenario(t);
+    await laura.mutation(api.lists.setItemPhoto, { id: vela, storageId: await subir(t, "image/jpeg") });
+    const url = (await laura.query(api.lists.myItems, {})).find((i) => i._id === vela)!.photoUrl;
+
+    const { miLista, leeme } = await laura.query(api.exportData.mine, {});
+    expect(miLista.elementos).toMatchObject([
+      { titulo: "Libro de cerámica", fotoUrl: null },
+      { titulo: "Vela de cera", fotoUrl: url },
+    ]);
+    expect(leeme).toContain("fotoUrl");
+    expect((await alex.query(api.exportData.mine, {})).miLista.elementos).toEqual([]);
+  });
+
+  test("el barrido borra lo subido que no acabó en ninguna cosa, pasado un día", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-10T10:00:00Z"));
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    const vela = await laura.mutation(api.lists.addItem, { title: "Vela de cera" });
+    const huerfana = await subir(t, "image/jpeg", 2000, 1);
+    const rechazada = await subir(t, "image/gif", 2000, 2);
+    await expect(laura.mutation(api.lists.setItemPhoto, { id: vela, storageId: rechazada })).rejects.toThrow(
+      /Esa foto no vale/,
+    );
+    const enUso = await subir(t, "image/jpeg", 2000, 3);
+    await laura.mutation(api.lists.setItemPhoto, { id: vela, storageId: enUso });
+
+    // A las pocas horas no se toca nada: puede ser una subida a medias.
+    vi.setSystemTime(new Date("2026-10-10T20:00:00Z"));
+    const reciente = await subir(t, "image/jpeg", 2000, 4);
+    expect(await t.mutation(internal.lists.sweepOrphanPhotos, {})).toEqual({ deleted: 0 });
+
+    vi.setSystemTime(new Date("2026-10-11T12:00:00Z"));
+    expect(await t.mutation(internal.lists.sweepOrphanPhotos, {})).toEqual({ deleted: 2 });
+    expect(await existe(t, huerfana)).toBe(false);
+    expect(await existe(t, rechazada)).toBe(false);
+    expect(await existe(t, enUso)).toBe(true);
+    expect(await existe(t, reciente)).toBe(true);
+
+    vi.setSystemTime(new Date("2026-10-12T12:00:00Z"));
+    expect(await t.mutation(internal.lists.sweepOrphanPhotos, {})).toEqual({ deleted: 1 });
+    expect(await existe(t, enUso)).toBe(true);
+  });
+});
+
+describe("orden a mano", () => {
+  const titulos = async (quien: ReturnType<T["withIdentity"]>) =>
+    (await quien.query(api.lists.myItems, {})).map((i) => i.title);
+
+  test("lo nuevo sale arriba; subir y bajar cambian el sitio con el vecino", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-12T10:00:00Z"));
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    const a = await laura.mutation(api.lists.addItem, { title: "A" });
+    const b = await laura.mutation(api.lists.addItem, { title: "B" });
+    const c = await laura.mutation(api.lists.addItem, { title: "C" });
+    expect(await titulos(laura)).toEqual(["C", "B", "A"]);
+
+    expect(await laura.mutation(api.lists.moveItem, { id: a, direction: "up" })).toBeNull();
+    expect(await titulos(laura)).toEqual(["C", "A", "B"]);
+    await laura.mutation(api.lists.moveItem, { id: a, direction: "up" });
+    expect(await titulos(laura)).toEqual(["A", "C", "B"]);
+
+    // En los bordes no pasa nada.
+    await laura.mutation(api.lists.moveItem, { id: a, direction: "up" });
+    await laura.mutation(api.lists.moveItem, { id: b, direction: "down" });
+    expect(await titulos(laura)).toEqual(["A", "C", "B"]);
+
+    await laura.mutation(api.lists.moveItem, { id: c, direction: "down" });
+    expect(await titulos(laura)).toEqual(["A", "B", "C"]);
+
+    // Lo que se apunta después sigue saliendo arriba, y pegar respeta el orden.
+    vi.setSystemTime(new Date("2026-10-12T10:05:00Z"));
+    await laura.mutation(api.lists.addItem, { title: "D" });
+    vi.setSystemTime(new Date("2026-10-12T10:10:00Z"));
+    await laura.mutation(api.lists.importItems, { items: [{ title: "E" }, { title: "F" }] });
+    expect(await titulos(laura)).toEqual(["E", "F", "D", "A", "B", "C"]);
+  });
+
+  test("cada grupo se ordena por su cuenta", async () => {
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    const ids: Record<string, Id<"listItems">> = {};
+    for (const titulo of ["A", "F1", "B", "F2", "C"]) {
+      ids[titulo] = await laura.mutation(api.lists.addItem, { title: titulo });
+    }
+    await laura.mutation(api.lists.setFavorite, { id: ids.F1, favorite: true });
+    await laura.mutation(api.lists.setFavorite, { id: ids.F2, favorite: true });
+    expect(await titulos(laura)).toEqual(["C", "F2", "B", "F1", "A"]);
+
+    // F1 sube por encima de F2 saltando B, que es del otro grupo.
+    await laura.mutation(api.lists.moveItem, { id: ids.F1, direction: "up" });
+    expect(await titulos(laura)).toEqual(["C", "F1", "B", "F2", "A"]);
+    // Y B baja por debajo de A saltando F2.
+    await laura.mutation(api.lists.moveItem, { id: ids.B, direction: "down" });
+    expect(await titulos(laura)).toEqual(["C", "F1", "A", "F2", "B"]);
+    // F1 ya es el primero de su grupo.
+    await laura.mutation(api.lists.moveItem, { id: ids.F1, direction: "up" });
+    expect(await titulos(laura)).toEqual(["C", "F1", "A", "F2", "B"]);
+  });
+
+  test("quien lee ve el mismo orden, y mover no le dice «lo ha cambiado»", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-12T10:00:00Z"));
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, fichaDeAlex } = await escenario(t);
+    await alex.mutation(api.lists.claim, { itemId: vela });
+
+    vi.setSystemTime(new Date("2026-10-12T10:05:00Z"));
+    await laura.mutation(api.lists.moveItem, { id: vela, direction: "up" });
+
+    const [lista] = await alex.query(api.lists.forPerson, { personId: fichaDeAlex });
+    expect(lista.items.map((i) => i.title)).toEqual(["Vela de cera", "Libro de cerámica"]);
+    expect(lista.items[0]).toMatchObject({ state: "mine", editedSinceMark: false });
+    expect(await t.run(async (ctx) => "editedAt" in (await ctx.db.get(vela))!)).toBe(false);
+    expect(await titulos(laura)).toEqual(["Vela de cera", "Libro de cerámica"]);
+    // La exportación va en el mismo orden.
+    expect((await laura.query(api.exportData.mine, {})).miLista.elementos.map((e) => e.titulo)).toEqual([
+      "Vela de cera",
+      "Libro de cerámica",
+    ]);
+  });
+
+  test("solo la dueña mueve", async () => {
+    const t = convexTest(schema, modules);
+    const { alex, vela } = await escenario(t);
+    await expect(alex.mutation(api.lists.moveItem, { id: vela, direction: "up" })).rejects.toThrow(
+      /Elemento no encontrado/,
+    );
+    await expect(t.mutation(api.lists.moveItem, { id: vela, direction: "up" })).rejects.toThrow(
+      /Sesión no encontrada/,
+    );
+  });
+});
+
+describe("tu cumpleaños para quien te regala", () => {
+  test("la dueña lo pone y lo ven sus lectores, nadie más", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, fichaDeAlex } = await escenario(t);
+    expect(await laura.query(api.lists.myBirthday, {})).toBeNull();
+    expect((await alex.query(api.lists.forPerson, { personId: fichaDeAlex }))[0].birthday).toBeNull();
+
+    await laura.mutation(api.lists.setBirthday, { birthday: { month: 2, day: 29 } });
+
+    expect(await laura.query(api.lists.myBirthday, {})).toEqual({ month: 2, day: 29 });
+    expect((await alex.query(api.lists.forPerson, { personId: fichaDeAlex }))[0].birthday).toEqual({
+      month: 2,
+      day: 29,
+    });
+    await alex.mutation(api.personShares.invite, { personId: fichaDeAlex, clerkUserId: SARA.subject });
+    expect(await t.withIdentity(SARA).query(api.lists.forPerson, { personId: fichaDeAlex })).toEqual([]);
+    expect(await t.withIdentity(OTRO).query(api.lists.myBirthday, {})).toBeNull();
+    expect(await alex.query(api.lists.myBirthday, {})).toBeNull();
+  });
+
+  test("solo fechas que existen", async () => {
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    for (const [month, day] of [[2, 30], [13, 1], [0, 5], [4, 31], [6, 0], [6, 1.5]]) {
+      await expect(
+        laura.mutation(api.lists.setBirthday, { birthday: { month, day } }),
+      ).rejects.toMatchObject({ data: "Esa fecha no existe." });
+    }
+    expect(await t.run((ctx) => ctx.db.query("listAbout").collect())).toEqual([]);
+  });
+
+  test("convive con la nota: quitar una no quita la otra, y sin ninguna se va la fila", async () => {
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    const filas = () => t.run((ctx) => ctx.db.query("listAbout").collect());
+
+    await laura.mutation(api.lists.setAbout, { note: "Talla M" });
+    await laura.mutation(api.lists.setBirthday, { birthday: { month: 3, day: 24 } });
+    expect(await filas()).toHaveLength(1);
+
+    await laura.mutation(api.lists.setAbout, { note: "" });
+    expect(await laura.query(api.lists.myAbout, {})).toBeNull();
+    expect(await laura.query(api.lists.myBirthday, {})).toEqual({ month: 3, day: 24 });
+    expect(await filas()).toMatchObject([{ birthdayMonth: 3, birthdayDay: 24 }]);
+    expect((await filas())[0]).not.toHaveProperty("note");
+
+    await laura.mutation(api.lists.setBirthday, { birthday: null });
+    expect(await filas()).toEqual([]);
+
+    // Y al revés.
+    await laura.mutation(api.lists.setBirthday, { birthday: { month: 3, day: 24 } });
+    await laura.mutation(api.lists.setAbout, { note: "Talla M" });
+    await laura.mutation(api.lists.setBirthday, { birthday: null });
+    expect(await laura.query(api.lists.myAbout, {})).toBe("Talla M");
+    expect(await laura.query(api.lists.myBirthday, {})).toBeNull();
+    expect((await filas())[0]).not.toHaveProperty("birthdayMonth");
+    await laura.mutation(api.lists.setAbout, { note: "" });
+    expect(await filas()).toEqual([]);
+    // Quitar lo que no hay no falla.
+    await laura.mutation(api.lists.setBirthday, { birthday: null });
+  });
+
+  test("cambiarlo no le dice a nadie «lo ha cambiado»", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, fichaDeAlex } = await escenario(t);
+    await alex.mutation(api.lists.claim, { itemId: vela });
+    await laura.mutation(api.lists.setBirthday, { birthday: { month: 3, day: 24 } });
+    const [lista] = await alex.query(api.lists.forPerson, { personId: fichaDeAlex });
+    expect(lista.items.find((i) => i._id === vela)!.editedSinceMark).toBe(false);
+  });
+
+  test("sale en la exportación de la dueña y se va con su cuenta", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex } = await escenario(t);
+    await laura.mutation(api.lists.setBirthday, { birthday: { month: 3, day: 24 } });
+
+    expect((await laura.query(api.exportData.mine, {})).miLista.miCumpleanos).toEqual({ mes: 3, dia: 24 });
+    expect((await alex.query(api.exportData.mine, {})).miLista.miCumpleanos).toBeNull();
+
+    await laura.mutation(api.account.deleteMyAccount, {});
+    expect(await t.run((ctx) => ctx.db.query("listAbout").collect())).toEqual([]);
+  });
+
+  test("sin sesión no se escribe ni se lee", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.mutation(api.lists.setBirthday, { birthday: { month: 3, day: 24 } }),
+    ).rejects.toThrow(/Sesión no encontrada/);
+    await expect(t.query(api.lists.myBirthday, {})).rejects.toThrow(/Sesión no encontrada/);
+  });
+});
+
+describe("bloquear a quien te comparte su lista", () => {
+  // Como en «la dueña recibe lo mismo…»: fuera ids y horas, que cambian de
+  // una base de datos a otra aunque nadie haga nada distinto.
+  const IDS_Y_HORAS = new Set(["_id", "shareId", "_creationTime", "since", "desde", "enviado"]);
+  const quitarIdsYHoras = (v: unknown): unknown =>
+    Array.isArray(v)
+      ? v.map(quitarIdsYHoras)
+      : v !== null && typeof v === "object"
+        ? Object.fromEntries(
+            Object.entries(v)
+              .filter(([k]) => !IDS_Y_HORAS.has(k))
+              .map(([k, x]) => [k, quitarIdsYHoras(x)]),
+          )
+        : v;
+  const avisosA = (t: T, to: string) =>
+    t.run(async (ctx) =>
+      (await ctx.db.system.query("_scheduled_functions").collect()).filter(
+        (f) => f.name.includes("sendListInviteEmail") && f.args[0].to === to,
+      ),
+    );
+  const conEmail = (t: T, quien: typeof ALEX | typeof LAURA) =>
+    t.withIdentity(quien).mutation(api.settings.ensureDefaults, {});
+
+  /**
+   * Laura comparte su lista con Alex. Alex la deja con «No me interesa» o la
+   * bloquea, y Laura vuelve a compartírsela antes y después de los 30 días.
+   * Devuelve todo lo que Laura puede ver por el camino.
+   */
+  async function historia(bloquea: boolean) {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-12T10:00:00Z"));
+    const t = convexTest(schema, modules);
+    await conEmail(t, ALEX);
+    await conEmail(t, LAURA);
+    const laura = t.withIdentity(LAURA);
+    const alex = t.withIdentity(ALEX);
+    await laura.mutation(api.lists.addItem, { title: "Vela de cera" });
+    // Alex también le comparte la suya a Laura.
+    const { shareId: deAlex } = await alex.mutation(api.lists.invite, { readerClerkUserId: LAURA.subject });
+
+    const primera = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    await alex.mutation(bloquea ? api.lists.leaveAndBlock : api.lists.leave, { shareId: primera.shareId });
+    const lectoresTrasIrse = await laura.query(api.lists.myReaders, {});
+
+    const segunda = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    const repetida = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    const quitar = await laura.mutation(api.lists.revoke, { shareId: segunda.shareId });
+    let errorAlQuitarOtraVez: unknown = null;
+    try {
+      await laura.mutation(api.lists.revoke, { shareId: segunda.shareId });
+    } catch (err) {
+      errorAlQuitarOtraVez = (err as { data?: unknown }).data;
+    }
+
+    vi.setSystemTime(new Date(Date.now() + INVITE_EMAIL_COOLDOWN_MS + 60_000));
+    const tercera = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    const deVuelta = await laura.mutation(api.lists.shareBack, { shareId: deAlex });
+
+    return {
+      t,
+      alex,
+      tercera,
+      dueña: quitarIdsYHoras({
+        primera,
+        lectoresTrasIrse,
+        segunda,
+        repetida,
+        quitar: quitar ?? null,
+        errorAlQuitarOtraVez,
+        tercera,
+        deVuelta,
+        lectores: await laura.query(api.lists.myReaders, {}),
+        items: await laura.query(api.lists.myItems, {}),
+        recibidas: await laura.query(api.lists.sharedWithMe, {}),
+        bloqueos: await laura.query(api.lists.myBlocks, {}),
+        regalos: await laura.query(api.lists.myGifts, {}),
+        exportacion: await laura.query(api.exportData.mine, {}),
+      }) as { tercera: { emailed: boolean }; lectores: unknown[] },
+    };
+  }
+
+  test("a la dueña le sale todo igual, la bloqueen o no", async () => {
+    const sinBloqueo = await historia(false);
+    const conBloqueo = await historia(true);
+    expect(conBloqueo.dueña).toEqual(sinBloqueo.dueña);
+    // Y no es una comparación vacía: hubo correo, plazo y alguien que la lee.
+    expect(sinBloqueo.dueña.tercera.emailed).toBe(true);
+    expect(sinBloqueo.dueña.lectores).toHaveLength(1);
+    expect(JSON.stringify(conBloqueo.dueña)).not.toMatch(/hidden|suppressed|deliveredAt/);
+  });
+
+  test("quien bloquea no vuelve a ver esa lista ni le llega el correo", async () => {
+    const { t, alex, tercera } = await historia(true);
+    const ficha = await alex.mutation(api.people.create, { name: "Laura", relationship: "partner", interests: [] });
+    const [vela] = await t.withIdentity(LAURA).query(api.lists.myItems, {});
+
+    expect(await alex.query(api.lists.sharedWithMe, {})).toEqual([]);
+    expect(await alex.query(api.lists.forPerson, { personId: ficha })).toEqual([]);
+    expect(await alex.query(api.lists.myGifts, {})).toEqual([]);
+    await expect(alex.mutation(api.lists.claim, { itemId: vela._id })).rejects.toThrow(/Elemento no encontrado/);
+    for (const intento of [
+      () => alex.mutation(api.lists.associate, { shareId: tercera.shareId, personId: ficha }),
+      () => alex.mutation(api.lists.leave, { shareId: tercera.shareId }),
+      () => alex.mutation(api.lists.leaveAndBlock, { shareId: tercera.shareId }),
+      () => alex.mutation(api.lists.shareBack, { shareId: tercera.shareId }),
+    ]) {
+      await expect(intento()).rejects.toMatchObject({ data: "Lista no encontrada." });
+    }
+    // Solo el primer aviso, el de antes de bloquear.
+    expect(await avisosA(t, ALEX.email)).toHaveLength(1);
+
+    const datos = await alex.query(api.exportData.mine, {});
+    expect(datos.listasQueTeComparten).toEqual([]);
+    // El último aviso no salió: va el anterior, el de antes de bloquear.
+    expect(datos.avisosDeListaPorCorreo.recibidos).toEqual([
+      { enviado: new Date("2026-10-12T10:00:00Z").getTime() },
+    ]);
+    expect(datos.listasQueNoQuieres).toMatchObject([{ de: "Laura", email: LAURA.email }]);
+    expect(await alex.query(api.lists.myBlocks, {})).toMatchObject([
+      { ownerName: "Laura", ownerEmail: LAURA.email },
+    ]);
+  });
+
+  test("una fila oculta no cuenta ni en la ficha ni en el correo de la fecha", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-10T08:00:00Z"));
+    const t = convexTest(schema, modules);
+    const { alex, fichaDeAlex, shareAlex } = await escenario(t);
+    await alex.mutation(api.importantDates.create, {
+      personId: fichaDeAlex,
+      label: "Cumpleaños",
+      month: 10,
+      day: 17,
+      recurring: true,
+    });
+    await alex.mutation(api.settings.setMine, { emailNotificationsEnabled: true, emailNotifyDaysBefore: [7] });
+    const evento = async () =>
+      (await t.query(internal.notifications.findEventsNeedingEmail, {}))[0].events[0];
+    expect(await evento()).toMatchObject({ listUnclaimed: 2 });
+
+    // Hoy no hay camino para que una fila oculta quede asociada, pero si lo
+    // hubiera, tampoco se vería.
+    await t.run((ctx) => ctx.db.patch(shareAlex, { hidden: true }));
+
+    expect(await alex.query(api.lists.forPerson, { personId: fichaDeAlex })).toEqual([]);
+    expect(await evento()).not.toHaveProperty("listUnclaimed");
+  });
+
+  test("bloquear deja la lista como «No me interesa»: sus marcas se van", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, shareAlex } = await escenario(t);
+    const { mama, fichaDeMama } = await sumarMama(t);
+    await alex.mutation(api.lists.claim, { itemId: vela });
+
+    await alex.mutation(api.lists.leaveAndBlock, { shareId: shareAlex });
+    await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+
+    const [lista] = await mama.query(api.lists.forPerson, { personId: fichaDeMama });
+    expect(lista.items.find((i) => i._id === vela)!.state).toBe("free");
+    expect(await t.run((ctx) => ctx.db.query("listBlocks").collect())).toHaveLength(1);
+    expect((await laura.query(api.lists.myReaders, {})).map((r) => r.readerClerkUserId).sort()).toEqual(
+      [ALEX.subject, MAMA.subject].sort(),
+    );
+  });
+
+  test("desbloquear destapa la lista que te volvió a compartir, sin correo", async () => {
+    const { t, alex } = await historia(true);
+    const [bloqueo] = await alex.query(api.lists.myBlocks, {});
+
+    await alex.mutation(api.lists.unblock, { blockId: bloqueo.blockId });
+
+    expect(await alex.query(api.lists.myBlocks, {})).toEqual([]);
+    expect(await alex.query(api.lists.sharedWithMe, {})).toMatchObject([
+      { ownerName: "Laura", ownerEmail: LAURA.email, personId: null },
+    ]);
+    expect(await avisosA(t, ALEX.email)).toHaveLength(1);
+    await expect(alex.mutation(api.lists.unblock, { blockId: bloqueo.blockId })).rejects.toThrow(
+      /Bloqueo no encontrado/,
+    );
+  });
+
+  test("desbloquear sin lista pendiente solo quita el bloqueo; lo siguiente llega normal", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-12T10:00:00Z"));
+    const t = convexTest(schema, modules);
+    await conEmail(t, ALEX);
+    const laura = t.withIdentity(LAURA);
+    const alex = t.withIdentity(ALEX);
+    const { shareId } = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    await alex.mutation(api.lists.leaveAndBlock, { shareId });
+    const [bloqueo] = await alex.query(api.lists.myBlocks, {});
+    await alex.mutation(api.lists.unblock, { blockId: bloqueo.blockId });
+
+    vi.setSystemTime(new Date(Date.now() + INVITE_EMAIL_COOLDOWN_MS + 60_000));
+    const r = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    expect(r.emailed).toBe(true);
+    expect(await avisosA(t, ALEX.email)).toHaveLength(2);
+    expect(await alex.query(api.lists.sharedWithMe, {})).toHaveLength(1);
+    // Una fila por pareja: sale el último, que esta vez sí salió.
+    expect((await alex.query(api.exportData.mine, {})).avisosDeListaPorCorreo.recibidos).toEqual([
+      { enviado: Date.now() },
+    ]);
+  });
+
+  test("los bloqueos son solo de quien los pone", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, shareAlex } = await escenario(t);
+    await alex.mutation(api.lists.leaveAndBlock, { shareId: shareAlex });
+    const [bloqueo] = await alex.query(api.lists.myBlocks, {});
+
+    expect(await laura.query(api.lists.myBlocks, {})).toEqual([]);
+    for (const quien of [LAURA, OTRO]) {
+      await expect(t.withIdentity(quien).mutation(api.lists.unblock, { blockId: bloqueo.blockId })).rejects.toThrow(
+        /Bloqueo no encontrado/,
+      );
+    }
+    await expect(t.query(api.lists.myBlocks, {})).rejects.toThrow(/Sesión no encontrada/);
+    // La dueña, en su exportación, tampoco lo ve.
+    expect(JSON.stringify(await laura.query(api.exportData.mine, {}))).not.toContain(ALEX.subject);
+  });
+
+  test("borrar la cuenta se lleva los bloqueos, de un lado y del otro", async () => {
+    for (const quienSeVa of [LAURA, ALEX]) {
+      const t = convexTest(schema, modules);
+      const { alex, shareAlex } = await escenario(t);
+      await alex.mutation(api.lists.leaveAndBlock, { shareId: shareAlex });
+      await t.withIdentity(LAURA).mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+
+      await t.withIdentity(quienSeVa).mutation(api.account.deleteMyAccount, {});
+
+      const quedan = await t.run(async (ctx) => ({
+        bloqueos: await ctx.db.query("listBlocks").collect(),
+        permisos: await ctx.db.query("listShares").collect(),
+      }));
+      expect(quedan, quienSeVa.subject).toEqual({ bloqueos: [], permisos: [] });
+    }
+  });
+});
+
+describe("lo regalo yo · para…", () => {
+  /** Alex marca la vela y tiene el cumpleaños de Laura en su ficha. */
+  async function conFecha(t: T) {
+    const base = await escenario(t);
+    const { alex, vela, fichaDeAlex } = base;
+    const cumple = await alex.mutation(api.importantDates.create, {
+      personId: fichaDeAlex,
+      label: "Cumpleaños",
+      month: 3,
+      day: 24,
+      recurring: true,
+    });
+    const claimId = await alex.mutation(api.lists.claim, { itemId: vela });
+    return { ...base, cumple, claimId };
+  }
+
+  test("quien marca elige la fecha y la ve en la ficha y en lo que va a regalar", async () => {
+    const t = convexTest(schema, modules);
+    const { laura, alex, vela, fichaDeAlex, cumple, claimId } = await conFecha(t);
+    const { mama, fichaDeMama } = await sumarMama(t);
+    const dueñaAntes = await laura.query(api.lists.myItems, {});
+
+    expect(await alex.mutation(api.lists.setClaimOccasion, { claimId, importantDateId: cumple })).toBeNull();
+
+    const [lista] = await alex.query(api.lists.forPerson, { personId: fichaDeAlex });
+    expect(lista.items.find((i) => i._id === vela)!.occasionLabel).toBe("Cumpleaños");
+    expect(lista.items.find((i) => i._id !== vela)!.occasionLabel).toBeNull();
+    expect(await alex.query(api.lists.myGifts, {})).toMatchObject([
+      {
+        title: "Vela de cera",
+        importantDateId: cumple,
+        occasionLabel: "Cumpleaños",
+        occasions: [{ _id: cumple, label: "Cumpleaños" }],
+      },
+    ]);
+    // Ni otra lectora ni la dueña lo saben.
+    const [deMama] = await mama.query(api.lists.forPerson, { personId: fichaDeMama });
+    expect(deMama.items.find((i) => i._id === vela)).toMatchObject({ state: "taken", occasionLabel: null });
+    expect(await laura.query(api.lists.myItems, {})).toEqual(dueñaAntes);
+    expect(JSON.stringify(await laura.query(api.exportData.mine, {}))).not.toContain("Cumpleaños");
+
+    await alex.mutation(api.lists.setClaimOccasion, { claimId, importantDateId: null });
+    expect((await alex.query(api.lists.myGifts, {}))[0]).toMatchObject({
+      importantDateId: null,
+      occasionLabel: null,
+    });
+    expect(await t.run(async (ctx) => "importantDateId" in (await ctx.db.get(claimId))!)).toBe(false);
+  });
+
+  test("sin ficha asociada no hay fechas que elegir", async () => {
+    const t = convexTest(schema, modules);
+    const mama = t.withIdentity(MAMA);
+    const bufanda = await mama.mutation(api.lists.addItem, { title: "Bufanda" });
+    await mama.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    const alex = t.withIdentity(ALEX);
+    await alex.mutation(api.lists.claim, { itemId: bufanda });
+    expect(await alex.query(api.lists.myGifts, {})).toMatchObject([
+      { title: "Bufanda", occasions: [], importantDateId: null, occasionLabel: null },
+    ]);
+  });
+
+  test("solo una fecha de la ficha a la que asoció la lista", async () => {
+    const t = convexTest(schema, modules);
+    const { alex, claimId } = await conFecha(t);
+    const otraFicha = await alex.mutation(api.people.create, { name: "Papá", relationship: "family", interests: [] });
+    const deOtraFicha = await alex.mutation(api.importantDates.create, {
+      personId: otraFicha,
+      label: "Santo",
+      month: 6,
+      day: 29,
+      recurring: true,
+    });
+    const otro = t.withIdentity(OTRO);
+    const fichaAjena = await otro.mutation(api.people.create, { name: "Nadie", relationship: "friend", interests: [] });
+    const ajena = await otro.mutation(api.importantDates.create, {
+      personId: fichaAjena,
+      label: "Aniversario",
+      month: 1,
+      day: 1,
+      recurring: true,
+    });
+
+    for (const importantDateId of [deOtraFicha, ajena]) {
+      await expect(
+        alex.mutation(api.lists.setClaimOccasion, { claimId, importantDateId }),
+      ).rejects.toMatchObject({ data: "Esa fecha no es de su ficha." });
+    }
+  });
+
+  test("solo en tus marcas y antes de darlo por regalado", async () => {
+    const t = convexTest(schema, modules);
+    const { alex, cumple, claimId } = await conFecha(t);
+    const { mama } = await sumarMama(t);
+    await expect(
+      mama.mutation(api.lists.setClaimOccasion, { claimId, importantDateId: cumple }),
+    ).rejects.toThrow(/Marca no encontrada/);
+    await expect(
+      t.mutation(api.lists.setClaimOccasion, { claimId, importantDateId: cumple }),
+    ).rejects.toThrow(/Sesión no encontrada/);
+
+    await alex.mutation(api.lists.markGiven, { claimId });
+    await expect(
+      alex.mutation(api.lists.setClaimOccasion, { claimId, importantDateId: cumple }),
+    ).rejects.toMatchObject({ data: "Ya lo has dado por regalado." });
+  });
+
+  test("si la fecha se borra, sale sin ocasión", async () => {
+    const t = convexTest(schema, modules);
+    const { alex, vela, fichaDeAlex, cumple, claimId } = await conFecha(t);
+    await alex.mutation(api.lists.setClaimOccasion, { claimId, importantDateId: cumple });
+
+    await alex.mutation(api.importantDates.remove, { id: cumple });
+
+    const [lista] = await alex.query(api.lists.forPerson, { personId: fichaDeAlex });
+    expect(lista.items.find((i) => i._id === vela)!.occasionLabel).toBeNull();
+    expect((await alex.query(api.lists.myGifts, {}))[0]).toMatchObject({
+      importantDateId: null,
+      occasionLabel: null,
+      occasions: [],
+    });
+    expect((await alex.query(api.exportData.mine, {})).marcasEnListasDeOtros[0].paraOcasion).toBeNull();
+  });
+
+  test("la exportación de quien marca lo lleva, solo mientras vea la ficha", async () => {
+    const t = convexTest(schema, modules);
+    const laura = t.withIdentity(LAURA);
+    const vela = await laura.mutation(api.lists.addItem, { title: "Vela de cera" });
+    const { shareId } = await laura.mutation(api.lists.invite, { readerClerkUserId: ALEX.subject });
+    // La ficha de Laura es de Sara, que se la comparte a Alex.
+    const sara = t.withIdentity(SARA);
+    const ficha = await sara.mutation(api.people.create, { name: "Laura", relationship: "family", interests: [] });
+    await sara.mutation(api.personShares.invite, { personId: ficha, clerkUserId: ALEX.subject });
+    const alex = t.withIdentity(ALEX);
+    await alex.mutation(api.lists.associate, { shareId, personId: ficha });
+    const cumple = await alex.mutation(api.importantDates.create, {
+      personId: ficha,
+      label: "Cumpleaños",
+      month: 3,
+      day: 24,
+      recurring: true,
+    });
+    const claimId = await alex.mutation(api.lists.claim, { itemId: vela });
+    await alex.mutation(api.lists.setClaimOccasion, { claimId, importantDateId: cumple });
+
+    expect((await alex.query(api.exportData.mine, {})).marcasEnListasDeOtros).toMatchObject([
+      { elemento: "Vela de cera", paraOcasion: "Cumpleaños" },
+    ]);
+
+    await alex.mutation(api.personShares.leave, { personId: ficha });
+    expect((await alex.query(api.exportData.mine, {})).marcasEnListasDeOtros).toMatchObject([
+      { elemento: "Vela de cera", paraOcasion: null },
+    ]);
+    expect((await alex.query(api.lists.myGifts, {}))[0]).toMatchObject({ occasionLabel: null, occasions: [] });
   });
 });

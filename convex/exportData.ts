@@ -2,6 +2,7 @@ import { query } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
 import { requireUser } from "./auth";
 import { personHasAccess } from "./personShares";
+import { compareListItems } from "./lists";
 
 /**
  * Copia completa de los datos del usuario autenticado (RGPD art. 15 y 20).
@@ -122,7 +123,7 @@ export const mine = query({
     // los datos para saber qué te van a regalar (decisión 21 de
     // docs/encargo-lista.md). Una marca es un dato de quien la hace, y sale en
     // su exportación, en `marcasEnListasDeOtros`.
-    const [elementosDeMiLista, quienVeMiLista, listasQueMeComparten, misMarcas, miNota] =
+    const [filasDeMiLista, quienVeMiLista, listasQueMeComparten, misMarcas, miNota] =
       await Promise.all([
         ctx.db
           .query("listItems")
@@ -146,6 +147,22 @@ export const mine = query({
           .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", clerkUserId))
           .first(),
       ]);
+    // En el orden de tu lista, el mismo que ves en la app.
+    const elementosDeMiLista = await Promise.all(
+      [...filasDeMiLista].sort(compareListItems).map(async (i) => ({
+        titulo: i.title,
+        enlace: i.url ?? null,
+        nota: i.note ?? null,
+        loQueMasIlusionTeHaria: i.favorite === true,
+        // En euros y no en céntimos, como lo escribiste: «unos 40 €».
+        precioAproximadoEuros: i.priceCents !== undefined ? i.priceCents / 100 : null,
+        // La foto que subiste, por su dirección: funciona mientras exista tu
+        // cuenta, que al borrarse se lleva el archivo.
+        fotoUrl: i.photoStorageId ? await ctx.storage.getUrl(i.photoStorageId) : null,
+        _creationTime: i._creationTime,
+        editadoEn: i.editedAt ?? null,
+      })),
+    );
     // Avisos por correo de «Mi lista»: cuándo se avisó a quien invitaste y
     // cuándo te avisaron a ti. Se guardan solo para el tope de uno cada 30 días.
     const [avisosEnviados, avisosRecibidos] = await Promise.all([
@@ -158,8 +175,17 @@ export const mine = query({
         .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
         .collect(),
     ]);
+    // A quién no quieres que te comparta más listas. Solo los que pusiste tú:
+    // los que otros te pusieron como dueño se borran con tu cuenta pero no
+    // salen aquí, porque saberlo es justo lo que el bloqueo no te deja saber.
+    // Por lo mismo, las filas ocultas de `listShares` (te compartió su lista
+    // después de que le bloquearas) no salen como listas que te comparten.
+    const misBloqueos = await ctx.db
+      .query("listBlocks")
+      .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
+      .collect();
     const listasQueTeComparten = await Promise.all(
-      listasQueMeComparten.map(async (s) => {
+      listasQueMeComparten.filter((s) => s.hidden !== true).map(async (s) => {
         // Solo si aún puedes ver la ficha: si te la dejaron de compartir, su
         // nombre ya no es dato tuyo.
         const ficha = s.personId ? await ctx.db.get(s.personId) : null;
@@ -175,12 +201,30 @@ export const mine = query({
     const marcasEnListasDeOtros = await Promise.all(
       misMarcas.map(async (c) => {
         const elemento = c.itemId ? await ctx.db.get(c.itemId) : null;
+        // «Lo regalo yo · para…»: el nombre de la fecha, solo si sigue siendo
+        // de la ficha a la que asociaste la lista y aún la ves.
+        let paraOcasion: string | null = null;
+        if (c.importantDateId) {
+          const permiso = listasQueMeComparten.find(
+            (s) => s.ownerClerkUserId === c.ownerClerkUserId && s.hidden !== true,
+          );
+          const ficha = permiso?.personId ? await ctx.db.get(permiso.personId) : null;
+          const fecha = await ctx.db.get(c.importantDateId);
+          if (
+            ficha &&
+            fecha?.personId === ficha._id &&
+            (await personHasAccess(ctx, ficha, clerkUserId))
+          ) {
+            paraOcasion = fecha.label;
+          }
+        }
         return {
           elemento: elemento?.title ?? c.snapshot?.title ?? null,
           estado: c.status === "given" ? "regalado" : "lo regalo yo",
           sigueEnSuLista: c.itemId !== undefined,
           // Lo quitó de su lista con «Ya lo tengo».
           yaLoTiene: c.snapshot?.reason === "got",
+          paraOcasion,
           desde: c._creationTime,
         };
       }),
@@ -236,9 +280,15 @@ export const mine = query({
         "la compartes; no incluye qué ha marcado nadie para regalarte. " +
         "\"loQueMasIlusionTeHaria\" dice si lo pusiste en ese grupo; " +
         "\"precioAproximadoEuros\" va en euros, no en céntimos; " +
-        "\"notaParaQuienTeRegala\" es la nota que ven quienes leen tu lista. " +
+        "\"fotoUrl\" es la dirección de la foto que subiste, que funciona " +
+        "mientras exista tu cuenta; " +
+        "\"notaParaQuienTeRegala\" es la nota que ven quienes leen tu lista, y " +
+        "\"miCumpleanos\" el día y el mes que les enseñas. " +
         "\"marcasEnListasDeOtros\" es lo que has marcado tú en listas ajenas; " +
-        "\"yaLoTiene\" dice si su dueño lo quitó porque ya lo tenía.",
+        "\"yaLoTiene\" dice si su dueño lo quitó porque ya lo tenía, y " +
+        "\"paraOcasion\" para qué fecha de tu ficha lo guardas. " +
+        "\"listasQueNoQuieres\" son las personas a las que bloqueaste para que " +
+        "no te compartan más su lista.",
       usuario: {
         // El identificador con el que se guarda todo lo de abajo.
         clerkUserId,
@@ -248,19 +298,15 @@ export const mine = query({
       seresQueridos,
       fichasQueTeComparten,
       miLista: {
-        elementos: elementosDeMiLista.map((i) => ({
-          titulo: i.title,
-          enlace: i.url ?? null,
-          nota: i.note ?? null,
-          loQueMasIlusionTeHaria: i.favorite === true,
-          // En euros y no en céntimos, como lo escribiste: «unos 40 €».
-          precioAproximadoEuros: i.priceCents !== undefined ? i.priceCents / 100 : null,
-          _creationTime: i._creationTime,
-          editadoEn: i.editedAt ?? null,
-        })),
+        elementos: elementosDeMiLista,
         notaParaQuienTeRegala: miNota?.note ?? null,
+        miCumpleanos:
+          miNota?.birthdayMonth !== undefined && miNota.birthdayDay !== undefined
+            ? { mes: miNota.birthdayMonth, dia: miNota.birthdayDay }
+            : null,
         // Igual que `compartidoCon` de las fichas: el `clerkUserId` de cada
-        // fila es el dato, a quién le diste acceso.
+        // fila es el dato, a quién le diste acceso. Las filas ocultas salen
+        // igual y sin marca: para ti son un acceso como cualquier otro.
         compartidaCon: quienVeMiLista.map((s) => ({
           clerkUserId: s.readerClerkUserId,
           desde: s._creationTime,
@@ -271,9 +317,20 @@ export const mine = query({
       avisosDeListaPorCorreo: {
         // A quién avisamos de que le compartiste tu lista, y cuándo.
         enviados: avisosEnviados.map((a) => ({ clerkUserId: a.readerClerkUserId, enviado: a.sentAt })),
-        // Cuándo te avisaron de que alguien te compartió la suya.
-        recibidos: avisosRecibidos.map((a) => ({ enviado: a.sentAt })),
+        // Cuándo te avisaron de que alguien te compartió la suya. Si el último
+        // no salió porque le tenías bloqueado, va el anterior que sí salió, o
+        // nada. En `enviados` sí salen todos tal cual: quien comparte no
+        // puede saber si le bloquearon.
+        recibidos: avisosRecibidos.flatMap((a) => {
+          const enviado = a.suppressed === true ? a.deliveredAt : a.sentAt;
+          return enviado === undefined ? [] : [{ enviado }];
+        }),
       },
+      listasQueNoQuieres: misBloqueos.map((b) => ({
+        de: b.ownerName ?? null,
+        email: b.ownerEmail ?? null,
+        desde: b._creationTime,
+      })),
       // Su ficha ya no existe, y sus eventos tampoco.
       ideasGuardadasDePersonasYaBorradas: huerfanas.map((idea) => conOcasion(idea, [])),
       avisosPorEmailEnviados: avisos.map(limpiar),

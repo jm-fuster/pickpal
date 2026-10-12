@@ -24,7 +24,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { AddToHistoryDialog, type HistoryValues } from "@/components/people/AddToHistoryDialog";
 import { ListItemLink } from "@/components/lista/ListItemLink";
-import { closestOccasionLabel } from "@/lib/dates";
+import { closestOccasionLabel, formatDayMonth } from "@/lib/dates";
 import { userErrorMessage } from "@/lib/errors";
 import { budgetTarget, fitsBudget, formatApproxPrice } from "@/lib/price";
 import { MAX_NEW_BADGES } from "@/lib/listSeen";
@@ -35,7 +35,7 @@ type SharedList = FunctionReturnType<typeof api.lists.forPerson>[number];
 type SharedItem = SharedList["items"][number];
 type Budget = { budgetMin?: number; budgetMax?: number };
 type DateLike = Budget & { label: string; month: number; day: number; year?: number; recurring?: boolean };
-type Giftable = { claimId: Id<"listClaims">; title: string };
+type Giftable = { claimId: Id<"listClaims">; title: string; occasionLabel?: string | null };
 
 /**
  * «La lista de {nombre}» en la ficha de quien la recibe (decisión 11 de
@@ -102,11 +102,15 @@ function SharedListCard({
   const markGiven = useMutation(api.lists.markGiven);
   const associate = useMutation(api.lists.associate);
   const leave = useMutation(api.lists.leave);
+  const leaveAndBlock = useMutation(api.lists.leaveAndBlock);
+  const createDate = useMutation(api.importantDates.create);
   const createHistoryEntry = useMutation(api.giftHistory.create);
 
   const [giving, setGiving] = useState<Giftable | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [block, setBlock] = useState(false);
+  const [addingBirthday, setAddingBirthday] = useState(false);
 
   const run = async (action: () => Promise<unknown>, fallback: string) => {
     try {
@@ -143,13 +147,32 @@ function SharedListCard({
   const handleLeave = async () => {
     setLeaving(true);
     try {
-      await leave({ shareId: list.shareId });
+      if (block) await leaveAndBlock({ shareId: list.shareId });
+      else await leave({ shareId: list.shareId });
       toast.success(`Ya no ves la lista de ${name}`);
       setConfirmLeave(false);
     } catch (err) {
       toast.error(userErrorMessage(err, "No se pudo dejar la lista"));
     } finally {
       setLeaving(false);
+    }
+  };
+
+  // Su cumpleaños, si lo ha puesto. Se ofrece añadirlo a la ficha solo si la
+  // ficha no tiene ya una fecha ese día.
+  const birthday = list.birthday;
+  const birthdayInFicha =
+    birthday !== null && dates.some((d) => d.month === birthday.month && d.day === birthday.day);
+  const handleAddBirthday = async () => {
+    if (!birthday) return;
+    setAddingBirthday(true);
+    try {
+      await createDate({ personId, label: "Cumpleaños", month: birthday.month, day: birthday.day, recurring: true });
+      toast.success("Cumpleaños añadido a su ficha");
+    } catch (err) {
+      toast.error(userErrorMessage(err, "No se pudo añadir la fecha"));
+    } finally {
+      setAddingBirthday(false);
     }
   };
 
@@ -173,26 +196,36 @@ function SharedListCard({
       className="rounded-lg border border-border/60 bg-background/60 p-3 text-sm"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 space-y-1">
-          <p className={cn("font-medium leading-snug", item.state === "taken" && "text-muted-foreground")}>
-            {item.title}
-            {badgeNew && fresh.has(item._id) && (
-              <Badge variant="outline" className="ml-2 align-middle text-muted-foreground">
-                Nuevo
-              </Badge>
-            )}
-          </p>
-          {(item.priceCents !== null || item.url) && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              {item.priceCents !== null && (
-                <span className="text-xs text-muted-foreground">{formatApproxPrice(item.priceCents)}</span>
+        <div className="flex min-w-0 gap-3">
+          {item.photoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.photoUrl}
+              alt=""
+              className="size-14 shrink-0 rounded-md border border-border/60 object-cover"
+            />
+          )}
+          <div className="min-w-0 space-y-1">
+            <p className={cn("font-medium leading-snug", item.state === "taken" && "text-muted-foreground")}>
+              {item.title}
+              {badgeNew && fresh.has(item._id) && (
+                <Badge variant="outline" className="ml-2 align-middle text-muted-foreground">
+                  Nuevo
+                </Badge>
               )}
-              {item.url && <ListItemLink url={item.url} />}
-            </div>
-          )}
-          {item.note && (
-            <p className="whitespace-pre-line text-xs text-muted-foreground">{item.note}</p>
-          )}
+            </p>
+            {(item.priceCents !== null || item.url) && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {item.priceCents !== null && (
+                  <span className="text-xs text-muted-foreground">{formatApproxPrice(item.priceCents)}</span>
+                )}
+                {item.url && <ListItemLink url={item.url} />}
+              </div>
+            )}
+            {item.note && (
+              <p className="whitespace-pre-line text-xs text-muted-foreground">{item.note}</p>
+            )}
+  </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {item.state === "free" && (
@@ -207,11 +240,15 @@ function SharedListCard({
           )}
           {item.state === "mine" && item.claimId && (
             <>
-              <Badge variant="secondary">Lo regalas tú</Badge>
+              <Badge variant="secondary">
+                {item.occasionLabel ? `Lo regalas tú · para ${item.occasionLabel}` : "Lo regalas tú"}
+              </Badge>
               <Button
                 size="sm"
                 className="hover:bg-primary/80"
-                onClick={() => setGiving({ claimId: item.claimId!, title: item.title })}
+                onClick={() =>
+                  setGiving({ claimId: item.claimId!, title: item.title, occasionLabel: item.occasionLabel })
+                }
               >
                 Ya se lo he regalado
               </Button>
@@ -273,6 +310,18 @@ function SharedListCard({
           <p className="whitespace-pre-line text-sm text-muted-foreground">
             <span className="text-foreground">{name}:</span> «{list.about}»
           </p>
+        )}
+        {birthday && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <span>
+              <span className="text-foreground">Su cumpleaños:</span> {formatDayMonth(birthday.month, birthday.day)}
+            </span>
+            {!birthdayInFicha && (
+              <Button size="xs" variant="outline" onClick={handleAddBirthday} disabled={addingBirthday}>
+                Añadir a su ficha
+              </Button>
+            )}
+          </div>
         )}
         {fresh.size > MAX_NEW_BADGES && (
           <p className="text-sm text-muted-foreground">
@@ -380,7 +429,8 @@ function SharedListCard({
       <AddToHistoryDialog
         key={giving?.claimId ?? "cerrado"}
         gift={giving}
-        defaultOccasion={closestOccasionLabel(dates)}
+        // La ocasión que eligió al marcarlo, si la eligió; si no, la más cercana.
+        defaultOccasion={giving?.occasionLabel || closestOccasionLabel(dates)}
         onClose={() => setGiving(null)}
         onConfirm={handleGiven}
       />
@@ -394,6 +444,20 @@ function SharedListCard({
               queda. Para volver a verla, {name} tendría que invitarte otra vez.
             </DialogDescription>
           </DialogHeader>
+          <label className="flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={block}
+              onChange={(e) => setBlock(e.target.checked)}
+              className="mt-0.5 size-4 rounded border-input accent-primary"
+            />
+            <span>
+              Y no quiero más listas de {name}.{" "}
+              <span className="text-muted-foreground">
+                No se le avisa: sus invitaciones no te llegarán. Puedes deshacerlo en Ajustes.
+              </span>
+            </span>
+          </label>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" disabled={leaving}>Cancelar</Button>} />
             <Button variant="destructive" onClick={handleLeave} disabled={leaving}>

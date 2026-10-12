@@ -447,3 +447,46 @@ de verdad está en `docs/dudas.md`.
 | Correo de la fecha | Tienes 1 cosa de su lista marcada para regalarle · Tienes N cosas de su lista marcadas para regalarle |
 | Botón de la tienda | Apuntar desde la tienda · Apuntar en PickPal · Arrástralo a tu barra de marcadores; aquí no hace nada. |
 | Archivo | Subir un archivo · Ese archivo es demasiado grande. Prueba con una parte de la lista. · Solo se pueden leer archivos .csv, .tsv o .txt. |
+
+## Anexo: fase 3 (12-oct-2026)
+
+Elegida por Jorge el 12-oct-2026. Lo que se construyó de verdad está en
+`docs/dudas.md`. La invitación a quien no tiene cuenta sigue fuera durante la
+beta, y las listas para niños tienen su propio encargo,
+[`docs/encargo-listas-ninos.md`](encargo-listas-ninos.md), sin código.
+
+1. **Foto subida por la dueña.** Una por elemento, nunca copiada de la tienda
+   (decisión 3). Se reduce a 1200 px y se vuelve a codificar en el navegador,
+   lo que quita los metadatos (ubicación GPS incluida); se sube al almacenamiento
+   de Convex, que comprueba tipo (JPG, PNG o WebP) y tamaño (1,5 MB). No cuenta
+   como edición. Se borra al quitarla, al borrar el elemento y con la cuenta.
+2. **Orden manual.** «Subir un puesto» y «Bajar un puesto» en el menú de la
+   fila, dentro de cada grupo. Lo que no se ha movido sigue del más nuevo al más
+   antiguo. No cuenta como edición.
+3. **Su cumpleaños, visible.** Día y mes, sin año, en la card de la dueña. Quien
+   lee lo ve en su ficha, con «Añadir a su ficha» si la ficha no tiene ya una
+   fecha ese día.
+4. **Bloquear a quien te comparte listas.** Al dejar una lista o desde la
+   tarjeta de lista recibida («No quiero más listas suyas»). Las invitaciones
+   siguientes de esa persona se guardan ocultas: cuentan para sus 20 lectores,
+   la ve en «Quién la ve» y su aviso dice lo mismo que si hubiera salido el
+   correo, para que el bloqueo no se note. Se deshace en Ajustes, y entonces su
+   lista aparece como una lista recibida más, sin correo.
+5. **Compartir desde Android.** PickPal es destino de «Compartir» cuando está
+   instalada (`share_target` del manifiesto). Llega por POST a `/compartir`,
+   que no guarda nada y redirige a `/mi-lista/apuntar` con los datos en el
+   fragmento, como el marcador. iPhone no admite este destino.
+6. **«Lo regalo yo · para…».** En «Lo que vas a regalar», cada marca puede ir
+   para una fecha de la ficha. Se ve en la fila («Lo regalas tú · para
+   Navidad») y se propone al pasarlo al historial.
+
+### Textos de la fase 3
+
+| Dónde | Texto |
+| --- | --- |
+| Menú de la fila | Subir un puesto · Bajar un puesto · Añadir una foto · Cambiar la foto · Quitar la foto |
+| Foto | Subiendo la foto… · Foto puesta · Foto quitada · Eso no es una foto. · Esa foto es demasiado grande. · No se ha podido leer esa foto. Prueba con otra o con una captura. |
+| Cumpleaños, dueña | Añadir tu cumpleaños para quien te regala · Tu cumpleaños, para quien te regala · Tu cumpleaños: 14 de marzo · Quitarlo |
+| Cumpleaños, quien lee | Su cumpleaños: 14 de marzo · Añadir a su ficha · Cumpleaños añadido a su ficha |
+| Bloquear | No quiero más listas suyas · ¿No quieres más listas de {nombre}? · Y no quiero más listas de {nombre}. · No te llegarán más listas de {nombre} · Listas que no quieres recibir · Deshacer |
+| Ocasión | Para qué ocasión… · Sin ocasión · Lo regalas tú · para {fecha} |

@@ -8,6 +8,15 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +44,7 @@ export function IncomingListCard({
 }) {
   const associate = useMutation(api.lists.associate);
   const leave = useMutation(api.lists.leave);
+  const leaveAndBlock = useMutation(api.lists.leaveAndBlock);
   const shareBack = useMutation(api.lists.shareBack);
   const createPerson = useMutation(api.people.create);
 
@@ -43,6 +53,7 @@ export function IncomingListCard({
   const [newName, setNewName] = useState(share.ownerName ?? "");
   const [newRelationship, setNewRelationship] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmBlock, setConfirmBlock] = useState(false);
 
   // El nombre lo elige cada usuario en su cuenta; el email está verificado.
   // Por eso, si hay nombre, el email se enseña debajo.
@@ -84,6 +95,15 @@ export function IncomingListCard({
       await leave({ shareId: share.shareId });
       toast.success(`Ya no verás la lista de ${name}`);
     }, "No se pudo descartar la lista");
+
+  // Quien bloquea no avisa a nadie: sus invitaciones siguientes se aceptan
+  // por fuera y no le llegan (docs/security.md §11). Se deshace en Ajustes.
+  const handleBlock = () =>
+    withBusy(async () => {
+      await leaveAndBlock({ shareId: share.shareId });
+      setConfirmBlock(false);
+      toast.success(`No te llegarán más listas de ${name}`);
+    }, "No se pudo bloquear");
 
   const handleShareBack = () =>
     withBusy(async () => {
@@ -206,12 +226,38 @@ export function IncomingListCard({
                   <Button variant="ghost" size="sm" onClick={handleDismiss} disabled={busy}>
                     No me interesa
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    onClick={() => setConfirmBlock(true)}
+                    disabled={busy}
+                  >
+                    No quiero más listas suyas
+                  </Button>
                 </div>
               </>
             )}
           </div>
         )}
       </CardContent>
+      <Dialog open={confirmBlock} onOpenChange={setConfirmBlock}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿No quieres más listas de {name}?</DialogTitle>
+            <DialogDescription>
+              Dejarás de ver esta y no te llegará ninguna más, ni su correo de aviso. No se le
+              avisa de nada. Puedes deshacerlo en Ajustes.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" disabled={busy}>Cancelar</Button>} />
+            <Button variant="destructive" onClick={handleBlock} disabled={busy}>
+              No quiero más
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
