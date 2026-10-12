@@ -212,6 +212,11 @@ export default defineSchema({
     // Solo existe si el dueño lo editó alguna vez. Quien lo había marcado ve
     // un aviso si es posterior a su `listClaims.ackAt` (decisión 15).
     editedAt: v.optional(v.number()),
+    // «Lo que más ilusión te haría»: como mucho 5 por lista, con el tope en
+    // `lists.setFavorite`. Vacío = no lo es. Cambiarlo no pone `editedAt`: no
+    // es una edición del elemento, y quien lo había marcado no tiene por qué
+    // ver «lo ha cambiado».
+    favorite: v.optional(v.boolean()),
   }).index("by_owner", ["ownerClerkUserId"]),
 
   // Quién puede leer cada lista. El acceso se comprueba siempre contra esta
@@ -247,6 +252,10 @@ export default defineSchema({
         title: v.string(),
         url: v.optional(v.string()),
         note: v.optional(v.string()),
+        // «Ya lo tengo»: el dueño lo quitó porque ya lo tiene, y quien lo
+        // había marcado ve «Ya lo tiene» en vez de «Ya no está en su lista».
+        // Solo vive en esta copia: al dueño no se le dice si había marca.
+        reason: v.optional(v.literal("got")),
       }),
     ),
   })

@@ -29,6 +29,7 @@ import { userErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 
 type SharedList = FunctionReturnType<typeof api.lists.forPerson>[number];
+type SharedItem = SharedList["items"][number];
 type DateLike = { label: string; month: number; day: number; year?: number; recurring?: boolean };
 type Giftable = { claimId: Id<"listClaims">; title: string };
 
@@ -143,6 +144,87 @@ function SharedListCard({
     }
   };
 
+  const favorites = list.items.filter((i) => i.favorite);
+  const rest = list.items.filter((i) => !i.favorite);
+  const groupId = `lista-${list.shareId}`;
+
+  const renderItem = (item: SharedItem) => (
+    <li
+      key={item._id}
+      className="rounded-lg border border-border/60 bg-background/60 p-3 text-sm"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1">
+          <p className={cn("font-medium leading-snug", item.state === "taken" && "text-muted-foreground")}>
+            {item.title}
+          </p>
+          {item.url && <ListItemLink url={item.url} />}
+          {item.note && (
+            <p className="whitespace-pre-line text-xs text-muted-foreground">{item.note}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {item.state === "free" && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => run(() => claim({ itemId: item._id }), "No se pudo marcar")}
+            >
+              <Gift aria-hidden />
+              Lo regalo yo
+            </Button>
+          )}
+          {item.state === "mine" && item.claimId && (
+            <>
+              <Badge variant="secondary">Lo regalas tú</Badge>
+              <Button
+                size="sm"
+                className="hover:bg-primary/80"
+                onClick={() => setGiving({ claimId: item.claimId!, title: item.title })}
+              >
+                Ya se lo he regalado
+              </Button>
+            </>
+          )}
+          {item.state === "given" && (
+            <Badge variant="outline" className="gap-1 text-muted-foreground">
+              <Check className="size-3" aria-hidden />
+              Regalado
+            </Badge>
+          )}
+          {(item.state === "mine" || item.state === "given") && item.claimId && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Quitar tu marca de ${item.title}`}
+              title="Quitar tu marca"
+              onClick={() => run(() => unclaim({ claimId: item.claimId! }), "No se pudo quitar la marca")}
+            >
+              <X className="size-3.5" aria-hidden />
+            </Button>
+          )}
+          {item.state === "taken" && (
+            <span className="text-xs text-muted-foreground">Ya lo regala otra persona</span>
+          )}
+        </div>
+      </div>
+      {item.editedSinceMark && item.claimId && (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md bg-secondary/10 px-2.5 py-1.5 text-xs">
+          <span>{name} lo ha cambiado después de que lo marcaras.</span>
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() =>
+              run(() => acknowledgeEdit({ claimId: item.claimId! }), "No se pudo guardar")
+            }
+          >
+            Entendido
+          </Button>
+        </div>
+      )}
+    </li>
+  );
+
   return (
     <Card className="border-border/60 shadow-sm">
       <CardContent className="space-y-4 p-5">
@@ -158,85 +240,28 @@ function SharedListCard({
 
         {list.items.length === 0 ? (
           <p className="text-sm text-muted-foreground">Todavía no ha apuntado nada.</p>
+        ) : favorites.length > 0 ? (
+          // Lo que la dueña pasó a «Lo que más ilusión te haría», arriba y en su
+          // propio grupo, como las ideas guardadas por ocasión. Sin una etiqueta
+          // repetida en cada fila.
+          <div className="space-y-5">
+            <section aria-labelledby={`${groupId}-mas-ilusion`} className="space-y-2">
+              <h3 id={`${groupId}-mas-ilusion`} className="font-sans text-sm font-medium">
+                Lo que más ilusión le haría
+              </h3>
+              <ul className="space-y-2">{favorites.map(renderItem)}</ul>
+            </section>
+            {rest.length > 0 && (
+              <section aria-labelledby={`${groupId}-resto`} className="space-y-2">
+                <h3 id={`${groupId}-resto`} className="font-sans text-sm font-medium text-muted-foreground">
+                  El resto
+                </h3>
+                <ul className="space-y-2">{rest.map(renderItem)}</ul>
+              </section>
+            )}
+          </div>
         ) : (
-          <ul className="space-y-2">
-            {list.items.map((item) => (
-              <li
-                key={item._id}
-                className="rounded-lg border border-border/60 bg-background/60 p-3 text-sm"
-              >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 space-y-1">
-                    <p className={cn("font-medium leading-snug", item.state === "taken" && "text-muted-foreground")}>
-                      {item.title}
-                    </p>
-                    {item.url && <ListItemLink url={item.url} />}
-                    {item.note && (
-                      <p className="whitespace-pre-line text-xs text-muted-foreground">{item.note}</p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    {item.state === "free" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => run(() => claim({ itemId: item._id }), "No se pudo marcar")}
-                      >
-                        <Gift aria-hidden />
-                        Lo regalo yo
-                      </Button>
-                    )}
-                    {item.state === "mine" && item.claimId && (
-                      <>
-                        <Badge variant="secondary">Lo regalas tú</Badge>
-                        <Button
-                          size="sm"
-                          className="hover:bg-primary/80"
-                          onClick={() => setGiving({ claimId: item.claimId!, title: item.title })}
-                        >
-                          Ya se lo he regalado
-                        </Button>
-                      </>
-                    )}
-                    {item.state === "given" && (
-                      <Badge variant="outline" className="gap-1 text-muted-foreground">
-                        <Check className="size-3" aria-hidden />
-                        Regalado
-                      </Badge>
-                    )}
-                    {(item.state === "mine" || item.state === "given") && item.claimId && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`Quitar tu marca de ${item.title}`}
-                        title="Quitar tu marca"
-                        onClick={() => run(() => unclaim({ claimId: item.claimId! }), "No se pudo quitar la marca")}
-                      >
-                        <X className="size-3.5" aria-hidden />
-                      </Button>
-                    )}
-                    {item.state === "taken" && (
-                      <span className="text-xs text-muted-foreground">Ya lo regala otra persona</span>
-                    )}
-                  </div>
-                </div>
-                {item.editedSinceMark && item.claimId && (
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md bg-secondary/10 px-2.5 py-1.5 text-xs">
-                    <span>{name} lo ha cambiado después de que lo marcaras.</span>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      onClick={() =>
-                        run(() => acknowledgeEdit({ claimId: item.claimId! }), "No se pudo guardar")
-                      }
-                    >
-                      Entendido
-                    </Button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+          <ul className="space-y-2">{list.items.map(renderItem)}</ul>
         )}
 
         {list.removed.length > 0 && (
@@ -251,7 +276,11 @@ function SharedListCard({
                   {r.url && <ListItemLink url={r.url} />}
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="text-muted-foreground">Ya no está en su lista</Badge>
+                  {/* «Ya lo tiene» cuando la dueña lo quitó con «Ya lo tengo»: así quien lo
+                      había marcado no lo confunde con un cambio de idea. */}
+                  <Badge variant="outline" className="text-muted-foreground">
+                    {r.reason === "got" ? "Ya lo tiene" : "Ya no está en su lista"}
+                  </Badge>
                   <Button
                     size="sm"
                     variant="outline"

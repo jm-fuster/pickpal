@@ -23,7 +23,12 @@ import { internal } from "./_generated/api";
 
 export const MAX_ITEMS_PER_LIST = 100;
 export const MAX_READERS_PER_LIST = 20;
+// «Lo que más ilusión te haría». Sin tope, la señal se diluye.
+export const MAX_FAVORITES = 5;
 const CREATE_ITEM_DAILY_LIMIT = 100;
+// Una unidad por importación, no por fila: fila a fila, una lista de 100
+// gastaría el cupo diario entero de `create_list_item`.
+export const IMPORT_DAILY_LIMIT = 5;
 const CLAIM_DAILY_LIMIT = 100;
 const INVITE_LIST_DAILY_LIMIT = 20;
 const MAX_CLERK_ID_LENGTH = 100;
@@ -291,6 +296,7 @@ export const myItems = query({
       title: i.title,
       url: i.url,
       note: i.note,
+      favorite: i.favorite === true,
     }));
   },
 });
@@ -348,6 +354,77 @@ export const addItem = mutation({
   },
 });
 
+/**
+ * «Pegar una lista»: apunta de golpe lo que la página de pegar analizó en el
+ * navegador. Lo que llega del cliente no es de fiar, así que cada fila pasa la
+ * misma validación que `addItem`, y todas antes de insertar ninguna: si una
+ * falla, el error lleva su número para que la página la señale. Después el
+ * tope de la lista y, solo si cabe todo, la unidad del cupo diario. Cualquier
+ * error deshace la mutation entera: nunca queda una importación a medias ni
+ * se cobra la unidad.
+ *
+ * Solo lee `listItems`. Lo importado llega sin estado (ni marcas ni `editedAt`
+ * ni «lo que más ilusión»), y los repetidos los avisa la vista previa: aquí no
+ * se quitan, igual que en `addItem`.
+ */
+export const importItems = mutation({
+  args: {
+    items: v.array(
+      v.object({
+        title: v.string(),
+        url: v.optional(v.string()),
+        note: v.optional(v.string()),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const clerkUserId = await requireUser(ctx);
+    if (args.items.length === 0) {
+      throw new ConvexError("No hay nada que apuntar.");
+    }
+    if (args.items.length > MAX_ITEMS_PER_LIST) {
+      throw new ConvexError("Son demasiadas cosas de una vez.");
+    }
+
+    const rows = args.items.map((raw, i) => {
+      const item = normalizeItem(raw);
+      try {
+        validateListItemInput(item);
+      } catch (err) {
+        if (err instanceof ConvexError && typeof err.data === "string") {
+          throw new ConvexError(`Fila ${i + 1}: ${err.data}`);
+        }
+        throw err;
+      }
+      return item;
+    });
+
+    const existing = await ownerItems(ctx, clerkUserId);
+    const caben = MAX_ITEMS_PER_LIST - existing.length;
+    if (rows.length > caben) {
+      throw new ConvexError(
+        caben <= 0
+          ? `Tu lista ya tiene ${MAX_ITEMS_PER_LIST} cosas, el máximo. Quita alguna para apuntar otra.`
+          : `${caben === 1 ? "Cabe 1" : `Caben ${caben}`} más. Quítale la casilla a alguna o quita algo de tu lista.`,
+      );
+    }
+
+    await checkAndIncrement(ctx, clerkUserId, "import_list", IMPORT_DAILY_LIMIT);
+
+    // Al revés, para que la primera línea pegada sea la más nueva y salga
+    // arriba (`ownerItems` ordena por `_creationTime` descendente). En el
+    // deployment de desarrollo, 30 inserciones en una misma mutation salieron
+    // con `_creationTime` distintos y en orden: no hace falta desempatar.
+    for (let i = rows.length - 1; i >= 0; i--) {
+      await ctx.db.insert("listItems", {
+        ownerClerkUserId: clerkUserId,
+        ...rows[i],
+      });
+    }
+    return { inserted: rows.length };
+  },
+});
+
 export const updateItem = mutation({
   args: {
     id: v.id("listItems"),
@@ -371,20 +448,46 @@ export const updateItem = mutation({
       return;
     }
     // `undefined` en un patch borra el campo: vaciar el enlace o la nota lo
-    // quita de verdad.
+    // quita de verdad. `favorite` no está en `item`, así que editar no lo toca.
     await ctx.db.patch(id, { ...item, editedAt: Date.now() });
+  },
+});
+
+/**
+ * Pasa un elemento a «Lo que más ilusión te haría», o lo saca. Va aparte de
+ * `updateItem` porque no es una edición: no pone `editedAt`, así que quien lo
+ * había marcado no ve «lo ha cambiado» (decisión 15). El tope se comprueba
+ * solo al pasarlo, y pasar uno que ya lo es no cuenta.
+ */
+export const setFavorite = mutation({
+  args: { id: v.id("listItems"), favorite: v.boolean() },
+  handler: async (ctx, { id, favorite }) => {
+    const clerkUserId = await requireUser(ctx);
+    const item = await assertOwnItem(ctx, id, clerkUserId);
+    if (favorite === (item.favorite === true)) return;
+
+    if (favorite) {
+      const items = await ownerItems(ctx, clerkUserId);
+      if (items.filter((i) => i.favorite === true).length >= MAX_FAVORITES) {
+        throw new ConvexError(`Ya tienes ${MAX_FAVORITES}. Saca una para pasar esta.`);
+      }
+    }
+    // Al sacarlo se borra el campo en vez de guardar `false`.
+    await ctx.db.patch(id, { favorite: favorite ? true : undefined });
   },
 });
 
 /**
  * Borra un elemento. Si alguien lo había marcado, su marca se queda con una
  * copia del elemento para que lo siga viendo como «Ya no está en su lista»
- * (decisión 14). Si ya lo había dado por regalado, la marca desaparece sin
- * aviso, porque está cerrado (decisión 16). Al dueño no se le dice nada.
+ * (decisión 14), o como «Ya lo tiene» si el dueño lo quitó con «Ya lo tengo»
+ * (`reason: "got"`). Si ya lo había dado por regalado, la marca desaparece sin
+ * aviso, porque está cerrado (decisión 16). Al dueño no se le dice nada: no
+ * devuelve nada, haya marcas o no, con motivo o sin él.
  */
 export const removeItem = mutation({
-  args: { id: v.id("listItems") },
-  handler: async (ctx, { id }) => {
+  args: { id: v.id("listItems"), reason: v.optional(v.literal("got")) },
+  handler: async (ctx, { id, reason }) => {
     const clerkUserId = await requireUser(ctx);
     const item = await assertOwnItem(ctx, id, clerkUserId);
 
@@ -398,7 +501,8 @@ export const removeItem = mutation({
       } else {
         await ctx.db.patch(c._id, {
           itemId: undefined,
-          snapshot: { title: item.title, url: item.url, note: item.note },
+          // Sin motivo, `reason` se queda fuera de la copia.
+          snapshot: { title: item.title, url: item.url, note: item.note, reason },
         });
       }
     }
@@ -486,6 +590,8 @@ export const sharedWithMe = query({
  *
  * `state`: `free` nadie lo ha marcado · `mine` lo regalas tú · `given` ya lo
  * diste por regalado · `taken` lo regala otra persona, sin decir quién.
+ * `favorite`: está en «Lo que más ilusión le haría». En `removed`, `reason`
+ * es `"got"` si el dueño lo quitó con «Ya lo tengo».
  */
 export const forPerson = query({
   args: { personId: v.id("people") },
@@ -513,6 +619,7 @@ export const forPerson = query({
           title: item.title,
           url: item.url,
           note: item.note,
+          favorite: item.favorite === true,
           state: !claim
             ? ("free" as const)
             : !mine
@@ -545,6 +652,7 @@ export const forPerson = query({
           title: c.snapshot!.title,
           url: c.snapshot!.url,
           note: c.snapshot!.note,
+          reason: c.snapshot!.reason ?? null,
         }));
 
       lists.push({

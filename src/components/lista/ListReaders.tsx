@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { userErrorMessage } from "@/lib/errors";
+import { MAX_LIST_READERS, READERS_COUNTER_FROM } from "@/lib/listLimits";
 
 /**
  * «Quién la ve» en /mi-lista. La lista de lectores es reactiva
@@ -101,13 +102,23 @@ export function ListReaders() {
     }
   };
 
+  const readerCount = readers?.length ?? 0;
+  const full = readerCount >= MAX_LIST_READERS;
+
   return (
     <Card className="border-border/60 shadow-sm">
       <CardContent className="space-y-4 p-5">
-        <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-          <Users className="size-3.5" aria-hidden />
-          Quién la ve
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
+            <Users className="size-3.5" aria-hidden />
+            Quién la ve
+          </h2>
+          {readerCount >= READERS_COUNTER_FROM && (
+            <span className="ml-auto text-xs text-muted-foreground">
+              {readerCount} de {MAX_LIST_READERS}
+            </span>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground">
           Quien la lee puede marcar lo que va a regalarte. Tú no lo verás.
         </p>
@@ -137,28 +148,34 @@ export function ListReaders() {
           </ul>
         )}
 
-        <div className="space-y-2 border-t border-border/50 pt-4">
-          <Label htmlFor="lista-share-email">Compartir con (email)</Label>
-          <div className="flex gap-2">
-            <Input
-              id="lista-share-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="pareja@email.com"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && email) handleInvite();
-              }}
-            />
-            <Button onClick={handleInvite} disabled={inviting || !email} className="hover:bg-primary/80">
-              {inviting ? "Compartiendo…" : "Compartir"}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Tiene que tener ya una cuenta en PickPal con ese email. Le avisaremos
-            por correo.
+        {full ? (
+          <p className="border-t border-border/50 pt-4 text-sm text-muted-foreground">
+            Tu lista ya la ven {MAX_LIST_READERS} personas, el máximo. Quita a alguien para invitar a otra.
           </p>
-        </div>
+        ) : (
+          <div className="space-y-2 border-t border-border/50 pt-4">
+            <Label htmlFor="lista-share-email">Compartir con (email)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="lista-share-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="pareja@email.com"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && email) handleInvite();
+                }}
+              />
+              <Button onClick={handleInvite} disabled={inviting || !email} className="hover:bg-primary/80">
+                {inviting ? "Compartiendo…" : "Compartir"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Tiene que tener ya una cuenta en PickPal con ese email. Le avisaremos
+              por correo.
+            </p>
+          </div>
+        )}
       </CardContent>
 
       <Dialog open={removing !== null} onOpenChange={(open) => { if (!open) setRemoving(null); }}>

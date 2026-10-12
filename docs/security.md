@@ -119,7 +119,7 @@ Aplícalo a cualquier mutation que:
 - Llame a APIs externas de pago (cuota).
 - Envíe notificaciones / emails.
 
-Buckets actuales: `create_person` (50/día), `create_date` (100/día), `save_idea` (50/día), `invite_person` (20/día — compartir una ficha, ver §9), `invite_lookup` (30/día — comprobar un email antes de invitar, ver §9; lo comparten las fichas y «Mi lista»), `create_list_item` (100/día), `claim_list_item` (100/día — marcar «Lo regalo yo»), `invite_list` (20/día — compartir tu lista, por email o de vuelta; ver §11), `recommendationUsage` (10/día, tabla aparte por motivos históricos).
+Buckets actuales: `create_person` (50/día), `create_date` (100/día), `save_idea` (50/día), `invite_person` (20/día — compartir una ficha, ver §9), `invite_lookup` (30/día — comprobar un email antes de invitar, ver §9; lo comparten las fichas y «Mi lista»), `create_list_item` (100/día), `import_list` (5/día — «Pegar una lista»: una unidad por importación, no por fila, porque fila a fila una lista de 100 gastaría el cupo entero de `create_list_item`; `lists.importItems` valida todas las filas antes de insertar ninguna, con el número de fila en el error, y comprueba el tope de 100 elementos antes que el cupo, así que ni una fila inválida ni una lista que no cabe gastan la unidad; ver §11), `claim_list_item` (100/día — marcar «Lo regalo yo»), `invite_list` (20/día — compartir tu lista, por email o de vuelta; ver §11), `recommendationUsage` (10/día, tabla aparte por motivos históricos).
 
 **Cuota de recomendaciones = reserva atómica.** `api.recommendationUsage.reserve` (mutation) incrementa el contador **antes** de llamar a Gemini y lanza `ConvexError` si está agotado; al ser una transacción Convex, dos peticiones concurrentes en el límite no pueden superar las 10/día. Si la generación falla (saturación, timeout o validación del schema de Gemini), la API route llama a `refund` para devolver la unidad: como el `return` de éxito va tras el `upsert`, llegar al `catch` garantiza que no se persistió ninguna idea, así que un fallo de formato del proveedor no cuesta una generación. `refund` recibe el `day` UTC que devolvió `reserve` para devolver la unidad al bucket correcto aunque el fallo cruce la medianoche UTC. No existe un `consume` posterior al guardado: el patrón check-luego-consume tenía una carrera de coste y un caso "ideas guardadas pero el usuario ve error".
 
@@ -194,6 +194,8 @@ Flujo:
 **Cascada de borrado de persona:** el helper `deletePersonCascade(ctx, personId)` ([`convex/people.ts`](../convex/people.ts)) borra `importantDates`, `giftHistory`, `recommendations`, `savedIdeas` y `personShares` de una persona y después la persona. Es el **único** camino válido para borrar una persona: lo usan `people.remove` y `account.deleteMyAccount` (cuando la persona no tiene invitados — ver §9). Si añades una tabla anidada bajo `people`, añádela al helper (no a los call sites).
 
 **Reglas al añadir tablas nuevas:** si guardas datos vinculados a un usuario, añade su limpieza a `deleteMyAccount`. La regla aplica también si la tabla no tiene un campo `clerkUserId` directo: el borrado debe alcanzarla por relación (ej. `importantDates` se borra siguiendo `people` → `by_person`). Si una tabla nueva no se puede asociar a un usuario, no se puede exponer.
+
+Y añádela también a `exportData.mine`, con su propia aserción en los tests. El test de paridad de `exportData.test.ts` no basta: solo comprueba que lo que se borra también se exporta (no al revés), y solo por el nombre de la tabla en un `.query("…")` del código, sin mirar qué campos salen. Una tabla de «Mi lista» tiene que borrarse dentro de `deleteListDataForUser`, escrita tal cual, porque el test solo lee `lists.ts` desde esa función hasta el final.
 
 El `clerkUserId` siempre se lee de la sesión vía `requireUser` — la mutation no acepta argumentos. No existe forma de que un usuario borre los datos de otro.
 
@@ -273,6 +275,12 @@ a uno solo:
   `privacy.md` explica la base). Es la propiedad que sostiene la función y la
   primera que prueba `convex/lists.test.ts`. Si una query nueva del dueño
   necesita mirar `listClaims`, está mal planteada.
+- **«Ya lo tengo» y «Lo que más ilusión te haría» van solo del dueño al
+  lector.** `removeItem({ reason: "got" })` guarda el motivo en la copia de las
+  marcas `marked` y no devuelve nada: el dueño recibe lo mismo haya marcas o
+  no, con motivo o sin él, y hay un test que lo compara. `setFavorite` no pone
+  `editedAt`, así que a nadie le salta «lo ha cambiado», y su tope de 5 solo
+  cuenta `listItems`.
 - **El lector entra por el permiso del dueño.** `forPerson` y `claim` buscan la
   fila de `listShares` (dueño, lector), nunca el acceso a la ficha donde el
   lector guardó la lista (§2). Ve que un elemento está cogido, pero no quién lo
@@ -300,6 +308,17 @@ a uno solo:
   XSS en la cuenta de quien lo abre. Se pintan con `target="_blank"
   rel="noopener noreferrer nofollow"` y siempre con el dominio visible
   (`ListItemLink`); un dominio que imita a otro sale en punycode.
+- **Lo que se pega para traer una lista tampoco es de fiar.** Se analiza solo
+  en el navegador, con funciones puras sin red ni IA, y nunca se pinta tal
+  cual: pasa directamente a la vista previa de filas. El portapapeles solo se
+  lee con un gesto de la dueña (el evento de pegar o el botón «Pegar»), nunca
+  al cargar la página, y lo pegado tiene tope de tamaño. A Convex solo llega lo
+  que ella elige apuntar, y `lists.importItems` vuelve a validar cada fila con
+  `validateListItemInput` como si nadie la hubiera mirado. Los enlaces siguen
+  la regla anterior: solo `http:` y `https:`, y el servidor no los abre.
+  Lo importado nunca trae estado de reserva, ni leído del texto ni guardado:
+  llega libre para todos los lectores, como lo que se apunta a mano. El cupo y
+  el orden de las comprobaciones están en §4.
 - **El correo de aviso al lector no lleva nada de la lista.** Solo el nombre
   y el email del dueño (sacados de su JWT, igual que en la tarjeta) y un enlace
   a la app: los elementos los escribe otra persona y no deben viajar por

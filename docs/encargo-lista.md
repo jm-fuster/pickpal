@@ -36,6 +36,11 @@ compra.
 2. **Cada elemento tiene título obligatorio, enlace opcional y nota opcional.** No
    hay precio, ni prioridad, ni orden manual: se muestran del más nuevo al más
    antiguo.
+
+   **Cambiado el 11-oct-2026 (solo la prioridad):** la dueña puede pasar hasta 5
+   cosas a «Lo que más ilusión te haría». Salen en un grupo aparte, arriba, para
+   ella y para quien lee («Lo que más ilusión le haría»), y el resto debajo. Sin
+   medidor de 1 a 5 ni orden manual; precio sigue fuera. Ver el anexo de la fase 1.
 3. **El servidor nunca abre el enlace.** No hay vista previa con imagen o precio,
    porque pedir URLs que escribe un usuario abre la puerta a SSRF. Si el dominio es
    de una de las 11 tiendas de `src/lib/stores.ts`, se muestra su logo; si no, el
@@ -92,6 +97,11 @@ compra.
 14. **Elemento borrado después de marcarlo:** quien lo marcó lo sigue viendo como
     «Ya no está en su lista» hasta que quita la marca. Al resto de lectores les
     desaparece. Al dueño no se le avisa de nada.
+
+    **Cambiado el 11-oct-2026:** si la dueña lo quita con «Ya lo tengo», quien lo
+    había marcado ve «Ya lo tiene» en lugar de «Ya no está en su lista», con las
+    mismas acciones. Así no confunde «ha cambiado de idea» con «ya lo tiene». La
+    dueña recibe exactamente lo mismo haya marcas o no.
 15. **Elemento editado después de marcarlo:** quien lo marcó ve «{Nombre} lo ha
     cambiado después de que lo marcaras», con un botón «Entendido» que lo quita.
 16. **Del elemento marcado al historial:** «Ya se lo he regalado» abre el diálogo de
@@ -134,6 +144,11 @@ compra.
 23. **Topes:** 100 elementos por lista y 20 lectores por lista. Al llegar a cualquiera
     de los dos, se dice en pantalla.
 
+    **Precisado el 11-oct-2026:** hasta esa fecha solo salía un error al intentarlo.
+    Ahora, desde 80 cosas o 16 lectores se ve la cuenta («84 de 100», «16 de 20»), y
+    al llegar al tope la fila de apuntar o el campo de invitar se sustituyen por el
+    aviso.
+
 ### Textos de interfaz
 
 | Dónde | Texto |
@@ -159,9 +174,11 @@ campaña.
 
 ### Fuera de esta versión
 
-- Invitar a quien todavía no tiene cuenta.
+- Invitar a quien todavía no tiene cuenta. Revisado el 11-oct-2026: sigue fuera
+  durante la beta.
 - Varias listas u ocasiones.
-- Precio y prioridad.
+- Precio y prioridad. La prioridad entró el 11-oct-2026 (decisión 2); el precio
+  sigue fuera.
 - Vista previa de enlaces.
 - Enviar la lista a Gemini.
 - Bloquear a alguien que te comparte listas que no quieres.
@@ -254,7 +271,9 @@ Construye las queries del dueño leyendo solo `listItems`, sin cruzar nunca con
   `convex/sharing.test.ts` es el modelo más cercano a lo que vas a probar.
 - **Antes de cualquier cambio de schema, `npx convex dev --once`.**
 - **`convex/exportData.ts` recorre las mismas tablas que `deleteMyAccount`**, y
-  `exportData.test.ts` falla si añades una tabla a uno y no al otro. Aquí además
+  `exportData.test.ts` falla si borras una tabla que no exportas (solo comprueba
+  en ese sentido: una tabla nueva necesita además su propia aserción de
+  exportación; ver `docs/security.md` §7). Aquí además
   cada tabla nueva tiene dos dueños posibles (el de la lista y el lector), y la
   exportación del dueño no puede incluir `listClaims`. Lee la decisión 21 antes de
   copiar el patrón.
@@ -301,3 +320,71 @@ Construye las queries del dueño leyendo solo `listItems`, sin cruzar nunca con
 - `docs/dudas.md` con una entrada nueva en «Resueltas» que cuente lo que se
   construyó de verdad y las decisiones de implementación que este encargo no fijaba.
 - `/privacidad` y `docs/privacy.md` movidos en el mismo cambio que el código.
+
+## Anexo: fase 1 (11-oct-2026)
+
+Ampliación decidida el 11-oct-2026 al comparar «Mi lista» con otras listas de
+deseos. Las decisiones de arriba siguen valiendo salvo donde dicen «Cambiado el
+11-oct-2026». Lo que se construyó de verdad está en `docs/dudas.md`.
+
+1. **«Pegar una lista»** (`/mi-lista/traer`). La dueña pega una lista que ya
+   tiene en otra app, en una nota o en un chat, y elige qué apuntar:
+   - El texto se analiza en el navegador con funciones puras
+     (`src/lib/importers/`), sin red y sin IA, y nunca se pinta tal cual: pasa
+     directo a una vista previa con una casilla y el título editable por fila.
+   - Reconoce una cosa por línea, título y enlace en la misma línea o en la
+     siguiente, enlaces en Markdown, enlaces sueltos, chats de WhatsApp y filas
+     de hoja de cálculo separadas por tabuladores.
+   - Ningún estado de reserva de la otra app llega a la pantalla ni cambia el
+     resultado: las palabras de estado se quitan y la fila se queda igual que si
+     no las hubiera. Lo comprueba un test diferencial.
+   - Los enlaces que llevan a la propia app de origen y no a una tienda no se
+     guardan. Si el enlace de la lista entera es lo único pegado, se explica que
+     PickPal no abre enlaces.
+   - Repetidas, textos sueltos, líneas de otra persona en un chat y lo que no
+     cabe llegan sin casilla, con un aviso.
+   - Al servidor llega solo lo marcado, por `lists.importItems`: valida todas las
+     filas antes de insertar ninguna, aplica el tope de 100 y gasta una unidad de
+     `import_list` (5 al día) por importación, no por fila.
+2. **Enlaces limpios** al pegar o al salir del campo «Enlace»: sin parámetros de
+   seguimiento ni de afiliado, y desenvueltos si llegan dentro de un redirector.
+   Si «Qué es» está vacío, se propone un título sacado de la dirección. Todo en
+   el navegador; el servidor sigue sin abrir nada (decisión 3).
+3. **«Lo que más ilusión te haría»** (decisión 2): hasta 5, con su propia
+   mutation (`lists.setFavorite`), que no cuenta como edición: nadie ve «lo ha
+   cambiado» por moverlo de grupo.
+4. **«Ya lo tengo»** (decisión 14): quita el elemento como «Quitar de mi lista»
+   y guarda el motivo solo en la copia de quien lo había marcado.
+5. **Topes a la vista** (decisión 23).
+6. **Menú de la fila de la dueña y «Deshacer» al quitar.** El lápiz queda a la
+   vista; el resto de acciones va en un `Popover` como el de las ideas guardadas.
+   Quitar no borra hasta que se cierra el aviso con «Deshacer», así que, si la
+   dueña se arrepiente, quien lo había marcado nunca ve «Ya no está en su lista».
+
+Sigue fuera: precio, varias listas, invitar a quien no tiene cuenta, el botón de
+«Apuntar en PickPal» para el navegador, «Nuevo» para quien lee y cualquier
+petición del servidor a un enlace.
+
+### Textos de la fase 1
+
+| Dónde | Texto |
+| --- | --- |
+| Bajo «Apuntar algo» | Pegar una lista |
+| Estado vacío, bajo el botón | ¿La tienes en otra app o en una nota? Pégala |
+| Página de pegar, título y entrada | Pegar una lista · Trae de una vez una lista que ya tengas en otra app, en una nota o en un mensaje. |
+| Página de pegar, ayuda | Normalmente, cada línea será una cosa. Trae solo lo que te siga haciendo ilusión. Se lee en tu navegador: PickPal no entra en la otra app ni abre los enlaces. |
+| Zona de pegar | Pulsa aquí y pega · Pegar · Pegar otra lista |
+| Cuenta en la vista previa | Caben N más en tu lista (Cabe 1 más · Ya no cabe nada más en tu lista) |
+| Filas sin enlace | N llegan sin enlace a la tienda. Puedes añadirlo después desde tu lista. |
+| Enlaces de la app de origen | Los enlaces de wishlist.com llevan a wishlist.com y no a la tienda, así que no se guardan. |
+| Línea fija | Cada cosa llega sin su estado: si en la otra app alguien la había reservado, aquí llega como cualquier otra. Si sabes que algo ya lo tienes, quítale la casilla. |
+| Avisos de fila | Ya está en tu lista · Está repetido en lo que has pegado · Esto parece un texto, no algo de tu lista · Lo escribió {autor} · Ponle nombre · Solo caben N. Quítale la casilla a lo que no quieras o quita algo de tu lista. |
+| Lo pegado no sirve | No hay nada que apuntar en lo que has pegado. · Esto no parece una lista. Copia solo los nombres, uno por línea, y vuelve a pegar. · Eso es el enlace de la lista entera, y PickPal no abre enlaces. Ábrela en tu navegador, copia su texto y pégalo aquí. · Es demasiado largo para leerlo de una vez. Pega la lista por partes. · Todo eso ya está en tu lista. |
+| Botón y aviso final | Apuntar N cosas · N cosas apuntadas en tu lista · M ya estaban · Compartirla |
+| Pista bajo «Enlace» | Enlace acortado: lleva a la misma página. · Ese enlace lleva a wishlist.com, no a la tienda. Pega el de la tienda. · Es Amazon de otro país; quizá prefieras el enlace de amazon.es. |
+| Menú de la fila | Más acciones para {título} · Pasar a lo que más ilusión me haría · Sacar de lo que más ilusión me haría · Ya tienes 5. Saca una para pasar esta. · Ya lo tengo · Quitar de mi lista |
+| Avisos al quitar | Quitado de tu lista · Quitado de tu lista: ya lo tienes · Deshacer |
+| Grupos, dueña | Lo que más ilusión te haría · El resto |
+| Grupos, quien lee | Lo que más ilusión le haría · El resto |
+| Copia de quien lo marcó | Ya lo tiene |
+| Topes | N de 100 · N de 20 · Tu lista ya tiene 100 cosas, el máximo. Quita alguna para apuntar otra. · Tu lista ya la ven 20 personas, el máximo. Quita a alguien para invitar a otra. |

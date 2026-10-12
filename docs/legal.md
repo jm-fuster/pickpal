@@ -4,7 +4,7 @@
 
 > **Bloqueo resuelto (20-sep-2026):** `pickpal@jorgemolinafuster.com` ya entrega. Cloudflare Email Routing sobre el apex `jorgemolinafuster.com`: los 3 MX de Cloudflare más un único `v=spf1 include:_spf.mx.cloudflare.net ~all` —hubo que borrar el `v=spf1 -all` anterior, porque dos registros SPF son un permerror— y una regla que reenvía a un buzón personal verificado. Comprobado con un envío real desde fuera del dominio antes de tocar estas páginas.
 
-Última actualización: `27 de septiembre de 2026`
+Última actualización: `11 de octubre de 2026`
 
 > Cuando se publique la app, este contenido debe servirse en `/legal` (o separado en `/aviso-legal` y `/terminos`) y enlazarse desde el footer.
 
@@ -58,6 +58,7 @@ El usuario se compromete a:
 - No usar la app para fines ilícitos, ofensivos o que vulneren derechos de terceros.
 - No intentar saltarse las medidas de seguridad, los rate limits ni acceder a datos de otros usuarios.
 - No automatizar el uso del servicio mediante bots o scraping.
+- Al pegar en «Mi lista» una lista de otro servicio, traer solo lo que tenga derecho a usar. Las reclamaciones de terceros van a la dirección de contacto de `/terminos`. Añadido el 11-oct-2026 con «Pegar una lista» (`docs/encargo-lista.md`, anexo de la fase 1): PickPal no accede a ningún otro servicio, es el usuario quien copia y pega su lista, y esta línea deja dicho a quién corresponde ese contenido.
 
 El incumplimiento puede conllevar la suspensión o eliminación de la cuenta.
 

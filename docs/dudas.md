@@ -27,6 +27,48 @@ _Ninguna ahora mismo._
 
 ## Resueltas
 
+- [x] **«Mi lista», fase 1: pegar una lista, lo que más ilusión, «Ya lo
+  tengo».** Construida el 11-oct-2026 sobre el anexo de fase 1 de
+  [`docs/encargo-lista.md`](encargo-lista.md), que también recoge los cambios
+  en las decisiones 2, 14 y 23. Lo que se construyó de verdad:
+
+  - **Backend** (`convex/lists.ts`): `importItems` (todas las filas validadas
+    antes de insertar, error con el número de fila, tope antes que cuota, una
+    unidad de `import_list` por importación, inserción en orden inverso),
+    `setFavorite` (tope de 5, nunca toca `editedAt`) y `removeItem` con
+    `reason: "got"` guardado solo en la copia de la marca. `myItems` y
+    `forPerson` devuelven `favorite`; los elementos quitados que ve el lector
+    llevan `reason`. Dos campos opcionales en el schema y dos claves nuevas en
+    la exportación (`loQueMasIlusionTeHaria`, `yaLoTiene`).
+  - **Orden de las filas importadas, comprobado en el deployment de
+    desarrollo** con una mutation temporal ya borrada: 30 inserciones en una
+    misma transacción reciben `_creationTime` distintos y crecientes
+    (fracciones de milisegundo) y vuelven en el orden de inserción. Por eso no
+    hace falta un campo de orden; `convex-test` no servía para probarlo
+    porque fabrica tiempos crecientes por construcción.
+  - **Análisis en el navegador** (`src/lib/importers/pastedList.ts`,
+    `importPreview.ts`) y limpieza de enlaces (`src/lib/links.ts`:
+    `prepareListLink`, `unwrapLink`, `canonicalizeLink`,
+    `suggestTitleFromUrl`). Los títulos se recortan a 120 unidades UTF-16 (lo
+    que cuenta el servidor) sin partir un emoji. Un test diferencial comprueba
+    que añadir palabras de estado («Received», «3 received», «Reservado», un
+    enlace de deshacer reserva) no cambia el resultado en ningún formato.
+  - **Interfaz**: página `/mi-lista/traer`, menú `Popover` en la fila de la
+    dueña, «Deshacer» de 6 s al quitar (el borrado se manda al cerrarse el
+    aviso, al salir de la página o en `pagehide`), grupos «Lo que más ilusión…»
+    en las dos vistas, «Ya lo tiene» en la copia del lector, topes a la vista y
+    enlaces limpios en el formulario.
+  - **Decisiones de implementación que el anexo no fijaba:** el título de una
+    fila de la vista previa se entrega al salir del campo y no a cada pulsación
+    (recortar a cada tecla se comía los espacios); el aviso «Está repetido en
+    lo que has pegado» distingue las repetidas dentro de lo pegado de las que
+    ya estaban en la lista; pasar algo a «Lo que más ilusión» o sacarlo lo
+    confirma un toast, como mover una idea guardada, y no hay contador «N de 5».
+  - **Pendiente:** la ayuda específica para traer una lista de wishlist.com
+    espera a una prueba con una lista real que tenga algo reservado, para ver
+    cómo sale el texto de su «Share → more…». Mientras, el importador genérico
+    ya reconoce y descarta sus enlaces internos.
+
 - [x] **Ideas guardadas agrupadas por ocasión.** Construida el 10-oct-2026 sobre
   [`docs/encargo-ocasiones.md`](encargo-ocasiones.md), que es la
   especificación, y dibujada antes en Figma (página `Saved ideas by occasion`,

@@ -8,8 +8,10 @@ import { personHasAccess } from "./personShares";
  *
  * Recorre exactamente las mismas tablas que `account.deleteMyAccount`: si una
  * se borra al cerrar la cuenta, es porque es del usuario, y entonces tiene que
- * salir aquí. Cuando se añada una tabla nueva hay que tocar las dos, y
- * `exportData.test.ts` falla si solo se toca una.
+ * salir aquí. Cuando se añada una tabla nueva hay que tocar las dos.
+ * `exportData.test.ts` falla si se toca el borrado y no la exportación, pero
+ * no al revés, y solo mira nombres de tabla: cada tabla nueva necesita además
+ * su propia aserción de lo que exporta.
  *
  * Igual que el borrado, la autorización es por sesión: `requireUser` saca el
  * `clerkUserId` del JWT y nunca se acepta como argumento, así que nadie puede
@@ -172,6 +174,8 @@ export const mine = query({
           elemento: elemento?.title ?? c.snapshot?.title ?? null,
           estado: c.status === "given" ? "regalado" : "lo regalo yo",
           sigueEnSuLista: c.itemId !== undefined,
+          // Lo quitó de su lista con «Ya lo tengo».
+          yaLoTiene: c.snapshot?.reason === "got",
           desde: c._creationTime,
         };
       }),
@@ -225,7 +229,9 @@ export const mine = query({
         "(no se incluye su contenido completo, solo que las ves). " +
         "\"miLista\" es lo que has apuntado que te haría ilusión y con quién " +
         "la compartes; no incluye qué ha marcado nadie para regalarte. " +
-        "\"marcasEnListasDeOtros\" es lo que has marcado tú en listas ajenas.",
+        "\"loQueMasIlusionTeHaria\" dice si lo pusiste en ese grupo. " +
+        "\"marcasEnListasDeOtros\" es lo que has marcado tú en listas ajenas; " +
+        "\"yaLoTiene\" dice si su dueño lo quitó porque ya lo tenía.",
       usuario: {
         // El identificador con el que se guarda todo lo de abajo.
         clerkUserId,
@@ -239,6 +245,7 @@ export const mine = query({
           titulo: i.title,
           enlace: i.url ?? null,
           nota: i.note ?? null,
+          loQueMasIlusionTeHaria: i.favorite === true,
           _creationTime: i._creationTime,
           editadoEn: i.editedAt ?? null,
         })),

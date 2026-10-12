@@ -96,6 +96,12 @@ export default function TermsPage() {
               uso, ni acceder a datos de otros usuarios.
             </li>
             <li>No automatizar el uso del servicio mediante bots o scraping.</li>
+            <li>
+              Si pegas en &laquo;Mi lista&raquo; una lista que tenías en otro
+              servicio, trae solo lo que tengas derecho a usar. Si crees que
+              algo apuntado en PickPal vulnera tus derechos, escríbenos a la
+              dirección de contacto del final de esta página.
+            </li>
           </ul>
           <p className="text-sm text-foreground">
             El incumplimiento puede conllevar la suspensión o eliminación de tu
@@ -304,7 +310,7 @@ export default function TermsPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 10 de octubre de 2026.
+          Última actualización: 11 de octubre de 2026.
         </p>
       </main>
 

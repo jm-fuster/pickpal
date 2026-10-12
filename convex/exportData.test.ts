@@ -5,9 +5,13 @@
 // que se comprueba aquí no es una funcionalidad sino una promesa legal: que
 // salga todo, que no salga lo de otro, y que nadie exporte una cuenta ajena.
 //
-// El test que más trabaja es el último: la exportación y el borrado tienen que
-// recorrer las mismas tablas. Si alguien añade una tabla al borrado y se olvida
-// de la exportación, o al revés, ese test falla.
+// El test que más trabaja es el último: toda tabla que se borra al cerrar la
+// cuenta tiene que salir en la exportación. Solo comprueba ese sentido (una
+// tabla exportada que no se borra no lo hace fallar) y solo por el nombre de
+// la tabla en un `.query("…")`, sin mirar qué campos salen. Por eso cada tabla
+// nueva necesita además su propia aserción de exportación, y en `lists.ts` su
+// borrado tiene que estar dentro de `deleteListDataForUser`, que es la parte
+// de ese archivo que lee el test.
 
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";

@@ -274,7 +274,10 @@ export default function PrivacyPage() {
           <h2 className="text-xl font-medium">Tu lista</h2>
           <p className="text-sm text-foreground">
             En &laquo;Mi lista&raquo; apuntas lo que te haría ilusión recibir:
-            qué es y, si quieres, un enlace y una nota. Solo la ven las
+            qué es y, si quieres, un enlace, una nota y si es de lo que más
+            ilusión te haría (hasta cinco cosas). Si traes una lista pegada de
+            otra app, de una nota o de un mensaje, se lee en tu navegador: a
+            PickPal solo llega lo que eliges apuntar. Solo la ven las
             personas con cuenta en PickPal a las que tú invitas, hasta un
             máximo de 20. Junto a la lista ven tu nombre y tu email, para saber
             quién se la comparte. Ninguna sabe quién más la lee. Al invitar a
@@ -292,7 +295,8 @@ export default function PrivacyPage() {
           <p className="text-sm text-foreground">
             Si borras algo que alguien ya había marcado, esa persona sigue
             viendo una copia (qué era, el enlace y la nota) hasta que quita su
-            marca. Y si alguien apunta en su historial de regalos que te regaló
+            marca; si lo quitas con &laquo;Ya lo tengo&raquo;, la copia le dice
+            también que ya lo tienes. Y si alguien apunta en su historial de regalos que te regaló
             algo de tu lista, esa entrada es de su libreta: no se borra con el
             elemento ni con tu cuenta.
           </p>

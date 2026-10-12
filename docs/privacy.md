@@ -95,8 +95,9 @@ recibir y puede compartirla con otros usuarios de PickPal
 [`encargo-lista.md`](encargo-lista.md)). A diferencia de §2.5, aquí los datos
 son **del propio usuario**, no de un tercero.
 
-- **Qué se guarda:** por elemento, un título, un enlace y una nota opcionales
-  (`listItems`); a quién se le ha dado acceso, con el nombre de pila y el email
+- **Qué se guarda:** por elemento, un título, un enlace y una nota opcionales,
+  y si es de «Lo que más ilusión te haría» (`listItems.favorite`, hasta cinco,
+  desde el 11-oct-2026); a quién se le ha dado acceso, con el nombre de pila y el email
   del dueño copiados de su JWT al compartir (`listShares`); y las marcas de
   «Lo regalo yo» de cada lector (`listClaims`).
 - **Quién ve qué:** el lector ve los elementos y el nombre y email del dueño,
@@ -131,7 +132,17 @@ son **del propio usuario**, no de un tercero.
   al compartir, así que va con la misma base que el resto de la lista.
 - **Al borrar un elemento ya marcado,** quien lo marcó conserva una copia
   (título, enlace y nota) hasta que quita su marca. Si ya lo había dado por
-  regalado, la marca desaparece.
+  regalado, la marca desaparece. Si el dueño lo quitó con «Ya lo tengo», la
+  copia guarda también ese motivo (`listClaims.snapshot.reason`) y quien lo
+  marcó ve «Ya lo tiene»: la información va solo del dueño al lector, y el
+  dueño recibe lo mismo haya marcas o no.
+- **«Pegar una lista» (desde el 11-oct-2026):** el texto pegado se analiza en
+  el navegador (`src/lib/importers/`), sin red ni IA, y nunca se pinta tal
+  cual. Al servidor solo llegan las filas que el usuario deja marcadas, con
+  título y, si los había, un enlace limpio y una nota (de una columna de hoja
+  de cálculo), y `lists.importItems` las valida
+  otra vez. Ningún estado de reserva de la otra app se lee ni se guarda. No
+  hay proveedor nuevo: PickPal no accede a ningún otro servicio.
 - **Base legal:** ejecución de contrato — es una funcionalidad que el usuario
   activa explícitamente, igual que compartir fichas.
 

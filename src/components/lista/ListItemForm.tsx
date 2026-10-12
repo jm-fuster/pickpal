@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState, type ClipboardEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "convex/react";
@@ -7,7 +8,7 @@ import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { listItemSchema, type ListItemFormValues } from "@/lib/schemas";
-import { normalizeLinkInput } from "@/lib/links";
+import { looksLikeUrl, normalizeLinkInput, prepareListLink, type PreparedLink } from "@/lib/links";
 import { userErrorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,19 +17,42 @@ import { Textarea } from "@/components/ui/textarea";
 
 type Item = { _id: Id<"listItems">; title: string; url?: string; note?: string };
 
+/** Lo que se dice bajo «Enlace» después de limpiarlo. Ninguna pista es un error. */
+function linkHint(link: PreparedLink): string | null {
+  if (link.wishlistCom) return "Ese enlace lleva a wishlist.com, no a la tienda. Pega el de la tienda.";
+  if (link.foreignAmazon) return "Es Amazon de otro país; quizá prefieras el enlace de amazon.es.";
+  if (link.shortened) return "Enlace acortado: lleva a la misma página.";
+  return null;
+}
+
 /**
  * Apuntar algo en «Mi lista», o editarlo en su sitio si llega `item`. Mismo
  * registro que los formularios en línea de la ficha (eventos, historial):
  * caja punteada, sin diálogo ni navegación.
+ *
+ * Los enlaces se limpian en el navegador al pegarlos o al salir del campo
+ * (`prepareListLink`): sin etiquetas de seguimiento ni de afiliado, y sin el
+ * redirector si llegó envuelto. Nada se pide a la tienda (decisión 3).
  */
-export function ListItemForm({ item, onDone }: { item?: Item; onDone: () => void }) {
+export function ListItemForm({
+  item,
+  onDone,
+}: {
+  item?: Item;
+  /** Al apuntar algo nuevo recibe su id, para que la página lo señale. */
+  onDone: (addedId?: Id<"listItems">) => void;
+}) {
   const addItem = useMutation(api.lists.addItem);
   const updateItem = useMutation(api.lists.updateItem);
   const prefix = item ? `li-${item._id}` : "li-new";
+  const titleRef = useRef<HTMLInputElement | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
+    getValues,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(listItemSchema),
@@ -39,6 +63,35 @@ export function ListItemForm({ item, onDone }: { item?: Item; onDone: () => void
     },
   });
 
+  // Deja el enlace limpio en «Enlace» y, si «Qué es» está vacío, propone un
+  // título sacado de la dirección, ya seleccionado para escribir encima.
+  const applyLink = (raw: string) => {
+    const link = prepareListLink(raw);
+    setValue("url", link.url ?? (link.wishlistCom ? "" : raw.trim()), { shouldValidate: true });
+    setHint(linkHint(link));
+    if (link.suggestedTitle && getValues("title").trim() === "") {
+      setValue("title", link.suggestedTitle, { shouldValidate: true });
+      requestAnimationFrame(() => titleRef.current?.select());
+    }
+  };
+
+  const onTitlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData("text/plain").trim();
+    if (!looksLikeUrl(text)) return;
+    e.preventDefault();
+    applyLink(text);
+  };
+
+  const onUrlPaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData("text/plain").trim();
+    if (!text) return;
+    e.preventDefault();
+    applyLink(text);
+  };
+
+  const titleField = register("title");
+  const urlField = register("url");
+
   const onSubmit = async (values: ListItemFormValues) => {
     const fields = {
       title: values.title,
@@ -48,11 +101,12 @@ export function ListItemForm({ item, onDone }: { item?: Item; onDone: () => void
     try {
       if (item) {
         await updateItem({ id: item._id, ...fields });
+        onDone();
       } else {
-        await addItem(fields);
+        const id = await addItem(fields);
         toast.success("Apuntado en tu lista");
+        onDone(id);
       }
-      onDone();
     } catch (err) {
       toast.error(userErrorMessage(err, "No se pudo guardar"));
     }
@@ -77,7 +131,12 @@ export function ListItemForm({ item, onDone }: { item?: Item; onDone: () => void
           autoFocus
           aria-invalid={errors.title ? true : undefined}
           aria-describedby={errors.title ? `${prefix}-title-error` : undefined}
-          {...register("title")}
+          {...titleField}
+          ref={(el) => {
+            titleField.ref(el);
+            titleRef.current = el;
+          }}
+          onPaste={onTitlePaste}
         />
         {errors.title ? (
           <p id={`${prefix}-title-error`} className="text-xs text-destructive">
@@ -94,12 +153,31 @@ export function ListItemForm({ item, onDone }: { item?: Item; onDone: () => void
           autoComplete="off"
           placeholder="https://…"
           aria-invalid={errors.url ? true : undefined}
-          aria-describedby={errors.url ? `${prefix}-url-error` : undefined}
-          {...register("url")}
+          aria-describedby={
+            errors.url ? `${prefix}-url-error` : hint ? `${prefix}-url-hint` : undefined
+          }
+          {...urlField}
+          onPaste={onUrlPaste}
+          onChange={(e) => {
+            setHint(null);
+            void urlField.onChange(e);
+          }}
+          onBlur={(e) => {
+            const raw = e.target.value.trim();
+            if (raw) {
+              const link = prepareListLink(raw);
+              if (link.url && link.url !== normalizeLinkInput(raw)) applyLink(raw);
+            }
+            void urlField.onBlur(e);
+          }}
         />
         {errors.url ? (
           <p id={`${prefix}-url-error`} className="text-xs text-destructive">
             {errors.url.message}
+          </p>
+        ) : hint ? (
+          <p id={`${prefix}-url-hint`} className="text-xs text-muted-foreground" aria-live="polite">
+            {hint}
           </p>
         ) : null}
       </div>
@@ -122,7 +200,7 @@ export function ListItemForm({ item, onDone }: { item?: Item; onDone: () => void
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onDone} disabled={isSubmitting}>
+        <Button type="button" variant="outline" onClick={() => onDone()} disabled={isSubmitting}>
           Cancelar
         </Button>
         <Button type="submit" className="hover:bg-primary/80" disabled={isSubmitting}>
