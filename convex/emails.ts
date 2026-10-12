@@ -8,11 +8,11 @@ const DEFAULT_FROM = "PickPal <hola@pickpal.jorgemolinafuster.com>";
 // El remitente no recibe correo (su subdominio es un CNAME a Vercel), así que
 // las respuestas van al buzón de contacto que publican /privacidad y /terminos.
 const REPLY_TO = "pickpal@jorgemolinafuster.com";
-const APP_BASE_URL = "https://pickpal.jorgemolinafuster.com";
+export const APP_BASE_URL = "https://pickpal.jorgemolinafuster.com";
 const LOGO_DATA_URI = `${APP_BASE_URL}/logo-mark-email.png`;
 const GIFT_ICON_DATA_URI = `${APP_BASE_URL}/gift-icon-email.png`;
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -145,7 +145,7 @@ function buildSubject(events: EventToNotify[]): string {
   return `PickPal · ${events.length} eventos próximos`;
 }
 
-function ctaHtml(href: string, label: string, withGiftIcon: boolean): string {
+export function ctaHtml(href: string, label: string, withGiftIcon: boolean): string {
   const icon = withGiftIcon
     ? `<span aria-hidden="true"
           style="display:inline-block;width:16px;height:16px;background-image:url('${GIFT_ICON_DATA_URI}');
@@ -180,7 +180,7 @@ function buildCta(events: EventToNotify[]): string {
  * La carcasa común de los correos: página oscura, cabecera con el logo y un
  * subtítulo, cuerpo y pie. `body` y `footer` llegan ya escapados.
  */
-function emailShell({
+export function emailShell({
   subtitle,
   body,
   footer,
@@ -332,7 +332,7 @@ export function buildListInviteEmail({
   };
 }
 
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     throw new Error("RESEND_API_KEY no configurada en Convex.");

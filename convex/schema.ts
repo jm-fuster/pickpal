@@ -48,6 +48,10 @@ export default defineSchema({
     ),
     email: v.optional(v.string()),
     favoriteStores: v.optional(v.array(v.string())),
+    // Avisos de cambios en la política de privacidad que ya se le han mandado
+    // (`convex/policyNotice.ts`): solo los identificadores, para no repetir un
+    // envío si se reanuda. Se borra con la cuenta, como el resto de la fila.
+    policyNoticesSent: v.optional(v.array(v.string())),
   }).index("by_user", ["clerkUserId"]),
 
   emailNotifications: defineTable({

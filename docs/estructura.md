@@ -27,6 +27,7 @@ pickpal/
 │   ├── lists.ts                     # «Mi lista»: elementos, orden, fotos, nota y cumpleaños,
 │   │                                # quién la ve, marcas, bloqueos y listas a cargo
 │   ├── settings.ts                  # userSettings: tema, avisos, tiendas
+│   ├── policyNotice.ts              # aviso por email de cambios en la política, internal y a mano
 │   ├── notifications.ts             # internal: qué eventos tocan por email hoy
 │   ├── emails.ts                    # internal: envío por la API REST de Resend
 │   ├── crons.ts                     # dos crons: avisos por email a las 08:00 UTC y
@@ -128,7 +129,7 @@ desincronice otra vez.
 |---|---|---|
 | `people` | La ficha: nombre, relación, intereses, marcas, notas, tallas, alergias, avatar | `by_user` |
 | `importantDates` | Fecha con etiqueta, día/mes, año opcional, recurrencia y presupuesto | `by_person` |
-| `userSettings` | Tema, avisos por email y su antelación, tiendas favoritas | `by_user` |
+| `userSettings` | Tema, avisos por email y su antelación, tiendas favoritas y los avisos de política ya enviados | `by_user` |
 | `emailNotifications` | Deduplicación de envíos por `(fecha, año, antelación)` | `by_date_year`, `by_date_year_lead`, `by_user` |
 | `recommendationUsage` | Cuota de IA: 10 generaciones por usuario y día UTC | `by_user_day` |
 | `rateLimitBuckets` | Contador genérico por cubo y día: personas, fechas, ideas guardadas, invitaciones y «Mi lista». Las cifras, en [`security.md`](security.md) §4 | `by_user_day_bucket` |

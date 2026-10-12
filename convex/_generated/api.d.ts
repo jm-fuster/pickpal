@@ -21,6 +21,7 @@ import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as people from "../people.js";
 import type * as personShares from "../personShares.js";
+import type * as policyNotice from "../policyNotice.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as recommendationUsage from "../recommendationUsage.js";
 import type * as recommendations from "../recommendations.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   people: typeof people;
   personShares: typeof personShares;
+  policyNotice: typeof policyNotice;
   rateLimit: typeof rateLimit;
   recommendationUsage: typeof recommendationUsage;
   recommendations: typeof recommendations;
