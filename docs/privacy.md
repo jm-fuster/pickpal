@@ -124,6 +124,19 @@ son **del propio usuario**, no de un tercero.
   ficha de esa persona, la tarjeta lleva cuántos elementos no ha marcado nadie
   y, desde el 12-oct-2026, cuántos ha marcado él para regalarle. Solo las dos
   cifras, nunca títulos (§4).
+- **Listas a cargo (12-oct-2026, `docs/encargo-listas-ninos.md`, opción A):** un
+  usuario lleva hasta 5 listas para quien no tiene cuenta (`managedLists`:
+  nombre de pila y, si quiere, la ficha de su libreta donde la ve; nada de
+  edad). Sus elementos, accesos, marcas, nota y cumpleaños (sin año) llevan
+  `managedListId`. Son datos de un tercero, con base en el interés legítimo
+  ponderado a favor del interesado (§3, §7). Quien la lleva ve qué está
+  cogido, nunca quién (la única excepción a «el dueño no ve las marcas», y solo
+  en estas listas); los lectores lo leen en la propia lista. No van a Gemini, con el mismo matiz que la lista propia: un título que un lector pasa a su historial puede ir en su prompt.
+  El correo de invitación no lleva el nombre de esa persona («… te ha
+  compartido una lista en PickPal»). Se borran enteras al borrarlas o con la
+  cuenta de quien las lleva, y salen en su exportación sin marcas ajenas
+  (`listasQueLlevas`). Un tutor que pida el borrado escribe al contacto; se
+  localizan por la cuenta de quien la lleva y el nombre.
 - **Fase 3 (12-oct-2026):** foto por elemento, subida por el dueño al
   almacenamiento de Convex (`listItems.photoStorageId`); se reduce y se vuelve
   a codificar en el navegador antes de subirla (`src/lib/photoPrep.ts`), lo que
@@ -186,6 +199,7 @@ son **del propio usuario**, no de un tercero.
 | Enviar avisos de fechas próximas | Email + fechas + nombre del ser querido | Consentimiento (a) — opt-in explícito: el toggle nace **apagado** (`DEFAULT_EMAIL_NOTIFICATIONS_ENABLED = false`) y solo se activa desde `/settings`. Se retira apagándolo allí, y cada correo enlaza a esa pantalla (art. 13.2.c). Ver [`email-notifications.md`](email-notifications.md) · "Por qué el toggle nace apagado". |
 | Compartir la ficha de un ser querido con otro usuario | Ficha completa (incl. alergias), historial e ideas guardadas | Ejecución de contrato (b) — el usuario activa la función explícitamente, con disclosure previa (ver §2.5) |
 | «Mi lista»: guardarla, compartirla, avisar por correo al lector y marcar en listas ajenas | Elementos de la lista, nombre y email del dueño, email del lector, marcas | Ejecución de contrato (b) — el usuario activa la función explícitamente (ver §2.6) |
+| Listas que un usuario lleva para otra persona sin cuenta (casi siempre un menor) | Nombre de pila, elementos, nota y cumpleaños sin año de esa persona; lectores; marcas | Interés legítimo (f), ponderado a favor del interesado «en particular cuando sea un niño» (art. 6.1.f y considerando 38). No es consentimiento del menor: no usa el servicio (arts. 8 RGPD y 7 LOPDGDD no aplican). Ver §2.6 |
 | Prevenir abuso (rate limit, logs) | Identificador de usuario, contadores | Interés legítimo (f) |
 | Analítica de uso agregada (Vercel Web Analytics, sin cookies) | Páginas vistas | Interés legítimo (f) |
 
@@ -280,7 +294,7 @@ Los cinco encargados que reciben datos personales desde PickPal (Clerk, Convex, 
 
 | Dato | Plazo |
 |---|---|
-| Cuenta de usuario y datos asociados | Mientras la cuenta esté activa. Al eliminar la cuenta, el purgado es **inmediato y transaccional** (`api.account.deleteMyAccount` recorre las 16 tablas del esquema y después se borra el usuario en Clerk) — no hay periodo de gracia ni papelera. **Excepción:** una ficha que hubieras compartido con otro usuario no se borra si tiene invitados — la propiedad pasa al más antiguo, ver §2.5. **Segunda excepción:** las entradas de historial y las ideas guardadas que el usuario añadió a fichas ajenas se quedan en ellas, porque son parte de una ficha que sigue siendo de otros (`deleteMyAccount` solo borra las `savedIdeas` cuya persona ya no existe). No llevan nombre ni email, solo el `clerkUserId` de una cuenta que ya no existe en Clerk. `/privacidad`, `/terminos` y el texto de Ajustes lo dicen desde el 27-sep-2026; antes prometían borrar «todos tus datos». **«Mi lista» no tiene excepción** (§2.6): se borra entera, con sus accesos, sus marcas y las copias de elementos borrados, y no pasa a nadie. Lo único que sobrevive son las entradas que un lector apuntó en el historial de su propia ficha a partir de la lista. Las copias de seguridad de los proveedores se reciclan según sus propios plazos. |
+| Cuenta de usuario y datos asociados | Mientras la cuenta esté activa. Al eliminar la cuenta, el purgado es **inmediato y transaccional** (`api.account.deleteMyAccount` recorre las 17 tablas del esquema y después se borra el usuario en Clerk) — no hay periodo de gracia ni papelera. **Excepción:** una ficha que hubieras compartido con otro usuario no se borra si tiene invitados — la propiedad pasa al más antiguo, ver §2.5. **Segunda excepción:** las entradas de historial y las ideas guardadas que el usuario añadió a fichas ajenas se quedan en ellas, porque son parte de una ficha que sigue siendo de otros (`deleteMyAccount` solo borra las `savedIdeas` cuya persona ya no existe). No llevan nombre ni email, solo el `clerkUserId` de una cuenta que ya no existe en Clerk. `/privacidad`, `/terminos` y el texto de Ajustes lo dicen desde el 27-sep-2026; antes prometían borrar «todos tus datos». **«Mi lista» no tiene excepción** (§2.6): se borra entera, con sus accesos, sus marcas y las copias de elementos borrados, y no pasa a nadie. Lo único que sobrevive son las entradas que un lector apuntó en el historial de su propia ficha a partir de la lista. Las copias de seguridad de los proveedores se reciclan según sus propios plazos. |
 | Logs de seguridad (errores, rate limit) | Los contadores de rate limit viven en `rateLimitBuckets` / `recommendationUsage` con clave por día UTC y se borran con la cuenta. Los logs de ejecución los retiene el proveedor (Convex / Vercel) según su plan. |
 | Datos enviados a Gemini | No los conservamos tras la respuesta. Google los registra 55 días, solo para detectar abusos, y no entrena con ellos (§4.1). |
 
@@ -313,7 +327,7 @@ Como interesado, tienes derecho a:
 
 Puedes ejercerlos:
 
-1. **Desde la app**: edición, borrado y **portabilidad** están disponibles en la propia interfaz. Ajustes → «Descargar mis datos» devuelve un JSON con las dieciséis tablas que guardan algo del usuario, incluida `personShares` (con quién compartes y quién te comparte a ti) y las seis de «Mi lista» (también cuándo se avisó por correo, la nota y el cumpleaños del dueño y a quién has bloqueado), salvo las marcas que otros han hecho en la tuya (§2.6) — el mismo recorrido que hace el borrado de cuenta, para que no puedan desincronizarse (`convex/exportData.ts`, con un test que lo comprueba).
+1. **Desde la app**: edición, borrado y **portabilidad** están disponibles en la propia interfaz. Ajustes → «Descargar mis datos» devuelve un JSON con las diecisiete tablas que guardan algo del usuario, incluida `personShares` (con quién compartes y quién te comparte a ti) y las siete de «Mi lista» (también cuándo se avisó por correo, la nota y el cumpleaños del dueño y a quién has bloqueado), salvo las marcas que otros han hecho en la tuya (§2.6) — el mismo recorrido que hace el borrado de cuenta, para que no puedan desincronizarse (`convex/exportData.ts`, con un test que lo comprueba).
 2. **Por email** a [pickpal@jorgemolinafuster.com](mailto:pickpal@jorgemolinafuster.com), indicando qué derecho quieres ejercer.
 
 Si consideras que tus derechos no se han atendido correctamente, puedes presentar una reclamación ante la **Agencia Española de Protección de Datos** (https://www.aepd.es).
@@ -328,7 +342,7 @@ Las medidas técnicas y organizativas se documentan en [`security.md`](security.
 
 ## 10. Menores
 
-PickPal es solo para mayores de 18 años. Si detectamos la cuenta de un menor, se elimina.
+PickPal es solo para mayores de 18 años. Si detectamos la cuenta de un menor, se elimina. Desde el 12-oct-2026 un adulto puede llevar la lista de un niño (§2.6, «Listas a cargo»); el niño no tiene cuenta ni usa el servicio, así que la edad mínima no cambia. `/privacidad` lo dice en «Menores».
 
 Hasta el 27-sep-2026 el mínimo era 14 (RGPD art. 8 + LOPDGDD art. 7). Se subió porque los términos de la Gemini API prohíben usarla en apps dirigidas a menores de 18 o que probablemente usen (§4.1), y eso no lo arregla el consentimiento de los tutores.
 

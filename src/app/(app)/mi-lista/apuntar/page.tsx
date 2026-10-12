@@ -13,6 +13,12 @@ import { BackLink } from "@/components/layout/BackLink";
 import type { ListItemDraft } from "@/components/lista/ListItemForm";
 import { bookmarkletHref, readBookmarkletFragment } from "@/lib/bookmarklet";
 import { MAX_LIST_ITEMS } from "@/lib/listLimits";
+import type { Id } from "../../../../../convex/_generated/dataModel";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+
+// Valor del selector para tu propia lista: el Select no admite un valor vacío.
+const OWN = "mia";
 
 const noSubscribe = () => () => {};
 
@@ -38,6 +44,10 @@ export default function BookmarkletPage() {
   const router = useRouter();
   const { isLoaded, isSignedIn } = useAuth();
   const items = useQuery(api.lists.myItems, isLoaded && isSignedIn ? {} : "skip");
+  const managedLists = useQuery(api.lists.myManagedLists, isLoaded && isSignedIn ? {} : "skip");
+  // En qué lista se apunta, si llevas alguna para otra persona.
+  const [target, setTarget] = useState<string>(OWN);
+  const listId = target === OWN ? undefined : (target as Id<"managedLists">);
   // En el servidor y al hidratar, `false`: así el HTML coincide y lo que
   // depende de la dirección solo se pinta en el navegador.
   const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
@@ -60,7 +70,8 @@ export default function BookmarkletPage() {
     }
   }, [inBrowser, draft]);
 
-  const full = items !== undefined && items.length >= MAX_LIST_ITEMS;
+  const chosen = managedLists?.find((l) => l.listId === listId);
+  const full = chosen ? chosen.itemCount >= MAX_LIST_ITEMS : items !== undefined && items.length >= MAX_LIST_ITEMS;
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8 w-full max-w-2xl">
@@ -72,17 +83,35 @@ export default function BookmarkletPage() {
         </p>
       </div>
 
+      {draft && managedLists && managedLists.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Label htmlFor="apuntar-en-lista" className="text-sm">En qué lista</Label>
+          <Select value={target} onValueChange={(v) => v && setTarget(v)}>
+            <SelectTrigger id="apuntar-en-lista" size="sm" className="min-w-48">
+              <span>{chosen ? `La lista de ${chosen.forName}` : "Mi lista"}</span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={OWN}>Mi lista</SelectItem>
+              {managedLists.map((l) => (
+                <SelectItem key={l.listId} value={l.listId}>La lista de {l.forName}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {draft && (
         full ? (
           <p className="rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
-            Tu lista ya tiene {MAX_LIST_ITEMS} cosas, el máximo. Quita alguna para apuntar otra.
+            {chosen ? `La lista de ${chosen.forName}` : "Tu lista"} ya tiene {MAX_LIST_ITEMS} cosas, el máximo. Quita alguna para apuntar otra.
           </p>
         ) : (
           <ListItemForm
             initial={draft}
+            listId={listId}
             onDone={(addedId) => {
               if (!addedId) setDismissed(true);
-              else router.push("/mi-lista");
+              else router.push(listId ? `/mi-lista/llevas/${listId}` : "/mi-lista");
             }}
           />
         )

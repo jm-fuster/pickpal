@@ -47,10 +47,13 @@ function linkHint(link: PreparedLink): string | null {
 export function ListItemForm({
   item,
   initial,
+  listId,
   onDone,
 }: {
   item?: Item;
   initial?: ListItemDraft;
+  /** Lista a cargo en la que se apunta; vacío, tu propia lista. */
+  listId?: Id<"managedLists">;
   /** Al apuntar algo nuevo recibe su id, para que la página lo señale. */
   onDone: (addedId?: Id<"listItems">) => void;
 }) {
@@ -120,8 +123,9 @@ export function ListItemForm({
         await updateItem({ id: item._id, ...fields, priceCents });
         onDone();
       } else {
-        const id = await addItem(priceCents === null ? fields : { ...fields, priceCents });
-        toast.success("Apuntado en tu lista");
+        const withPrice = priceCents === null ? fields : { ...fields, priceCents };
+        const id = await addItem(listId ? { ...withPrice, listId } : withPrice);
+        toast.success(listId ? "Apuntado en su lista" : "Apuntado en tu lista");
         onDone(id);
       }
     } catch (err) {

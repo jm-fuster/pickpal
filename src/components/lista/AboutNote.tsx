@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { PencilLine } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,9 +21,11 @@ const MAX_ABOUT = 300;
  * de la card de la lista, no en una card aparte, y quien la lee la ve citada en
  * su ficha. No es sitio para una dirección: no se pide ninguna.
  */
-export function AboutNote() {
+export function AboutNote({ listId, forName }: { listId?: Id<"managedLists">; forName?: string } = {}) {
   const { isLoaded, isSignedIn } = useAuth();
-  const about = useQuery(api.lists.myAbout, isLoaded && isSignedIn ? {} : "skip");
+  const args = listId ? { listId } : {};
+  const about = useQuery(api.lists.myAbout, isLoaded && isSignedIn ? args : "skip");
+  const label = forName ? `Una nota para quien regala a ${forName}` : "Una nota para quien te regala";
   const setAbout = useMutation(api.lists.setAbout);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -38,7 +41,7 @@ export function AboutNote() {
   const save = async () => {
     setSaving(true);
     try {
-      await setAbout({ note: draft });
+      await setAbout({ ...args, note: draft });
       setEditing(false);
     } catch (err) {
       toast.error(userErrorMessage(err, "No se pudo guardar la nota"));
@@ -50,7 +53,7 @@ export function AboutNote() {
   if (editing) {
     return (
       <div className="space-y-2 rounded-xl border border-dashed border-border/70 bg-background/40 p-4">
-        <Label htmlFor="lista-nota-lectores">Una nota para quien te regala</Label>
+        <Label htmlFor="lista-nota-lectores">{label}</Label>
         <Textarea
           id="lista-nota-lectores"
           rows={2}
@@ -84,7 +87,7 @@ export function AboutNote() {
         onClick={open}
         className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
       >
-        Añadir una nota para quien te regala
+        {forName ? `Añadir una nota para quien regala a ${forName}` : "Añadir una nota para quien te regala"}
       </button>
     );
   }
@@ -92,12 +95,12 @@ export function AboutNote() {
   return (
     <div className="flex items-start gap-2 text-sm">
       <p className="min-w-0 flex-1 whitespace-pre-line text-muted-foreground">
-        <span className="text-foreground">Para quien te regala:</span> «{about}»
+        <span className="text-foreground">{forName ? `Para quien regala a ${forName}:` : "Para quien te regala:"}</span> «{about}»
       </p>
       <Button
         variant="ghost"
         size="icon-sm"
-        aria-label="Editar la nota para quien te regala"
+        aria-label={`Editar: ${label.toLowerCase()}`}
         title="Editar"
         onClick={open}
       >

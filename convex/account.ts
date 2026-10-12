@@ -25,7 +25,8 @@ import { deleteListDataForUser } from "./lists";
  *   "eras dueño" — si la persona sigue existiendo (p. ej. se transfirió más
  *   arriba, o es una ficha ajena que te compartieron), esas filas se quedan:
  *   son parte del historial conjunto, no solo tuyas.
- * - «Mi lista» (`listItems`, `listShares`, `listClaims`), vía
+ * - «Mi lista» y las listas a cargo (`managedLists`, `listItems`, `listShares`,
+ *   `listClaims`, `listAbout`, `listBlocks`, `listInviteEmails`), vía
  *   `lists.deleteListDataForUser`: tu lista entera, sin transferirla a nadie,
  *   y los permisos y marcas que tenías en listas de otros.
  * - `userSettings`, `emailNotifications`, `recommendationUsage`, `rateLimitBuckets`.

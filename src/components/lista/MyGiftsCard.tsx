@@ -67,7 +67,7 @@ export function MyGiftsCard() {
         {open && (
           <ul id="lo-que-vas-a-regalar" className="space-y-2 px-5 pb-5">
             {gifts.map((g) => {
-              const who = g.personName ?? g.ownerName ?? g.ownerEmail ?? "Alguien";
+              const who = g.personName ?? g.forName ?? g.ownerName ?? g.ownerEmail ?? "Alguien";
               return (
                 <li
                   key={g.claimId}

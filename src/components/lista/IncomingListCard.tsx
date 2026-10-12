@@ -50,7 +50,10 @@ export function IncomingListCard({
 
   const [chosen, setChosen] = useState<Id<"people"> | null>(null);
   const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState(share.ownerName ?? "");
+  // En una lista a cargo, la ficha que hay que crear es la de la persona para
+  // la que es la lista (Lucía), no la de quien la lleva (Marta).
+  const forName = share.forName;
+  const [newName, setNewName] = useState(forName ?? share.ownerName ?? "");
   const [newRelationship, setNewRelationship] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmBlock, setConfirmBlock] = useState(false);
@@ -142,11 +145,15 @@ export function IncomingListCard({
         ) : (
           <div className="min-w-0 flex-1 space-y-3">
             <div className="space-y-1">
-              <p className="font-medium">{name} te ha compartido su lista.</p>
+              <p className="font-medium">
+                {forName ? `${name} te ha compartido la lista de ${forName}.` : `${name} te ha compartido su lista.`}
+              </p>
               {share.ownerName && share.ownerEmail && (
                 <p className="text-xs text-muted-foreground">{share.ownerEmail}</p>
               )}
-              <p className="text-sm text-muted-foreground">¿Quién es en tu libreta?</p>
+              <p className="text-sm text-muted-foreground">
+                {forName ? `¿Quién es ${forName} en tu libreta?` : "¿Quién es en tu libreta?"}
+              </p>
             </div>
 
             {creating ? (
@@ -221,7 +228,11 @@ export function IncomingListCard({
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={() => setCreating(true)} disabled={busy}>
                     <Plus aria-hidden />
-                    {share.ownerName ? `Crear ficha de ${share.ownerName}` : "Crear ficha nueva"}
+                    {forName
+                      ? `Crear ficha de ${forName}`
+                      : share.ownerName
+                        ? `Crear ficha de ${share.ownerName}`
+                        : "Crear ficha nueva"}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={handleDismiss} disabled={busy}>
                     No me interesa

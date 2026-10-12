@@ -8,6 +8,9 @@ export const MAX_LIST_READERS = 20;
 /** «Lo que más ilusión te haría»: si cabe todo, deja de decir qué es lo que más. */
 export const MAX_LIST_FAVORITES = 5;
 
+/** Listas que lleva un adulto para quien no tiene cuenta (docs/encargo-listas-ninos.md). */
+export const MAX_MANAGED_LISTS = 5;
+
 /** Desde aquí se enseña la cuenta («84 de 100», «16 de 20»); antes sería ruido. */
 export const ITEMS_COUNTER_FROM = 80;
 export const READERS_COUNTER_FROM = 16;

@@ -156,6 +156,29 @@ describe("de quién son los datos", () => {
   });
 });
 
+// `managedLists` (listas a cargo, docs/encargo-listas-ninos.md): la tabla
+// nueva tiene su propia aserción, como pide docs/security.md §7. El detalle
+// (lectores, marcas, la del lector) está en lists.test.ts.
+describe("listas que llevas para otra persona", () => {
+  test("salen aparte de tu lista, con sus elementos, y no en la de nadie más", async () => {
+    const t = convexTest(schema, modules);
+    const alice = t.withIdentity(ALICE);
+    await alice.mutation(api.lists.addItem, { title: "Novela" });
+    const listId = await alice.mutation(api.lists.createManagedList, { forName: "Lucía" });
+    await alice.mutation(api.lists.addItem, { title: "Muñeca", listId });
+    await alice.mutation(api.lists.setAbout, { note: "Talla 7 años", listId });
+
+    const datos = await alice.query(api.exportData.mine, {});
+    expect(datos.miLista.elementos.map((e) => e.titulo)).toEqual(["Novela"]);
+    expect(datos.miLista.notaParaQuienTeRegala).toBeNull();
+    expect(datos.listasQueLlevas).toMatchObject([
+      { paraQuien: "Lucía", fichaEnTuLibreta: null, nota: "Talla 7 años", compartidaCon: [], cumpleanos: null },
+    ]);
+    expect(datos.listasQueLlevas[0].elementos.map((e) => e.titulo)).toEqual(["Muñeca"]);
+    expect(JSON.stringify(await t.withIdentity(BOB).query(api.exportData.mine, {}))).not.toContain("Lucía");
+  });
+});
+
 describe("no desincronizarse del borrado", () => {
   // account.deleteMyAccount define qué tablas son "del usuario". La
   // exportación tiene que cubrir exactamente esas. Comparar el código de los

@@ -33,9 +33,10 @@ import { MAX_LIST_READERS, READERS_COUNTER_FROM } from "@/lib/listLimits";
  * lo contrario de lo que nadie espera, y sin el aviso parecería un fallo
  * (decisión 7 de docs/encargo-lista.md).
  */
-export function ListReaders() {
+export function ListReaders({ listId, forName }: { listId?: Id<"managedLists">; forName?: string } = {}) {
   const { isLoaded, isSignedIn } = useAuth();
-  const readers = useQuery(api.lists.myReaders, isLoaded && isSignedIn ? {} : "skip");
+  const readers = useQuery(api.lists.myReaders, isLoaded && isSignedIn ? (listId ? { listId } : {}) : "skip");
+  const apiUrl = listId ? `/api/lista/share?lista=${encodeURIComponent(listId)}` : "/api/lista/share";
   const revoke = useMutation(api.lists.revoke);
 
   const [emails, setEmails] = useState<Record<string, string | null>>({});
@@ -51,7 +52,7 @@ export function ListReaders() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/lista/share");
+        const res = await fetch(apiUrl);
         if (!res.ok) return;
         const data: { readers: Array<{ shareId: string; email: string | null }> } = await res.json();
         if (!cancelled) {
@@ -64,7 +65,7 @@ export function ListReaders() {
     return () => {
       cancelled = true;
     };
-  }, [readersKey]);
+  }, [readersKey, apiUrl]);
 
   const handleInvite = async () => {
     setInviting(true);
@@ -72,7 +73,7 @@ export function ListReaders() {
       const res = await fetch("/api/lista/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(listId ? { email, listId } : { email }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -120,7 +121,9 @@ export function ListReaders() {
           )}
         </div>
         <p className="text-sm text-muted-foreground">
-          Quien la lee puede marcar lo que va a regalarte. Tú no lo verás.
+          {forName
+            ? `Quien la lee puede marcar lo que va a regalar a ${forName}. Tú ves qué está cogido, no quién lo regala.`
+            : "Quien la lee puede marcar lo que va a regalarte. Tú no lo verás."}
         </p>
 
         {readers === undefined ? (
@@ -183,7 +186,7 @@ export function ListReaders() {
           <DialogHeader>
             <DialogTitle>¿Quitarle el acceso?</DialogTitle>
             <DialogDescription>
-              {removing?.label} dejará de ver tu lista. Si cambias de idea, tendrás que
+              {removing?.label} dejará de ver {forName ? `la lista de ${forName}` : "tu lista"}. Si cambias de idea, tendrás que
               volver a invitarle.
             </DialogDescription>
           </DialogHeader>

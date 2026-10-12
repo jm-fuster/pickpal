@@ -341,6 +341,39 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-3">
+          <h2 className="text-xl font-medium">
+            Listas que llevas para otra persona
+          </h2>
+          <p className="text-sm text-foreground">
+            Puedes llevar hasta cinco listas para quien no tiene cuenta, casi
+            siempre un niño: lo que le haría ilusión, para que su familia lo
+            vea y marque lo que va a regalar. Esa persona no tiene cuenta ni
+            entra nunca en PickPal. De ella solo guardamos lo que tú apuntas: su
+            nombre de pila, las cosas de la lista y, si quieres, una nota y su
+            cumpleaños (día y mes, sin año). No pedimos su edad.
+          </p>
+          <p className="text-sm text-foreground">
+            Son datos de esa persona, no tuyos. Los tratamos con base en el
+            interés legítimo (art. 6.1.f del RGPD): el tuyo y el de su familia en
+            no repetir regalos, pesado a favor de esa persona, y más si es menor.
+            Por eso guardamos lo mínimo, y la lista no se envía a Google Gemini
+            (como en la tuya, si alguien pasa a su historial algo que le
+            regaló, ese título puede ir a Gemini cuando pida ideas para ella).
+            Solo la ven las personas con cuenta a las que la compartes, hasta
+            20, y ninguna sabe quién más la lee. Tú ves qué está cogido, nunca
+            quién lo regala; si solo la lee una persona, lo puedes deducir. Las
+            fotos tienen que ser de las cosas, no de la persona.
+          </p>
+          <p className="text-sm text-foreground">
+            Si borras una de estas listas o cierras tu cuenta, se borra entera,
+            con sus accesos y sus marcas, y no pasa a nadie. Si eres su madre,
+            padre o tutor y quieres que se borre una lista que lleva otra
+            persona, escríbenos a la dirección de contacto del final con el
+            nombre de quien la lleva y el de la persona para la que es.
+          </p>
+        </section>
+
+        <section className="space-y-3">
           <h2 className="text-xl font-medium">Cookies</h2>
           <p className="text-sm text-foreground">
             Solo usamos cookies técnicas necesarias para mantener tu sesión
@@ -391,7 +424,8 @@ export default function PrivacyPage() {
           <h2 className="text-xl font-medium">Menores</h2>
           <p className="text-sm text-foreground">
             PickPal es solo para mayores de 18 años. Si detectamos la cuenta de
-            un menor, la eliminaremos.
+            un menor, la eliminaremos. Que un adulto pueda llevar la lista de un
+            niño no cambia esto: el niño no tiene cuenta ni la usa.
           </p>
         </section>
 

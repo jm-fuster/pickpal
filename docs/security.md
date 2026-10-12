@@ -123,9 +123,11 @@ Aplícalo a cualquier mutation que:
 - Llame a APIs externas de pago (cuota).
 - Envíe notificaciones / emails.
 
-Buckets actuales: `create_person` (50/día), `create_date` (100/día), `save_idea` (50/día), `invite_person` (20/día — compartir una ficha, ver §9), `invite_lookup` (30/día — comprobar un email antes de invitar, ver §9; lo comparten las fichas y «Mi lista»), `create_list_item` (100/día), `import_list` (5/día — «Pegar una lista»: una unidad por importación, no por fila, porque fila a fila una lista de 100 gastaría el cupo entero de `create_list_item`; `lists.importItems` valida todas las filas antes de insertar ninguna, con el número de fila en el error, y comprueba el tope de 100 elementos antes que el cupo, así que ni una fila inválida ni una lista que no cabe gastan la unidad; ver §11), `claim_list_item` (100/día — marcar «Lo regalo yo»), `invite_list` (20/día — compartir tu lista, por email o de vuelta; ver §11; también se gasta cuando quien recibe te tiene bloqueado, ver §11), `list_photo_upload` (30/día — direcciones de subida de fotos de «Mi lista»; se gasta en `lists.generatePhotoUploadUrl`, antes de que el navegador suba nada, porque lo que ocupa almacenamiento es la subida y no el apunte), `recommendationUsage` (10/día, tabla aparte por motivos históricos).
+Buckets actuales: `create_person` (50/día), `create_date` (100/día), `save_idea` (50/día), `invite_person` (20/día — compartir una ficha, ver §9), `invite_lookup` (30/día — comprobar un email antes de invitar, ver §9; lo comparten las fichas y «Mi lista»), `create_list_item` (100/día), `import_list` (5/día — «Pegar una lista»: una unidad por importación, no por fila, porque fila a fila una lista de 100 gastaría el cupo entero de `create_list_item`; `lists.importItems` valida todas las filas antes de insertar ninguna, con el número de fila en el error, y comprueba el tope de 100 elementos antes que el cupo, así que ni una fila inválida ni una lista que no cabe gastan la unidad; ver §11), `claim_list_item` (100/día — marcar «Lo regalo yo»), `invite_list` (20/día — compartir tu lista, por email o de vuelta; ver §11; también se gasta cuando quien recibe te tiene bloqueado, ver §11), `list_photo_upload` (30/día — direcciones de subida de fotos de «Mi lista»; se gasta en `lists.generatePhotoUploadUrl`, antes de que el navegador suba nada, porque lo que ocupa almacenamiento es la subida y no el apunte), `create_managed_list` (10/día — empezar una lista a cargo, ver §11; `lists.createManagedList` comprueba antes el tope de 5 listas por adulto, así que llegar a él no gasta la unidad, y como borrar una lista no devuelve nada, crear y borrar en bucle se para en 10), `recommendationUsage` (10/día, tabla aparte por motivos históricos).
 
-**Sin cubo, a propósito:** `lists.setAbout` («Una nota para quien te regala») no gasta cupo. Reescribe o borra siempre la misma fila de `listAbout` (como mucho una por usuario, con tope de 300 caracteres), así que repetirla no llena nada ni manda nada a nadie: no es superficie de DoS de almacenamiento. Si algún día avisara a los lectores al cambiarla, necesitaría cubo. Por lo mismo tampoco gastan cupo `lists.setBirthday` (la misma fila), `lists.moveItem` (reescribe `position` en dos filas que ya existen), `lists.setItemPhoto` y `lists.removeItemPhoto` (apuntan o quitan un archivo ya pagado con `list_photo_upload`), `lists.setClaimOccasion` (un campo de una marca propia), y `lists.leaveAndBlock` y `lists.unblock` (como mucho una fila de `listBlocks` por pareja, y solo con un permiso recibido de por medio).
+Los cubos de «Mi lista» son **por persona, no por lista**: quien lleva listas a cargo comparte `create_list_item`, `import_list`, `invite_list`, `claim_list_item` y `list_photo_upload` entre la suya y las de sus hijos. Decidido así (docs/encargo-listas-ninos.md §5): con los topes de hoy no molesta, y un cubo por lista multiplicaría por seis lo que una cuenta puede crear al día.
+
+**Sin cubo, a propósito:** `lists.setAbout` («Una nota para quien te regala») no gasta cupo. Reescribe o borra siempre la misma fila de `listAbout` (como mucho una por usuario, con tope de 300 caracteres), así que repetirla no llena nada ni manda nada a nadie: no es superficie de DoS de almacenamiento. Si algún día avisara a los lectores al cambiarla, necesitaría cubo. Por lo mismo tampoco gastan cupo `lists.setBirthday` (la misma fila), `lists.moveItem` (reescribe `position` en dos filas que ya existen), `lists.setItemPhoto` y `lists.removeItemPhoto` (apuntan o quitan un archivo ya pagado con `list_photo_upload`), `lists.setClaimOccasion` (un campo de una marca propia), `lists.leaveAndBlock` y `lists.unblock` (como mucho una fila de `listBlocks` por pareja, y solo con un permiso recibido de por medio), y `lists.renameManagedList`, `lists.linkManagedListPerson` y `lists.deleteManagedList` (reescriben o borran filas que ya existen; no crean nada).
 
 **Cuota de recomendaciones = reserva atómica.** `api.recommendationUsage.reserve` (mutation) incrementa el contador **antes** de llamar a Gemini y lanza `ConvexError` si está agotado; al ser una transacción Convex, dos peticiones concurrentes en el límite no pueden superar las 10/día. Si la generación falla (saturación, timeout o validación del schema de Gemini), la API route llama a `refund` para devolver la unidad: como el `return` de éxito va tras el `upsert`, llegar al `catch` garantiza que no se persistió ninguna idea, así que un fallo de formato del proveedor no cuesta una generación. `refund` recibe el `day` UTC que devolvió `reserve` para devolver la unidad al bucket correcto aunque el fallo cruce la medianoche UTC. No existe un `consume` posterior al guardado: el patrón check-luego-consume tenía una carrera de coste y un caso "ideas guardadas pero el usuario ve error".
 
@@ -209,7 +211,9 @@ El `clerkUserId` siempre se lee de la sesión vía `requireUser` — la mutation
 
 **Excepción desde que existe compartir (§9):** `deleteMyAccount` ya no borra incondicionalmente cada `people` del usuario. Si la persona tiene invitados, la propiedad se transfiere al más antiguo (`personShares.transferToOldestInviteeOrNull`) en lugar de borrarla — bloquear el borrado violaría el derecho RGPD a irse, y cascada la castigaría a un tercero por una decisión ajena. Solo se cascada-borra si no queda nadie más con acceso. Además, `deleteMyAccount` llama a `personShares.deleteSharesForUser` para desligar al usuario de toda ficha ajena que le hubieran compartido — la versión en bloque de `personShares.leave`.
 
-**«Mi lista» no tiene esa excepción (§11):** `lists.deleteListDataForUser` borra la lista entera del usuario (elementos con sus fotos en `_storage`, su «nota para quien te regala» y su cumpleaños en `listAbout`, accesos, también los ocultos, y las marcas que otros hicieron en ella) sin transferirla, sus accesos y marcas en listas ajenas, y los bloqueos de `listBlocks` de los dos lados: los que puso como lector y los que otros le pusieron como dueño. Estos últimos se borran pero **no se exportan**: son el único caso en que «se borra, luego se exporta» no se cumple, porque exportarle a alguien quién le ha bloqueado es justo lo que el bloqueo promete no decir. El test de paridad no lo nota porque la tabla sí sale en la exportación del lado del lector. Las entradas de historial que un lector creó a partir de la lista son de su ficha y se quedan.
+**«Mi lista» no tiene esa excepción (§11):** `lists.deleteListDataForUser` borra la lista entera del usuario (elementos con sus fotos en `_storage`, su «nota para quien te regala» y su cumpleaños en `listAbout`, accesos, también los ocultos, y las marcas que otros hicieron en ella) sin transferirla, y lo mismo con cada lista que lleva para otra persona, más su fila de `managedLists` (por el prefijo del dueño en los índices de lista, sin fijar la lista: es la única lectura de «todo lo del dueño» que queda), sus accesos y marcas en listas ajenas, y los bloqueos de `listBlocks` de los dos lados: los que puso como lector y los que otros le pusieron como dueño. Estos últimos se borran pero **no se exportan**: son el único caso en que «se borra, luego se exporta» no se cumple, porque exportarle a alguien quién le ha bloqueado es justo lo que el bloqueo promete no decir. El test de paridad no lo nota porque la tabla sí sale en la exportación del lado del lector. Las entradas de historial que un lector creó a partir de la lista son de su ficha y se quedan.
+
+`managedLists` sale en la exportación de quien las lleva como `listasQueLlevas`: para quién es, la ficha de su libreta donde la ve (solo si todavía la ve), elementos, lectores, nota y cumpleaños, y ninguna marca de nadie. Su aserción propia está en `convex/lists.test.ts` («listas a cargo: exportación»). `miLista` sigue siendo solo la lista propia.
 
 ### 8. Variables de entorno
 
@@ -275,12 +279,59 @@ Diseño completo en [`docs/encargo-lista.md`](encargo-lista.md); código en
 [`convex/lists.ts`](../convex/lists.ts). Hay tres públicos y cada función sirve
 a uno solo:
 
-- **El dueño nunca ve las marcas.** `myItems`, `myAbout`, `myBirthday` y `myReaders` leen solo
+- **Toda lectura por dueño lleva la lista.** Desde las listas a cargo
+  (docs/encargo-listas-ninos.md, opción A) un dueño tiene su lista propia
+  (`managedListId` vacío) y hasta 5 que lleva para otros (`managedLists`), y
+  sus filas de `listItems`, `listShares`, `listClaims` y `listAbout` cuelgan
+  todas de su `ownerClerkUserId`. Ya no hay índices solo por dueño: se lee por
+  `by_owner_and_list` o `by_owner_list_reader` con
+  `.eq("managedListId", listId)`, que con `undefined` es la propia. Los
+  helpers (`ownerItems`, `findShare`, `visibleShare`, `aboutOf`,
+  `listReaders`, `deleteClaimsBetween`) piden la lista como argumento
+  obligatorio. Las funciones del dueño reciben `listId` opcional y lo
+  comprueban con `assertManagedList` (la de otro o una que no existe:
+  «Lista no encontrada.»); las que reciben un elemento trabajan en la lista
+  del elemento, así que el tope de favoritas y los vecinos de «Subir» son de
+  esa lista. Los topes (100 elementos, 20 lectores, 5 favoritas) son por
+  lista. La única lectura de «todo lo del dueño» que queda es el borrado de
+  la cuenta (§7), y un test de `lists.test.ts` falla si otra lectura por
+  dueño se queda sin la lista. Si se olvida una, lo de Lucía sale en la lista
+  de Marta y ningún otro test lo nota: los de aislamiento llenan las tres
+  listas antes de mirar una.
+- **El dueño nunca ve las marcas de su lista propia.** `myItems`, `myAbout`, `myBirthday` y `myReaders` leen solo
   `listItems` (y `_storage` para la foto), `listAbout` y `listShares`; ninguna query del dueño cruza con `listClaims`, ni
   para un contador, y la exportación del dueño tampoco las lleva (§2.6 de
   `privacy.md` explica la base). Es la propiedad que sostiene la función y la
   primera que prueba `convex/lists.test.ts`. Si una query nueva del dueño
-  necesita mirar `listClaims`, está mal planteada.
+  necesita mirar `listClaims`, está mal planteada, con una sola excepción
+  (la siguiente).
+- **Listas a cargo: quien la lleva ve «Cogido», nunca quién.** Es la única
+  excepción a la regla anterior (decisión 2 del encargo de listas para
+  niños), y tiene límites estrictos: solo `lists.managedItems`, solo para una
+  lista a cargo que lleva quien llama, y solo el estado (`free`, `taken`, y
+  `mine` o `given` en sus propias marcas). `claimId` sale solo en las suyas,
+  y nada de lo que devuelve lleva la cuenta, el nombre o el id de la marca
+  de otro (hay un test que lo mira campo a campo). `myItems` con `listId`
+  sigue sin marcas, `myManagedLists` cuenta elementos y lectores, nunca
+  marcas, y su exportación (`listasQueLlevas`) tampoco las lleva. Quien la
+  lleva puede marcar (`claim` lo deja si el elemento es de una lista a cargo
+  que lleva él; en su lista propia sigue sin poder), y su marca bloquea el
+  elemento para los lectores como cualquier otra, sin decir de quién es. Si
+  la lee una sola persona, quien la lleva sabe quién ha sido: lo dicen la
+  pantalla del lector y `/privacidad`. Sus marcas salen en su «Lo que vas a
+  regalar» y en su exportación (`marcasEnListasDeOtros`, con `lista`), como
+  las de cualquier lector. Si quita un elemento que había marcado él, su
+  marca se va sin copia.
+- **La lista a cargo es de quien la lleva, y su ficha no da acceso.**
+  `managedLists.personId` es la ficha de la libreta de quien la lleva donde
+  la ve; `linkManagedListPerson` exige que la vea (`personHasAccess`) y se
+  vuelve a validar al leer, como `validPersonId`. Compartir esa ficha con
+  alguien no le da la lista: el lector entra siempre por `listShares`
+  (decisión 12). Una sola persona lleva cada lista. Se borra entera con
+  `deleteManagedList` (elementos, fotos, accesos, todas las marcas y copias,
+  nota) o con la cuenta de quien la lleva (§7), sin transferirse. El nombre
+  (`forName`) es texto libre de 1 a 40 caracteres, sin caracteres de control
+  (`normalizeManagedListName`); no se guarda edad ni ocasión.
 - **«Ya lo tengo» y «Lo que más ilusión te haría» van solo del dueño al
   lector.** `removeItem({ reason: "got" })` guarda el motivo en la copia de las
   marcas `marked` y no devuelve nada: el dueño recibe lo mismo haya marcas o
@@ -288,9 +339,11 @@ a uno solo:
   `editedAt`, así que a nadie le salta «lo ha cambiado», y su tope de 5 solo
   cuenta `listItems`.
 - **El lector entra por el permiso del dueño.** `forPerson` y `claim` buscan la
-  fila de `listShares` (dueño, lector), nunca el acceso a la ficha donde el
-  lector guardó la lista (§2). Ve que un elemento está cogido, pero no quién lo
-  cogió (`state: "taken"` sin `claimId`) ni quién más lee la lista.
+  fila de `listShares` (dueño, lista, lector), nunca el acceso a la ficha
+  donde el lector guardó la lista (§2). Ve que un elemento está cogido, pero
+  no quién lo cogió (`state: "taken"` sin `claimId`) ni quién más lee la
+  lista. Un permiso es de una lista: leer la de Lucía no deja ver ni marcar
+  la de Pablo ni la propia de Marta.
 - **«Una nota para quien te regala» es del dueño y la leen sus lectores.** Vive
   en `listAbout`, como mucho una fila por dueño, y solo la escribe él
   (`setAbout`, que saca el dueño de la sesión) y la lee él (`myAbout`). Al
@@ -314,8 +367,9 @@ a uno solo:
   vuelve a comprobar que sigue existiendo la fila de `listShares` (dueño,
   lector) aunque perder el acceso ya borre las marcas, y la ficha sale por
   `validPersonId`, igual que en `sharedWithMe`. No dice quién más lee cada
-  lista. El dueño que la llama recibe sus propias marcas en listas ajenas,
-  nunca las de su lista, porque no puede marcar la suya.
+  lista. El dueño que la llama recibe sus propias marcas en listas ajenas y
+  en las que lleva para otros (con `forName`), nunca marcas en su lista
+  propia, porque no puede marcar la suya.
 - **«Nuevo» (`addedAt`) solo llega a quien lee.** Es el `_creationTime` de cada
   elemento dentro de `forPerson`; `myItems` no lo cambia. Cuándo miró la lista
   por última vez se guarda solo en el navegador del lector: el servidor no
@@ -329,7 +383,13 @@ a uno solo:
   `invite_lookup` antes de preguntar a Clerk y `lists.invite` aplica el tope de
   20 lectores y el cubo `invite_list`. `lists.shareBack` comparte tu lista con
   quien te compartió la suya sin email: la cuenta sale de la fila de
-  `listShares` del lector, nunca de un argumento.
+  `listShares` del lector, nunca de un argumento, y lo que comparte es
+  siempre tu lista propia, aunque te llegara una lista a cargo. Para una
+  lista a cargo, la ruta recibe `listId` (zod, como mucho 64 caracteres) y,
+  antes de gastar cupo o preguntar a Clerk, comprueba con
+  `lists.managedList` que la lleva quien llama; el GET recibe `?lista=`. Un
+  id malformado, ajeno o borrado da el mismo 404 (§5). `lists.invite` lo
+  vuelve a comprobar: la ruta no es la frontera.
 - **El nombre que ve el lector lo pone el dueño.** `ownerName` y `ownerEmail` se
   copian del JWT del dueño al conceder el acceso, no del cliente. El nombre de
   pila lo elige cada usuario en Clerk, así que no prueba nada; el email está
@@ -388,15 +448,27 @@ a uno solo:
   vez cada 30 días por pareja (`listInviteEmails`). El plazo se apunta al
   programarlo, no al enviarlo: si Resend falla no se reintenta, pero nadie
   puede encadenar invitar y «No me interesa» para mandar correos. El nombre va
-  escapado en el HTML y sin saltos de línea en el asunto.
+  escapado en el HTML y sin saltos de línea en el asunto. El plazo es por
+  pareja, no por lista: la segunda lista que Marta comparte con la abuela en
+  el mismo mes no escribe, y `emailed` lo dice tal cual.
+- **El aviso de una lista a cargo no dice para quién es.** Sale «Marta te ha
+  compartido una lista en PickPal» (`buildListInviteEmail` con `managed`): el
+  nombre de un niño no pasa por Resend, se ve al entrar. Tampoco promete que
+  quien la lleva no vea lo que se marca, porque en esas listas ve lo cogido.
 - **El correo de la fecha lleva dos cifras y ningún título.** La tarjeta del
   evento puede llevar cuántas cosas de las listas que el destinatario asoció a
   esa persona no ha marcado nadie (`countUnclaimedForReader`) y cuántas tiene
   marcadas él mismo sin dar por regaladas (`countMarkedByReader`). La segunda
   solo cuenta sus propias marcas, nunca las de otros lectores; las de
   elementos que el dueño quitó no cuentan. Si las dos son 0 no sale nada.
+  Cada lista cuenta por su permiso (dueño, lista, lector): la ficha de Lucía
+  de la abuela cuenta la lista de Lucía, no la propia de Marta. Quien lleva
+  una lista no tiene permiso sobre ella, así que su correo no la cuenta
+  («nada en la Agenda ni en la campana»).
 - **Quitar el acceso borra las marcas.** `revoke` y `leave` borran las marcas de
-  ese lector en esa lista; si no, bloquearían elementos para siempre.
+  ese lector en esa lista (`by_owner_list_reader`), y solo en esa: dejar la de
+  Lucía no toca las que tiene en la de Marta. Si no se borraran, bloquearían
+  elementos para siempre.
 - **La foto de cada cosa la sube el dueño, y solo él.** El servidor nunca la
   saca de la tienda (no abre enlaces, ver arriba). Son tres pasos:
   `generatePhotoUploadUrl` gasta `list_photo_upload` (30/día, §4) y devuelve
@@ -467,7 +539,12 @@ a uno solo:
   oculta si la hay, sin correo: el plazo ya contó). En su exportación salen
   como `listasQueNoQuieres`, y en `avisosDeListaPorCorreo.recibidos` no sale
   un aviso que no salió (`suppressed`; `deliveredAt` guarda el anterior que sí
-  salió). Cómo se borra con la cuenta está en §7.
+  salió). Cómo se borra con la cuenta está en §7. **El bloqueo es por dueño,
+  no por lista:** bloquear a Marta desde la lista de Lucía deja ocultas todas
+  las que Marta comparta después, la suya y las que lleva, también las que
+  empiece más adelante. Las que ya le había compartido y no ha dejado siguen
+  como están (se dejan una a una), y `unblock` destapa todas las ocultas de
+  ese dueño.
 - **«Lo regalo yo · para…» es un dato de quien marca.** `setClaimOccasion`
   exige que la marca sea suya (`assertOwnClaim`) y siga sin dar por regalada,
   y que la fecha sea de la ficha a la que asoció esa lista y que todavía ve
@@ -520,6 +597,7 @@ Antes de mergear, verifica que el cambio no rompe ninguno de estos:
 
 ### Si tocas el schema de Convex:
 - [ ] Índices nuevos no exponen datos cruzados (ej. un índice solo por `personId` sin `clerkUserId` en la query).
+- [ ] En las tablas de «Mi lista», toda lectura por dueño fija también la lista (`managedListId`, §11), salvo el borrado de la cuenta.
 - [ ] Campos sensibles nuevos están listados aquí.
 - [ ] Si el campo viene del cliente o de Gemini y es de tamaño/contenido variable, hay un validator en `convex/validators.ts` que se llama desde la mutation que escribe.
 

@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { PencilLine } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
@@ -23,9 +24,10 @@ const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
  * y puede añadirlo como fecha con un toque. Solo día y mes; el año no hace
  * falta para regalar y es un dato que no tiene por qué saber nadie.
  */
-export function OwnerBirthday() {
+export function OwnerBirthday({ listId, forName }: { listId?: Id<"managedLists">; forName?: string } = {}) {
   const { isLoaded, isSignedIn } = useAuth();
-  const birthday = useQuery(api.lists.myBirthday, isLoaded && isSignedIn ? {} : "skip");
+  const args = listId ? { listId } : {};
+  const birthday = useQuery(api.lists.myBirthday, isLoaded && isSignedIn ? args : "skip");
   const setBirthday = useMutation(api.lists.setBirthday);
   const [editing, setEditing] = useState(false);
   const [month, setMonth] = useState<number | null>(null);
@@ -43,7 +45,7 @@ export function OwnerBirthday() {
   const save = async (value: { month: number; day: number } | null) => {
     setSaving(true);
     try {
-      await setBirthday({ birthday: value });
+      await setBirthday({ ...args, birthday: value });
       setEditing(false);
     } catch (err) {
       toast.error(userErrorMessage(err, "No se pudo guardar tu cumpleaños"));
@@ -57,7 +59,7 @@ export function OwnerBirthday() {
     const validDay = day !== null && day <= maxDay ? day : null;
     return (
       <div className="space-y-3 rounded-xl border border-dashed border-border/70 bg-background/40 p-4">
-        <p className="text-sm font-medium">Tu cumpleaños, para quien te regala</p>
+        <p className="text-sm font-medium">{forName ? `El cumpleaños de ${forName}, para quien le regala` : "Tu cumpleaños, para quien te regala"}</p>
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="cumple-dia" className="text-xs text-muted-foreground">Día</Label>
@@ -115,7 +117,7 @@ export function OwnerBirthday() {
         onClick={open}
         className="w-fit text-left text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
       >
-        Añadir tu cumpleaños para quien te regala
+        {forName ? `Añadir el cumpleaños de ${forName}` : "Añadir tu cumpleaños para quien te regala"}
       </button>
     );
   }
@@ -123,9 +125,9 @@ export function OwnerBirthday() {
   return (
     <div className="flex items-center gap-2 text-sm">
       <p className="min-w-0 flex-1 text-muted-foreground">
-        <span className="text-foreground">Tu cumpleaños:</span> {formatDayMonth(birthday.month, birthday.day)}
+        <span className="text-foreground">{forName ? "Su cumpleaños:" : "Tu cumpleaños:"}</span> {formatDayMonth(birthday.month, birthday.day)}
       </p>
-      <Button variant="ghost" size="icon-sm" aria-label="Editar tu cumpleaños" title="Editar" onClick={open}>
+      <Button variant="ghost" size="icon-sm" aria-label={forName ? `Editar el cumpleaños de ${forName}` : "Editar tu cumpleaños"} title="Editar" onClick={open}>
         <PencilLine className="size-3.5" aria-hidden />
       </Button>
     </div>

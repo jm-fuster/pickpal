@@ -4,7 +4,7 @@
 
 > **Bloqueo resuelto (20-sep-2026):** `pickpal@jorgemolinafuster.com` ya entrega. Cloudflare Email Routing sobre el apex `jorgemolinafuster.com`: los 3 MX de Cloudflare más un único `v=spf1 include:_spf.mx.cloudflare.net ~all` —hubo que borrar el `v=spf1 -all` anterior, porque dos registros SPF son un permerror— y una regla que reenvía a un buzón personal verificado. Comprobado con un envío real desde fuera del dominio antes de tocar estas páginas.
 
-Última actualización: `11 de octubre de 2026`
+Última actualización: `12 de octubre de 2026`
 
 > Cuando se publique la app, este contenido debe servirse en `/legal` (o separado en `/aviso-legal` y `/terminos`) y enlazarse desde el footer.
 
@@ -53,7 +53,7 @@ La casilla del registro de Clerk dice «Acepto los Términos de Servicio y he le
 
 El usuario se compromete a:
 
-- No introducir datos de terceros sin tener una relación personal legítima con ellos.
+- No introducir datos de terceros sin tener una relación personal legítima con ellos. Desde el 12-oct-2026, llevar una lista para otra persona solo si hay relación personal con ella y, si es menor, si se la cuida o se es de su familia (`docs/encargo-listas-ninos.md`).
 - No introducir datos sensibles (ideología, religión, orientación sexual, salud, etc., art. 9 RGPD) en las notas. **Excepción acotada:** el campo "alergias o restricciones" existe precisamente para lo imprescindible (una alergia alimentaria, un material que no puede llevar) y se envía a Gemini; los términos piden anotar el mínimo que evite un regalo inservible, no un historial médico. Redactarlo como prohibición absoluta contradecía un campo que la propia app ofrece — ver `privacy.md` §4.1.
 - No usar la app para fines ilícitos, ofensivos o que vulneren derechos de terceros.
 - No intentar saltarse las medidas de seguridad, los rate limits ni acceder a datos de otros usuarios.

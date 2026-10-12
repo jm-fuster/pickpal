@@ -149,6 +149,9 @@ export default function TermsPage() {
             de un tercero que probablemente no es usuario de PickPal. Eres tú
             quien decide qué información introducir y eres responsable de tener
             una relación legítima con esa persona y de respetar sus derechos.
+            Si llevas una lista para otra persona, que sea alguien con quien
+            tienes una relación personal y, si es menor, a quien cuidas o de
+            cuya familia formas parte.
             Tienes más detalle en la{" "}
             <Link
               href="/privacidad"
@@ -310,7 +313,7 @@ export default function TermsPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 11 de octubre de 2026.
+          Última actualización: 12 de octubre de 2026.
         </p>
       </main>
 

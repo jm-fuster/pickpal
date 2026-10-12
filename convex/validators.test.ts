@@ -19,6 +19,8 @@ import {
   ALLOWED_STORES,
   ALLOWED_IMAGE_KEYS,
   isAllowedListPhoto,
+  MAX_MANAGED_LIST_NAME,
+  normalizeManagedListName,
   validateBirthday,
   validateListItemPrice,
 } from "./validators";
@@ -339,5 +341,23 @@ describe("validateBirthday", () => {
     for (const [m, d] of [[0, 1], [13, 1], [2, 30], [4, 31], [1, 0], [1, 32], [1.5, 1], [1, 1.5], [Number.NaN, 1]]) {
       expect(() => validateBirthday(m, d), `${d}/${m}`).toThrow("Esa fecha no existe.");
     }
+  });
+});
+
+// El nombre de una lista a cargo («Lucía»): nombre de pila, corto.
+describe("normalizeManagedListName", () => {
+  test("recorta los bordes y junta los espacios de dentro", () => {
+    expect(normalizeManagedListName("  Lucía ")).toBe("Lucía");
+    expect(normalizeManagedListName("Lucía\n  María")).toBe("Lucía María");
+    expect(normalizeManagedListName("a".repeat(MAX_MANAGED_LIST_NAME))).toHaveLength(MAX_MANAGED_LIST_NAME);
+  });
+
+  test("ni vacío, ni largo, ni con caracteres de control", () => {
+    expect(() => normalizeManagedListName("   ")).toThrow("Escribe para quién es la lista.");
+    expect(() => normalizeManagedListName("a".repeat(MAX_MANAGED_LIST_NAME + 1))).toThrow(
+      "Ese nombre es demasiado largo.",
+    );
+    expect(() => normalizeManagedListName("Lu\u0000cía")).toThrow("Ese nombre no vale.");
+    expect(() => normalizeManagedListName("Lu\u007fcía")).toThrow("Ese nombre no vale.");
   });
 });

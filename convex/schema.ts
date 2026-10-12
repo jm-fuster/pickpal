@@ -201,11 +201,35 @@ export default defineSchema({
     .index("by_person_and_user", ["personId", "clerkUserId"])
     .index("by_user", ["clerkUserId"]),
 
+  // Listas a cargo (docs/encargo-listas-ninos.md, opción A): las que un adulto
+  // lleva para alguien sin cuenta, como un hijo. Una por persona, sin campo de
+  // ocasión, como mucho 5 por adulto (`lists.createManagedList`) y una sola
+  // persona la lleva. Sus elementos, accesos, marcas y nota cuelgan del adulto
+  // (`ownerClerkUserId`) con `managedListId` puesto, y se borran con su
+  // cuenta, sin transferirse a nadie.
+  managedLists: defineTable({
+    managerClerkUserId: v.string(),
+    // Nombre de pila de para quién es, recortado, de 1 a 40 caracteres
+    // (`normalizeManagedListName`). Es el único dato de esa persona que guarda
+    // la lista: ni edad ni fecha de nacimiento.
+    forName: v.string(),
+    // La ficha de la libreta de quien la lleva donde la ve, si la tiene. Solo
+    // sirve para enseñarla allí y para sus fechas: nunca da acceso a nadie, y
+    // se valida con `personHasAccess` al leer, como `listShares.personId`.
+    personId: v.optional(v.id("people")),
+  }).index("by_manager", ["managerClerkUserId"]),
+
   // «Mi lista» (docs/encargo-lista.md): lo que un usuario apunta que le haría
-  // ilusión recibir. Una lista por usuario, así que no hay tabla de listas: el
-  // dueño de cada elemento es la propia lista.
+  // ilusión recibir. La lista propia no tiene fila en ninguna tabla: es la de
+  // su dueño con `managedListId` vacío. Las listas a cargo lo llevan puesto,
+  // así que **toda lectura por dueño lleva también la lista**
+  // (`by_owner_and_list`, con `.eq("managedListId", undefined)` para la
+  // propia). Si una se olvida, lo de Lucía sale en la lista de Marta o al revés.
   listItems: defineTable({
     ownerClerkUserId: v.string(),
+    // Vacío = la lista propia del dueño. Puesto = una lista que lleva para
+    // otra persona (`managedLists`); el dueño es entonces quien la lleva.
+    managedListId: v.optional(v.id("managedLists")),
     title: v.string(),
     url: v.optional(v.string()),
     note: v.optional(v.string()),
@@ -233,31 +257,39 @@ export default defineSchema({
     // Mover no pone `editedAt`.
     position: v.optional(v.number()),
   })
-    .index("by_owner", ["ownerClerkUserId"])
+    // Sin índice solo por dueño: mezclaría la lista propia con las que lleva.
+    // Para recorrerlas todas (borrar la cuenta) vale el prefijo del dueño.
+    .index("by_owner_and_list", ["ownerClerkUserId", "managedListId"])
     // Para que dos elementos no compartan archivo: si no, quitar la foto de
     // uno borraría la del otro.
     .index("by_photo", ["photoStorageId"]),
 
   // «Una nota para quien te regala»: un texto del dueño para todos sus
   // lectores (tallas, «nada de plástico»…), y desde la fase 3 también su
-  // cumpleaños. Como mucho una fila por dueño, que `lists.setAbout` y
+  // cumpleaños (en una lista a cargo, el de para quién es). Como mucho una
+  // fila por lista, que `lists.setAbout` y
   // `lists.setBirthday` reescriben; se borra cuando no queda ni nota ni
   // cumpleaños. Se lee con el mismo permiso que la lista (`listShares`), nunca
   // por la ficha.
   listAbout: defineTable({
     ownerClerkUserId: v.string(),
+    // Como en `listItems`: vacío = la lista propia. Una fila por lista.
+    managedListId: v.optional(v.id("managedLists")),
     // Opcional desde que la fila puede guardar solo el cumpleaños.
     note: v.optional(v.string()),
     // Día y mes, sin año: lo que hace falta para acordarse, no la edad. El 29
     // de febrero vale (`validateBirthday`).
     birthdayMonth: v.optional(v.number()),
     birthdayDay: v.optional(v.number()),
-  }).index("by_owner", ["ownerClerkUserId"]),
+  }).index("by_owner_and_list", ["ownerClerkUserId", "managedListId"]),
 
   // Quién puede leer cada lista. El acceso se comprueba siempre contra esta
   // tabla, nunca contra el acceso a la ficha asociada (decisión 12).
   listShares: defineTable({
     ownerClerkUserId: v.string(),
+    // Qué lista se comparte: vacío = la propia del dueño. Un lector puede
+    // tener una fila por cada lista del mismo dueño.
+    managedListId: v.optional(v.id("managedLists")),
     readerClerkUserId: v.string(),
     // Copiados del JWT del dueño al conceder el acceso: Convex no guarda
     // nombres de usuario y la tarjeta de lista recibida los necesita.
@@ -272,13 +304,16 @@ export default defineSchema({
     // al lector no le llega por ningún sitio. `lists.unblock` la destapa.
     hidden: v.optional(v.boolean()),
   })
-    .index("by_owner", ["ownerClerkUserId"])
+    // Un permiso es de una lista: (dueño, lista, lector). Con el prefijo
+    // (dueño, lista) salen los lectores de una lista, y con el del dueño, los
+    // de todas (borrar la cuenta).
+    .index("by_owner_list_reader", ["ownerClerkUserId", "managedListId", "readerClerkUserId"])
     .index("by_reader", ["readerClerkUserId"])
-    .index("by_owner_and_reader", ["ownerClerkUserId", "readerClerkUserId"])
     .index("by_person", ["personId"]),
 
-  // Dueños de los que un lector no quiere recibir más listas. El dueño no lo
-  // sabe nunca: ni un error, ni un contador, ni una línea en su exportación.
+  // Dueños de los que un lector no quiere recibir más listas. Es por dueño, no
+  // por lista: bloquear a Marta deja fuera también las listas que lleva, las
+  // de ahora y las que empiece después. El dueño no lo sabe nunca: ni un error, ni un contador, ni una línea en su exportación.
   // Nombre y email se copian de la fila de `listShares` al bloquear, para que
   // el lector sepa a quién tiene bloqueado cuando esa fila ya no existe.
   listBlocks: defineTable({
@@ -291,10 +326,15 @@ export default defineSchema({
     .index("by_reader_and_owner", ["readerClerkUserId", "ownerClerkUserId"])
     .index("by_owner", ["ownerClerkUserId"]),
 
-  // Marcas de «Lo regalo yo». Nunca se devuelven al dueño de la lista, ni en
-  // la app ni en su exportación (decisiones 7 y 21).
+  // Marcas de «Lo regalo yo». Nunca se devuelven al dueño de su lista propia,
+  // ni en la app ni en su exportación (decisiones 7 y 21). La única excepción
+  // es una lista a cargo: quien la lleva ve «Cogido» o libre, nunca quién
+  // (`lists.managedItems`), y puede marcar él mismo; entonces
+  // `readerClerkUserId` es él.
   listClaims: defineTable({
     ownerClerkUserId: v.string(),
+    // La lista del elemento marcado: vacío = la propia del dueño.
+    managedListId: v.optional(v.id("managedLists")),
     readerClerkUserId: v.string(),
     // Vacío cuando el dueño borró el elemento marcado: quien lo marcó lo
     // sigue viendo desde `snapshot` hasta que quita la marca (decisión 14).
@@ -319,10 +359,13 @@ export default defineSchema({
   })
     .index("by_item", ["itemId"])
     .index("by_reader", ["readerClerkUserId"])
-    .index("by_owner_and_reader", ["ownerClerkUserId", "readerClerkUserId"]),
+    // Las marcas de un lector en una lista (dejarla, quitarle el acceso), y con
+    // el prefijo (dueño, lista), todas las de una lista (borrarla).
+    .index("by_owner_list_reader", ["ownerClerkUserId", "managedListId", "readerClerkUserId"]),
 
   // Cuándo se avisó por última vez por correo a un lector de que un dueño le
-  // compartió su lista. Va aparte de `listShares` porque esa fila se borra al
+  // compartió su lista. Es por pareja, no por lista: compartirle una segunda
+  // lista dentro de los 30 días no vuelve a escribir. Va aparte de `listShares` porque esa fila se borra al
   // dejar la lista o perder el acceso, y el tope de un aviso cada 30 días por
   // pareja tiene que sobrevivir a eso: si no, invitar, que pulsen «No me
   // interesa» y volver a invitar sería una forma de mandar correos sin límite.

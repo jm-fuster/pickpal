@@ -147,7 +147,11 @@ export const findEventsNeedingEmail = internalQuery({
           if (already) continue;
 
           // Solo las cifras, y solo de las listas que este usuario asoció a la
-          // persona: el correo nunca lleva títulos de la lista de nadie.
+          // persona, cada una por su permiso: si la abuela guarda en la ficha
+          // de Lucía la lista de Lucía, cuenta esa y no la propia de Marta.
+          // El correo nunca lleva títulos de la lista de nadie. Quien lleva
+          // una lista a cargo no tiene permiso sobre ella, así que su tarjeta
+          // no lleva cifras de esa lista.
           const listUnclaimed = await countUnclaimedForReader(
             ctx,
             person._id,

@@ -18,11 +18,13 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import fs from "node:fs";
 import { api, internal } from "./_generated/api";
 import {
+  CREATE_MANAGED_LIST_DAILY_LIMIT,
   IMPORT_DAILY_LIMIT,
   INVITE_EMAIL_COOLDOWN_MS,
   MAX_ABOUT_LENGTH,
   MAX_FAVORITES,
   MAX_ITEMS_PER_LIST,
+  MAX_MANAGED_LISTS,
   MAX_READERS_PER_LIST,
   PHOTO_UPLOAD_DAILY_LIMIT,
 } from "./lists";
@@ -2206,5 +2208,860 @@ describe("lo regalo yo · para…", () => {
       { elemento: "Vela de cera", paraOcasion: null },
     ]);
     expect((await alex.query(api.lists.myGifts, {}))[0]).toMatchObject({ occasionLabel: null, occasions: [] });
+  });
+});
+
+// ─── Listas a cargo ──────────────────────────────────────────────────────────
+//
+// docs/encargo-listas-ninos.md, opción A. Marta lleva su lista y las de Lucía
+// y Pablo, que no tienen cuenta. El riesgo de verdad es el aislamiento: hasta
+// esto, el dueño ERA la lista, y cualquier lectura por dueño que se quede sin
+// la lista mezcla lo de Lucía con lo de Marta sin que falle nada más. Por eso
+// casi todos estos tests llenan las tres listas antes de mirar una.
+
+const MARTA = { subject: "user_marta", issuer: ISSUER, givenName: "Marta", email: "marta@example.com" };
+const ABUELA = { subject: "user_abuela", issuer: ISSUER, givenName: "Carmen", email: "abuela@example.com" };
+const TIO = { subject: "user_tio", issuer: ISSUER, givenName: "Javier", email: "tio@example.com" };
+
+/**
+ * Marta, con su lista y las de Lucía y Pablo llenas: dos cosas en cada una,
+ * una de ellas en «Lo que más ilusión», con su nota y su cumpleaños. La abuela
+ * lee las tres y las guarda en tres fichas suyas; el tío solo lee la de Lucía.
+ */
+async function familia(t: T) {
+  const marta = t.withIdentity(MARTA);
+  const abuela = t.withIdentity(ABUELA);
+  const tio = t.withIdentity(TIO);
+
+  const lucia = await marta.mutation(api.lists.createManagedList, { forName: "Lucía" });
+  const pablo = await marta.mutation(api.lists.createManagedList, { forName: "Pablo" });
+
+  const novela = await marta.mutation(api.lists.addItem, { title: "Novela negra" });
+  const bufanda = await marta.mutation(api.lists.addItem, { title: "Bufanda gris" });
+  const muneca = await marta.mutation(api.lists.addItem, { title: "Muñeca de trapo", listId: lucia });
+  const puzle = await marta.mutation(api.lists.addItem, { title: "Puzle de 500", listId: lucia });
+  const coche = await marta.mutation(api.lists.addItem, { title: "Coche teledirigido", listId: pablo });
+  const pelota = await marta.mutation(api.lists.addItem, { title: "Pelota de fútbol", listId: pablo });
+  for (const id of [novela, muneca, coche]) {
+    await marta.mutation(api.lists.setFavorite, { id, favorite: true });
+  }
+
+  await marta.mutation(api.lists.setAbout, { note: "Talla M" });
+  await marta.mutation(api.lists.setAbout, { note: "Talla 7 años", listId: lucia });
+  await marta.mutation(api.lists.setAbout, { note: "Le encantan los dinosaurios", listId: pablo });
+  await marta.mutation(api.lists.setBirthday, { birthday: { month: 3, day: 14 } });
+  await marta.mutation(api.lists.setBirthday, { birthday: { month: 5, day: 2 }, listId: lucia });
+  await marta.mutation(api.lists.setBirthday, { birthday: { month: 11, day: 20 }, listId: pablo });
+
+  const deMarta = (await marta.mutation(api.lists.invite, { readerClerkUserId: ABUELA.subject })).shareId;
+  const deLucia = (await marta.mutation(api.lists.invite, { readerClerkUserId: ABUELA.subject, listId: lucia })).shareId;
+  const dePablo = (await marta.mutation(api.lists.invite, { readerClerkUserId: ABUELA.subject, listId: pablo })).shareId;
+  const tioLucia = (await marta.mutation(api.lists.invite, { readerClerkUserId: TIO.subject, listId: lucia })).shareId;
+
+  const ficha = (quien: typeof abuela, name: string) =>
+    quien.mutation(api.people.create, { name, relationship: "family", interests: [] });
+  const fichaMarta = await ficha(abuela, "Marta");
+  const fichaLucia = await ficha(abuela, "Lucía");
+  const fichaPablo = await ficha(abuela, "Pablo");
+  const fichaLuciaTio = await ficha(tio, "Lucía");
+  await abuela.mutation(api.lists.associate, { shareId: deMarta, personId: fichaMarta });
+  await abuela.mutation(api.lists.associate, { shareId: deLucia, personId: fichaLucia });
+  await abuela.mutation(api.lists.associate, { shareId: dePablo, personId: fichaPablo });
+  await tio.mutation(api.lists.associate, { shareId: tioLucia, personId: fichaLuciaTio });
+
+  return {
+    marta, abuela, tio, lucia, pablo,
+    novela, bufanda, muneca, puzle, coche, pelota,
+    deMarta, deLucia, dePablo, tioLucia,
+    fichaMarta, fichaLucia, fichaPablo, fichaLuciaTio,
+  };
+}
+
+const titulos = (items: { title: string }[]) => items.map((i) => i.title).sort();
+
+describe("listas a cargo: crearlas y llevarlas", () => {
+  test("salen por orden de nombre, con cuántas cosas y lectores, y sin marcas", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, lucia, pablo, muneca } = await familia(t);
+    const antes = await marta.query(api.lists.myManagedLists, {});
+    expect(antes).toEqual([
+      { listId: lucia, forName: "Lucía", personId: null, itemCount: 2, readerCount: 2 },
+      { listId: pablo, forName: "Pablo", personId: null, itemCount: 2, readerCount: 1 },
+    ]);
+    await abuela.mutation(api.lists.claim, { itemId: muneca });
+    expect(await marta.query(api.lists.myManagedLists, {})).toEqual(antes);
+    expect(await marta.query(api.lists.managedList, { listId: lucia })).toEqual({
+      listId: lucia,
+      forName: "Lucía",
+      personId: null,
+    });
+  });
+
+  test(`como mucho ${MAX_MANAGED_LISTS}, y llegar al tope no gasta cupo`, async () => {
+    const t = convexTest(schema, modules);
+    const marta = t.withIdentity(MARTA);
+    for (let i = 0; i < MAX_MANAGED_LISTS; i++) {
+      await marta.mutation(api.lists.createManagedList, { forName: `Niño ${i}` });
+    }
+    await expect(marta.mutation(api.lists.createManagedList, { forName: "Uno más" })).rejects.toMatchObject({
+      data: "Ya llevas 5 listas, el máximo. Borra alguna para empezar otra.",
+    });
+    const cupo = await t.run(async (ctx) =>
+      (await ctx.db.query("rateLimitBuckets").collect()).find((b) => b.bucket === "create_managed_list")!.count,
+    );
+    expect(cupo).toBe(MAX_MANAGED_LISTS);
+  });
+
+  test(`${CREATE_MANAGED_LIST_DAILY_LIMIT} al día, aunque se borren`, async () => {
+    const t = convexTest(schema, modules);
+    const marta = t.withIdentity(MARTA);
+    for (let i = 0; i < CREATE_MANAGED_LIST_DAILY_LIMIT; i++) {
+      const listId = await marta.mutation(api.lists.createManagedList, { forName: "Lucía" });
+      await marta.mutation(api.lists.deleteManagedList, { listId });
+    }
+    await expect(marta.mutation(api.lists.createManagedList, { forName: "Lucía" })).rejects.toThrow(
+      /Límite diario/,
+    );
+  });
+
+  test("el nombre se valida y se puede cambiar", async () => {
+    const t = convexTest(schema, modules);
+    const marta = t.withIdentity(MARTA);
+    await expect(marta.mutation(api.lists.createManagedList, { forName: "  " })).rejects.toThrow(
+      /para quién/,
+    );
+    const lucia = await marta.mutation(api.lists.createManagedList, { forName: "  Lucía " });
+    expect((await marta.query(api.lists.managedList, { listId: lucia })).forName).toBe("Lucía");
+    await marta.mutation(api.lists.renameManagedList, { listId: lucia, forName: "Lucía María" });
+    expect((await marta.query(api.lists.managedList, { listId: lucia })).forName).toBe("Lucía María");
+    await expect(
+      marta.mutation(api.lists.renameManagedList, { listId: lucia, forName: "x".repeat(41) }),
+    ).rejects.toThrow(/demasiado largo/);
+  });
+
+  test("solo quien la lleva la ve, la cambia o apunta en ella", async () => {
+    const t = convexTest(schema, modules);
+    const { lucia, muneca } = await familia(t);
+    for (const quien of [ABUELA, OTRO].map((u) => t.withIdentity(u))) {
+      for (const intento of [
+        () => quien.query(api.lists.managedList, { listId: lucia }),
+        () => quien.query(api.lists.managedItems, { listId: lucia }),
+        () => quien.query(api.lists.myItems, { listId: lucia }),
+        () => quien.query(api.lists.myReaders, { listId: lucia }),
+        () => quien.query(api.lists.myAbout, { listId: lucia }),
+        () => quien.query(api.lists.myBirthday, { listId: lucia }),
+        () => quien.mutation(api.lists.addItem, { title: "Intruso", listId: lucia }),
+        () => quien.mutation(api.lists.importItems, { items: [{ title: "Intruso" }], listId: lucia }),
+        () => quien.mutation(api.lists.setAbout, { note: "Intruso", listId: lucia }),
+        () => quien.mutation(api.lists.setBirthday, { birthday: null, listId: lucia }),
+        () => quien.mutation(api.lists.invite, { readerClerkUserId: OTRO.subject, listId: lucia }),
+        () => quien.mutation(api.lists.renameManagedList, { listId: lucia, forName: "X" }),
+        () => quien.mutation(api.lists.linkManagedListPerson, { listId: lucia, personId: null }),
+        () => quien.mutation(api.lists.deleteManagedList, { listId: lucia }),
+      ]) {
+        await expect(intento()).rejects.toMatchObject({ data: "Lista no encontrada." });
+      }
+      await expect(quien.mutation(api.lists.updateItem, { id: muneca, title: "X" })).rejects.toThrow(
+        /Elemento no encontrado/,
+      );
+    }
+    expect(await t.withIdentity(OTRO).query(api.lists.myManagedLists, {})).toEqual([]);
+  });
+
+  test("la ficha que le pone quien la lleva es suya y no da acceso a nadie", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, lucia } = await familia(t);
+    const suFicha = await marta.mutation(api.people.create, { name: "Lucía", relationship: "family", interests: [] });
+    const ajena = await t
+      .withIdentity(OTRO)
+      .mutation(api.people.create, { name: "Nadie", relationship: "friend", interests: [] });
+
+    await expect(
+      marta.mutation(api.lists.linkManagedListPerson, { listId: lucia, personId: ajena }),
+    ).rejects.toThrow(/Persona no encontrada/);
+    await marta.mutation(api.lists.linkManagedListPerson, { listId: lucia, personId: suFicha });
+    expect((await marta.query(api.lists.managedList, { listId: lucia })).personId).toBe(suFicha);
+
+    // Compartir esa ficha con Sara no le da la lista: va por `listShares`.
+    await marta.mutation(api.personShares.invite, { personId: suFicha, clerkUserId: SARA.subject });
+    const sara = t.withIdentity(SARA);
+    expect(await sara.query(api.lists.forPerson, { personId: suFicha })).toEqual([]);
+    expect(await sara.query(api.lists.sharedWithMe, {})).toEqual([]);
+
+    // Si la ficha se borra, sale sin ficha.
+    await marta.mutation(api.people.remove, { id: suFicha });
+    expect((await marta.query(api.lists.managedList, { listId: lucia })).personId).toBeNull();
+    await marta.mutation(api.lists.linkManagedListPerson, { listId: lucia, personId: null });
+    expect(await t.run(async (ctx) => "personId" in (await ctx.db.get(lucia))!)).toBe(false);
+  });
+});
+
+describe("listas a cargo: aislamiento", () => {
+  test("lo del dueño sale por lista: la propia no trae nada de las que lleva, ni al revés", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, lucia, pablo } = await familia(t);
+
+    expect(titulos(await marta.query(api.lists.myItems, {}))).toEqual(["Bufanda gris", "Novela negra"]);
+    expect(titulos(await marta.query(api.lists.myItems, { listId: lucia }))).toEqual([
+      "Muñeca de trapo",
+      "Puzle de 500",
+    ]);
+    expect(titulos(await marta.query(api.lists.managedItems, { listId: pablo }))).toEqual([
+      "Coche teledirigido",
+      "Pelota de fútbol",
+    ]);
+    expect(await marta.query(api.lists.myAbout, {})).toBe("Talla M");
+    expect(await marta.query(api.lists.myAbout, { listId: lucia })).toBe("Talla 7 años");
+    expect(await marta.query(api.lists.myBirthday, { listId: pablo })).toEqual({ month: 11, day: 20 });
+    expect((await marta.query(api.lists.myReaders, {})).map((r) => r.readerClerkUserId)).toEqual([ABUELA.subject]);
+    expect((await marta.query(api.lists.myReaders, { listId: lucia })).map((r) => r.readerClerkUserId).sort()).toEqual(
+      [ABUELA.subject, TIO.subject].sort(),
+    );
+    expect((await marta.query(api.lists.myReaders, { listId: pablo })).map((r) => r.readerClerkUserId)).toEqual([
+      ABUELA.subject,
+    ]);
+  });
+
+  test("quitar la nota o el cumpleaños de una lista no toca los de las otras", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, lucia, pablo } = await familia(t);
+    await marta.mutation(api.lists.setAbout, { note: "", listId: lucia });
+    await marta.mutation(api.lists.setBirthday, { birthday: null, listId: lucia });
+    expect(await marta.query(api.lists.myAbout, { listId: lucia })).toBeNull();
+    expect(await marta.query(api.lists.myAbout, {})).toBe("Talla M");
+    expect(await marta.query(api.lists.myAbout, { listId: pablo })).toBe("Le encantan los dinosaurios");
+    expect(await marta.query(api.lists.myBirthday, {})).toEqual({ month: 3, day: 14 });
+  });
+
+  test("el lector de Lucía no ve la de Pablo ni la de Marta, y la abuela ve cada una en su ficha", async () => {
+    const t = convexTest(schema, modules);
+    const { abuela, tio, coche, novela, lucia, pablo, fichaMarta, fichaLucia, fichaPablo, fichaLuciaTio } =
+      await familia(t);
+
+    const delTio = await tio.query(api.lists.forPerson, { personId: fichaLuciaTio });
+    expect(delTio).toHaveLength(1);
+    expect(titulos(delTio[0].items)).toEqual(["Muñeca de trapo", "Puzle de 500"]);
+    expect(delTio[0]).toMatchObject({ forName: "Lucía", about: "Talla 7 años", birthday: { month: 5, day: 2 } });
+    expect(await tio.query(api.lists.sharedWithMe, {})).toMatchObject([
+      { ownerName: "Marta", listId: lucia, forName: "Lucía", personId: fichaLuciaTio },
+    ]);
+    for (const itemId of [coche, novela]) {
+      await expect(tio.mutation(api.lists.claim, { itemId })).rejects.toThrow(/Elemento no encontrado/);
+    }
+    const json = JSON.stringify([
+      delTio,
+      await tio.query(api.lists.sharedWithMe, {}),
+      await tio.query(api.lists.myGifts, {}),
+    ]);
+    for (const ajeno of ["Coche", "Pelota", "Novela", "Bufanda", "Talla M", "dinosaurios", "Pablo", String(pablo)]) {
+      expect(json).not.toContain(ajeno);
+    }
+
+    const [deMarta] = await abuela.query(api.lists.forPerson, { personId: fichaMarta });
+    const [deLucia] = await abuela.query(api.lists.forPerson, { personId: fichaLucia });
+    const [dePablo] = await abuela.query(api.lists.forPerson, { personId: fichaPablo });
+    expect(deMarta).toMatchObject({ forName: null, about: "Talla M", birthday: { month: 3, day: 14 } });
+    expect(titulos(deMarta.items)).toEqual(["Bufanda gris", "Novela negra"]);
+    expect(titulos(deLucia.items)).toEqual(["Muñeca de trapo", "Puzle de 500"]);
+    expect(dePablo).toMatchObject({ forName: "Pablo", about: "Le encantan los dinosaurios" });
+    expect(titulos(dePablo.items)).toEqual(["Coche teledirigido", "Pelota de fútbol"]);
+    expect((await abuela.query(api.lists.sharedWithMe, {})).map((s) => s.forName ?? "").sort()).toEqual(
+      ["", "Lucía", "Pablo"],
+    );
+  });
+
+  test("las marcas de una lista no se ven en las otras del mismo dueño", async () => {
+    const t = convexTest(schema, modules);
+    const { abuela, tio, muneca, novela, fichaLuciaTio, fichaMarta } = await familia(t);
+    await abuela.mutation(api.lists.claim, { itemId: novela });
+
+    const [deLucia] = await tio.query(api.lists.forPerson, { personId: fichaLuciaTio });
+    expect(deLucia.items.every((i) => i.state === "free")).toBe(true);
+    await tio.mutation(api.lists.claim, { itemId: muneca });
+    const [deMarta] = await abuela.query(api.lists.forPerson, { personId: fichaMarta });
+    expect(deMarta.items.find((i) => i._id === novela)!.state).toBe("mine");
+    expect(deMarta.items.filter((i) => i.state === "taken")).toEqual([]);
+  });
+
+  test("un invitado de la ficha de Lucía de la abuela no ve la lista", async () => {
+    const t = convexTest(schema, modules);
+    const { abuela, muneca, fichaLucia } = await familia(t);
+    await abuela.mutation(api.personShares.invite, { personId: fichaLucia, clerkUserId: SARA.subject });
+    const sara = t.withIdentity(SARA);
+    expect(await sara.query(api.people.getById, { id: fichaLucia })).not.toBeNull();
+    expect(await sara.query(api.lists.forPerson, { personId: fichaLucia })).toEqual([]);
+    await expect(sara.mutation(api.lists.claim, { itemId: muneca })).rejects.toThrow(/Elemento no encontrado/);
+  });
+
+  test("los topes de favoritos y el orden a mano son de cada lista", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, lucia, puzle } = await familia(t);
+    // La lista propia llega a 5 favoritas; Lucía sigue pudiendo pasar una.
+    for (let i = 0; i < MAX_FAVORITES - 1; i++) {
+      const id = await marta.mutation(api.lists.addItem, { title: `Mía ${i}` });
+      await marta.mutation(api.lists.setFavorite, { id, favorite: true });
+    }
+    const otra = await marta.mutation(api.lists.addItem, { title: "Una más" });
+    await expect(marta.mutation(api.lists.setFavorite, { id: otra, favorite: true })).rejects.toThrow(/Ya tienes 5/);
+    await marta.mutation(api.lists.setFavorite, { id: puzle, favorite: true });
+
+    // Lo apuntado después en la propia no es vecino de nada de Lucía.
+    const antesPropia = (await marta.query(api.lists.myItems, {})).map((i) => i._id);
+    const enLucia = (await marta.query(api.lists.myItems, { listId: lucia })).map((i) => i._id);
+    await marta.mutation(api.lists.moveItem, { id: enLucia[0], direction: "up" });
+    await marta.mutation(api.lists.moveItem, { id: enLucia[1], direction: "up" });
+    expect((await marta.query(api.lists.myItems, { listId: lucia })).map((i) => i._id)).toEqual([
+      enLucia[1],
+      enLucia[0],
+    ]);
+    expect((await marta.query(api.lists.myItems, {})).map((i) => i._id)).toEqual(antesPropia);
+  });
+});
+
+describe("listas a cargo: lo cogido", () => {
+  test("la lista propia sigue sin rastro de marcas, también con las otras marcadas", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, tio, novela, muneca, coche } = await familia(t);
+    const antes = await marta.query(api.lists.myItems, {});
+    await abuela.mutation(api.lists.claim, { itemId: novela });
+    await abuela.mutation(api.lists.claim, { itemId: coche });
+    await tio.mutation(api.lists.claim, { itemId: muneca });
+    expect(await marta.query(api.lists.myItems, {})).toEqual(antes);
+    expect(await marta.query(api.lists.myReaders, {})).toHaveLength(1);
+  });
+
+  test("quien la lleva ve cogido o libre, y nunca quién", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, tio, lucia, muneca, puzle } = await familia(t);
+    const claimAbuela = await abuela.mutation(api.lists.claim, { itemId: muneca });
+    const claimTio = await tio.mutation(api.lists.claim, { itemId: puzle });
+    await tio.mutation(api.lists.markGiven, { claimId: claimTio });
+
+    const items = await marta.query(api.lists.managedItems, { listId: lucia });
+    expect(items.map((i) => [i.title, i.state, i.claimId]).sort()).toEqual([
+      ["Muñeca de trapo", "taken", null],
+      ["Puzle de 500", "taken", null],
+    ]);
+    const permitidos = new Set([
+      "_id", "_creationTime", "title", "url", "note", "favorite", "priceCents", "photoUrl",
+      "state", "claimId", "editedSinceMark", "occasionLabel",
+    ]);
+    for (const item of items) {
+      for (const campo of Object.keys(item)) expect(permitidos).toContain(campo);
+    }
+    const json = JSON.stringify(items);
+    for (const rastro of [
+      ABUELA.subject, ABUELA.email, "Carmen", TIO.subject, TIO.email, String(claimAbuela), String(claimTio), "given",
+    ]) {
+      expect(json).not.toContain(rastro);
+    }
+  });
+
+  test("quien la lleva puede marcar, y su marca bloquea el elemento para los demás", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, lucia, puzle, novela, fichaLucia } = await familia(t);
+
+    // En su lista propia sigue sin poder.
+    await expect(marta.mutation(api.lists.claim, { itemId: novela })).rejects.toThrow(/Elemento no encontrado/);
+
+    const claimId = await marta.mutation(api.lists.claim, { itemId: puzle });
+    expect((await marta.query(api.lists.managedItems, { listId: lucia })).find((i) => i._id === puzle)).toMatchObject({
+      state: "mine",
+      claimId,
+      editedSinceMark: false,
+    });
+    const [deLucia] = await abuela.query(api.lists.forPerson, { personId: fichaLucia });
+    expect(deLucia.items.find((i) => i._id === puzle)).toMatchObject({ state: "taken", claimId: null });
+    await expect(abuela.mutation(api.lists.claim, { itemId: puzle })).rejects.toThrow(/Ya lo regala otra persona/);
+    expect(JSON.stringify(deLucia)).not.toContain(MARTA.subject);
+
+    // Le sale en «Lo que vas a regalar», con para quién es.
+    expect(await marta.query(api.lists.myGifts, {})).toMatchObject([
+      { title: "Puzle de 500", forName: "Lucía", ownerName: null, personId: null },
+    ]);
+
+    // Darlo por regalado lo sigue bloqueando; quitar la marca lo libera.
+    await marta.mutation(api.lists.markGiven, { claimId });
+    expect((await marta.query(api.lists.managedItems, { listId: lucia })).find((i) => i._id === puzle)!.state).toBe(
+      "given",
+    );
+    await marta.mutation(api.lists.unclaim, { claimId });
+    const [despues] = await abuela.query(api.lists.forPerson, { personId: fichaLucia });
+    expect(despues.items.find((i) => i._id === puzle)!.state).toBe("free");
+  });
+
+  test("no puede marcar en una lista a cargo de otro", async () => {
+    const t = convexTest(schema, modules);
+    const { muneca } = await familia(t);
+    const otro = t.withIdentity(OTRO);
+    await otro.mutation(api.lists.createManagedList, { forName: "Lucía" });
+    await expect(otro.mutation(api.lists.claim, { itemId: muneca })).rejects.toThrow(/Elemento no encontrado/);
+  });
+
+  test("si quita algo que había marcado él, su marca se va sin copia", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, lucia, puzle, muneca, fichaLucia } = await familia(t);
+    await marta.mutation(api.lists.claim, { itemId: puzle });
+    await abuela.mutation(api.lists.claim, { itemId: muneca });
+    await marta.mutation(api.lists.removeItem, { id: puzle });
+    await marta.mutation(api.lists.removeItem, { id: muneca });
+
+    expect(await marta.query(api.lists.myGifts, {})).toEqual([]);
+    const [deLucia] = await abuela.query(api.lists.forPerson, { personId: fichaLucia });
+    expect(deLucia.removed).toMatchObject([{ title: "Muñeca de trapo" }]);
+    expect(await marta.query(api.lists.managedItems, { listId: lucia })).toEqual([]);
+  });
+
+  test("«para…» de quien la lleva va con la ficha que le puso, no con otra", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, lucia, puzle } = await familia(t);
+    const suFicha = await marta.mutation(api.people.create, { name: "Lucía", relationship: "family", interests: [] });
+    const otraFicha = await marta.mutation(api.people.create, { name: "Pablo", relationship: "family", interests: [] });
+    const reyes = await marta.mutation(api.importantDates.create, {
+      personId: suFicha, label: "Reyes", month: 1, day: 6, recurring: true,
+    });
+    const santo = await marta.mutation(api.importantDates.create, {
+      personId: otraFicha, label: "Santo", month: 6, day: 29, recurring: true,
+    });
+    const claimId = await marta.mutation(api.lists.claim, { itemId: puzle });
+
+    // Sin ficha puesta, ninguna fecha vale.
+    await expect(
+      marta.mutation(api.lists.setClaimOccasion, { claimId, importantDateId: reyes }),
+    ).rejects.toMatchObject({ data: "Esa fecha no es de su ficha." });
+    await marta.mutation(api.lists.linkManagedListPerson, { listId: lucia, personId: suFicha });
+    await expect(
+      marta.mutation(api.lists.setClaimOccasion, { claimId, importantDateId: santo }),
+    ).rejects.toMatchObject({ data: "Esa fecha no es de su ficha." });
+    await marta.mutation(api.lists.setClaimOccasion, { claimId, importantDateId: reyes });
+
+    expect(
+      (await marta.query(api.lists.managedItems, { listId: lucia })).find((i) => i._id === puzle)!.occasionLabel,
+    ).toBe("Reyes");
+    expect(await marta.query(api.lists.myGifts, {})).toMatchObject([
+      { title: "Puzle de 500", forName: "Lucía", personName: "Lucía", occasionLabel: "Reyes" },
+    ]);
+    expect((await marta.query(api.exportData.mine, {})).marcasEnListasDeOtros).toMatchObject([
+      { lista: "Lucía", paraOcasion: "Reyes" },
+    ]);
+  });
+});
+
+describe("listas a cargo: perder el acceso", () => {
+  test("dejar la de Lucía borra solo las marcas de esa lista", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, tio, deLucia, novela, muneca, coche, lucia, fichaMarta, fichaLuciaTio } = await familia(t);
+    await abuela.mutation(api.lists.claim, { itemId: novela });
+    await abuela.mutation(api.lists.claim, { itemId: muneca });
+    await abuela.mutation(api.lists.claim, { itemId: coche });
+
+    await abuela.mutation(api.lists.leave, { shareId: deLucia });
+
+    const [deMarta] = await abuela.query(api.lists.forPerson, { personId: fichaMarta });
+    expect(deMarta.items.find((i) => i._id === novela)!.state).toBe("mine");
+    expect(titulos(await abuela.query(api.lists.myGifts, {}))).toEqual(["Coche teledirigido", "Novela negra"]);
+    const [delTio] = await tio.query(api.lists.forPerson, { personId: fichaLuciaTio });
+    expect(delTio.items.find((i) => i._id === muneca)!.state).toBe("free");
+    expect((await marta.query(api.lists.managedItems, { listId: lucia })).every((i) => i.state === "free")).toBe(true);
+  });
+
+  test("quitarle el acceso a la de Pablo deja sus marcas en la de Marta", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, dePablo, novela, coche } = await familia(t);
+    await abuela.mutation(api.lists.claim, { itemId: novela });
+    await abuela.mutation(api.lists.claim, { itemId: coche });
+
+    await marta.mutation(api.lists.revoke, { shareId: dePablo });
+
+    expect(titulos(await abuela.query(api.lists.myGifts, {}))).toEqual(["Novela negra"]);
+    expect((await abuela.query(api.lists.sharedWithMe, {})).map((s) => s.forName ?? "").sort()).toEqual(["", "Lucía"]);
+  });
+
+  test("lo quitado de la de Lucía sale como copia en la ficha de Lucía, no en la de Marta", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, muneca, fichaMarta, fichaLucia } = await familia(t);
+    await abuela.mutation(api.lists.claim, { itemId: muneca });
+    await marta.mutation(api.lists.removeItem, { id: muneca, reason: "got" });
+    const [deLucia] = await abuela.query(api.lists.forPerson, { personId: fichaLucia });
+    const [deMarta] = await abuela.query(api.lists.forPerson, { personId: fichaMarta });
+    expect(deLucia.removed).toMatchObject([{ title: "Muñeca de trapo", reason: "got" }]);
+    expect(deMarta.removed).toEqual([]);
+  });
+
+  test("compartir de vuelta desde la de Lucía comparte la propia de la abuela", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, deLucia } = await familia(t);
+    await abuela.mutation(api.lists.addItem, { title: "Mantita" });
+    await abuela.mutation(api.lists.shareBack, { shareId: deLucia });
+    expect((await abuela.query(api.lists.sharedWithMe, {})).every((s) => s.sharedBack)).toBe(true);
+    expect(await marta.query(api.lists.sharedWithMe, {})).toMatchObject([
+      { ownerName: "Carmen", listId: null, forName: null },
+    ]);
+  });
+});
+
+describe("listas a cargo: topes por lista", () => {
+  const llenarLista = (t: T, listId: Id<"managedLists"> | undefined, n: number) =>
+    t.run(async (ctx) => {
+      for (let i = 0; i < n; i++) {
+        await ctx.db.insert("listItems", {
+          ownerClerkUserId: MARTA.subject,
+          managedListId: listId,
+          title: `Relleno ${i}`,
+        });
+      }
+    });
+
+  test(`${MAX_ITEMS_PER_LIST} elementos en cada una: la llena no frena a las otras`, async () => {
+    const t = convexTest(schema, modules);
+    const { marta, lucia, pablo } = await familia(t);
+    await llenarLista(t, lucia, MAX_ITEMS_PER_LIST - 2);
+    await expect(marta.mutation(api.lists.addItem, { title: "Una más", listId: lucia })).rejects.toMatchObject({
+      data: "La lista de Lucía ya tiene 100 cosas, el máximo. Quita alguna para apuntar otra.",
+    });
+    await marta.mutation(api.lists.addItem, { title: "Cabe en la mía" });
+    await marta.mutation(api.lists.addItem, { title: "Cabe en la de Pablo", listId: pablo });
+    expect(await marta.query(api.lists.myItems, { listId: lucia })).toHaveLength(MAX_ITEMS_PER_LIST);
+  });
+
+  test("«Pegar una lista» respeta el tope de la lista elegida", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, lucia } = await familia(t);
+    await llenarLista(t, lucia, MAX_ITEMS_PER_LIST - 3);
+    const filas = [{ title: "Uno" }, { title: "Dos" }];
+    await expect(marta.mutation(api.lists.importItems, { items: filas, listId: lucia })).rejects.toThrow(
+      /Cabe 1 más/,
+    );
+    // En la propia caben, y van a la propia.
+    await marta.mutation(api.lists.importItems, { items: filas });
+    expect(titulos(await marta.query(api.lists.myItems, {}))).toEqual(["Bufanda gris", "Dos", "Novela negra", "Uno"]);
+    await marta.mutation(api.lists.importItems, { items: [{ title: "Tres" }], listId: lucia });
+    expect((await marta.query(api.lists.myItems, { listId: lucia })).map((i) => i.title)).toContain("Tres");
+  });
+
+  test(`${MAX_READERS_PER_LIST} lectores en cada una`, async () => {
+    const t = convexTest(schema, modules);
+    const { marta, lucia } = await familia(t);
+    // A mano y no con `invite`: el cupo diario de invitar es por persona, no
+    // por lista, y Marta ya ha gastado cuatro.
+    await t.run(async (ctx) => {
+      for (let i = 0; i < MAX_READERS_PER_LIST - 2; i++) {
+        await ctx.db.insert("listShares", {
+          ownerClerkUserId: MARTA.subject,
+          managedListId: lucia,
+          readerClerkUserId: `user_lector_${i}`,
+        });
+      }
+    });
+    await expect(
+      marta.mutation(api.lists.invite, { readerClerkUserId: "user_uno_mas", listId: lucia }),
+    ).rejects.toMatchObject({
+      data: "La lista de Lucía ya la ven 20 personas, el máximo. Quita a alguien para invitar a otra.",
+    });
+    await marta.mutation(api.lists.invite, { readerClerkUserId: "user_uno_mas" });
+    expect(await marta.query(api.lists.myReaders, {})).toHaveLength(2);
+  });
+
+  test("la misma persona lee varias listas del mismo dueño, una fila por lista", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, lucia, deLucia } = await familia(t);
+    const otra = await marta.mutation(api.lists.invite, { readerClerkUserId: ABUELA.subject, listId: lucia });
+    expect(otra).toEqual({ shareId: deLucia, emailed: false });
+    expect(await t.run(async (ctx) => (await ctx.db.query("listShares").collect()).length)).toBe(4);
+  });
+});
+
+describe("listas a cargo: borrarlas", () => {
+  test("borrar la de Lucía se lleva sus cosas, fotos, accesos, marcas, copias y nota, y nada más", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, tio, lucia, pablo, muneca, puzle, novela, coche, fichaLucia, fichaMarta } =
+      await familia(t);
+    await marta.mutation(api.lists.generatePhotoUploadUrl, {});
+    const foto = await subir(t, "image/jpeg");
+    await marta.mutation(api.lists.setItemPhoto, { id: puzle, storageId: foto });
+    await abuela.mutation(api.lists.claim, { itemId: muneca });
+    await marta.mutation(api.lists.removeItem, { id: muneca });
+    const marcaTio = await tio.mutation(api.lists.claim, { itemId: puzle });
+    await abuela.mutation(api.lists.claim, { itemId: novela });
+    await abuela.mutation(api.lists.claim, { itemId: coche });
+    await abuela.mutation(api.giftHistory.create, {
+      personId: fichaLucia, giftName: "Muñeca de trapo", occasionLabel: "Reyes", reaction: "loved",
+    });
+
+    await marta.mutation(api.lists.deleteManagedList, { listId: lucia });
+
+    expect(await existe(t, foto)).toBe(false);
+    const quedan = await t.run(async (ctx) => ({
+      lista: await ctx.db.get(lucia),
+      items: (await ctx.db.query("listItems").collect()).filter((i) => i.managedListId === lucia),
+      shares: (await ctx.db.query("listShares").collect()).filter((s) => s.managedListId === lucia),
+      claims: (await ctx.db.query("listClaims").collect()).filter((c) => c.managedListId === lucia),
+      about: (await ctx.db.query("listAbout").collect()).filter((a) => a.managedListId === lucia),
+      marcaTio: await ctx.db.get(marcaTio),
+    }));
+    expect(quedan).toEqual({ lista: null, items: [], shares: [], claims: [], about: [], marcaTio: null });
+
+    // Lo demás sigue igual.
+    expect(titulos(await marta.query(api.lists.myItems, {}))).toEqual(["Bufanda gris", "Novela negra"]);
+    expect(await marta.query(api.lists.myManagedLists, {})).toMatchObject([{ listId: pablo, itemCount: 2 }]);
+    expect(await marta.query(api.lists.myAbout, {})).toBe("Talla M");
+    expect(titulos(await abuela.query(api.lists.myGifts, {}))).toEqual(["Coche teledirigido", "Novela negra"]);
+    expect(await abuela.query(api.lists.forPerson, { personId: fichaLucia })).toEqual([]);
+    expect(await abuela.query(api.lists.forPerson, { personId: fichaMarta })).toHaveLength(1);
+    expect(await tio.query(api.lists.sharedWithMe, {})).toEqual([]);
+    // Lo que la abuela pasó a su historial se queda.
+    expect(await abuela.query(api.giftHistory.getByPerson, { personId: fichaLucia })).toHaveLength(1);
+  });
+});
+
+describe("listas a cargo: borrar la cuenta", () => {
+  test("la de quien las lleva se las lleva todas, con accesos, marcas y copias", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, tio, muneca, puzle, coche, fichaLucia } = await familia(t);
+    await abuela.mutation(api.lists.claim, { itemId: muneca });
+    await marta.mutation(api.lists.removeItem, { id: muneca });
+    await tio.mutation(api.lists.claim, { itemId: puzle });
+    await marta.mutation(api.lists.claim, { itemId: coche });
+    await abuela.mutation(api.giftHistory.create, {
+      personId: fichaLucia, giftName: "Muñeca de trapo", occasionLabel: "Reyes", reaction: "loved",
+    });
+
+    await marta.mutation(api.account.deleteMyAccount, {});
+
+    const quedan = await t.run(async (ctx) => ({
+      listas: await ctx.db.query("managedLists").collect(),
+      items: await ctx.db.query("listItems").collect(),
+      shares: await ctx.db.query("listShares").collect(),
+      claims: await ctx.db.query("listClaims").collect(),
+      about: await ctx.db.query("listAbout").collect(),
+    }));
+    expect(quedan).toEqual({ listas: [], items: [], shares: [], claims: [], about: [] });
+    expect(await abuela.query(api.lists.sharedWithMe, {})).toEqual([]);
+    expect(await abuela.query(api.giftHistory.getByPerson, { personId: fichaLucia })).toHaveLength(1);
+  });
+
+  test("la de un lector se lleva sus accesos y marcas en todas, y nada de las listas", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, tio, lucia, muneca, puzle, novela, coche, fichaLuciaTio } = await familia(t);
+    await abuela.mutation(api.lists.claim, { itemId: muneca });
+    await abuela.mutation(api.lists.claim, { itemId: novela });
+    await abuela.mutation(api.lists.claim, { itemId: coche });
+    await tio.mutation(api.lists.claim, { itemId: puzle });
+
+    await abuela.mutation(api.account.deleteMyAccount, {});
+
+    const quedan = await t.run(async (ctx) => ({
+      shares: (await ctx.db.query("listShares").collect()).map((s) => s.readerClerkUserId),
+      claims: (await ctx.db.query("listClaims").collect()).map((c) => c.readerClerkUserId),
+    }));
+    expect(quedan).toEqual({ shares: [TIO.subject], claims: [TIO.subject] });
+    expect(await marta.query(api.lists.myManagedLists, {})).toHaveLength(2);
+    expect((await marta.query(api.lists.managedItems, { listId: lucia })).map((i) => i.state).sort()).toEqual([
+      "free",
+      "taken",
+    ]);
+    const [delTio] = await tio.query(api.lists.forPerson, { personId: fichaLuciaTio });
+    expect(delTio.items.find((i) => i._id === puzle)!.state).toBe("mine");
+  });
+});
+
+describe("listas a cargo: exportación", () => {
+  test("la de quien las lleva trae cada una con elementos y lectores, y ninguna marca", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, abuela, tio, lucia, muneca, puzle, coche, novela } = await familia(t);
+    const suFicha = await marta.mutation(api.people.create, { name: "Lucía", relationship: "family", interests: [] });
+    await marta.mutation(api.lists.linkManagedListPerson, { listId: lucia, personId: suFicha });
+    await abuela.mutation(api.lists.claim, { itemId: muneca });
+    await tio.mutation(api.lists.claim, { itemId: puzle });
+    await abuela.mutation(api.lists.claim, { itemId: coche });
+    await abuela.mutation(api.lists.claim, { itemId: novela });
+
+    const datos = await marta.query(api.exportData.mine, {});
+    expect(datos.miLista.elementos.map((e) => e.titulo).sort()).toEqual(["Bufanda gris", "Novela negra"]);
+    expect(datos.miLista.compartidaCon.map((c) => c.clerkUserId)).toEqual([ABUELA.subject]);
+    expect(datos.miLista.notaParaQuienTeRegala).toBe("Talla M");
+    const porNombre = [...datos.listasQueLlevas].sort((a, b) => a.paraQuien.localeCompare(b.paraQuien));
+    expect(porNombre).toMatchObject([
+      { paraQuien: "Lucía", fichaEnTuLibreta: "Lucía", nota: "Talla 7 años", cumpleanos: { mes: 5, dia: 2 } },
+      { paraQuien: "Pablo", fichaEnTuLibreta: null, nota: "Le encantan los dinosaurios" },
+    ]);
+    expect(porNombre[0].elementos.map((e) => e.titulo).sort()).toEqual(["Muñeca de trapo", "Puzle de 500"]);
+    expect(porNombre[0].elementos.find((e) => e.titulo === "Muñeca de trapo")).toMatchObject({
+      loQueMasIlusionTeHaria: true,
+    });
+    expect(porNombre[0].compartidaCon.map((c) => c.clerkUserId).sort()).toEqual(
+      [ABUELA.subject, TIO.subject].sort(),
+    );
+    expect(datos.marcasEnListasDeOtros).toEqual([]);
+    const json = JSON.stringify(datos);
+    for (const rastro of ["lo regalo yo", "regalado", "marked", "taken"]) {
+      expect(json).not.toContain(rastro);
+    }
+  });
+
+  test("las marcas de quien la lleva salen como suyas, con para quién es", async () => {
+    const t = convexTest(schema, modules);
+    const { marta, puzle } = await familia(t);
+    const antes = (await marta.query(api.exportData.mine, {})).listasQueLlevas;
+    await marta.mutation(api.lists.claim, { itemId: puzle });
+    const datos = await marta.query(api.exportData.mine, {});
+    expect(datos.marcasEnListasDeOtros).toMatchObject([
+      { lista: "Lucía", elemento: "Puzle de 500", estado: "lo regalo yo", sigueEnSuLista: true },
+    ]);
+    expect(datos.listasQueLlevas).toEqual(antes);
+  });
+
+  test("la del lector trae sus marcas y para quién es cada lista", async () => {
+    const t = convexTest(schema, modules);
+    const { abuela, muneca, novela } = await familia(t);
+    await abuela.mutation(api.lists.claim, { itemId: muneca });
+    await abuela.mutation(api.lists.claim, { itemId: novela });
+    const datos = await abuela.query(api.exportData.mine, {});
+    expect(
+      datos.listasQueTeComparten.map((l) => `${l.de}|${l.paraQuien}|${l.fichaAsociada}`).sort(),
+    ).toEqual(["Marta|Lucía|Lucía", "Marta|Pablo|Pablo", "Marta|null|Marta"]);
+    expect(datos.marcasEnListasDeOtros.map((m) => `${m.lista}|${m.elemento}`).sort()).toEqual([
+      "Lucía|Muñeca de trapo",
+      "null|Novela negra",
+    ]);
+    expect(datos.listasQueLlevas).toEqual([]);
+  });
+});
+
+describe("listas a cargo: correos", () => {
+  const avisos = (t: T) =>
+    t.run(async (ctx) =>
+      (await ctx.db.system.query("_scheduled_functions").collect()).filter((f) =>
+        f.name.includes("sendListInviteEmail"),
+      ),
+    );
+
+  test("la invitación no lleva para quién es, y sale una por pareja cada 30 días", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-02T10:00:00Z"));
+    const t = convexTest(schema, modules);
+    await t.withIdentity(ABUELA).mutation(api.settings.ensureDefaults, {});
+    const marta = t.withIdentity(MARTA);
+    const lucia = await marta.mutation(api.lists.createManagedList, { forName: "Lucía" });
+    const pablo = await marta.mutation(api.lists.createManagedList, { forName: "Pablo" });
+    await marta.mutation(api.lists.addItem, { title: "Muñeca de trapo", listId: lucia });
+
+    const primera = await marta.mutation(api.lists.invite, { readerClerkUserId: ABUELA.subject, listId: lucia });
+    const segunda = await marta.mutation(api.lists.invite, { readerClerkUserId: ABUELA.subject, listId: pablo });
+    const propia = await marta.mutation(api.lists.invite, { readerClerkUserId: ABUELA.subject });
+    expect([primera.emailed, segunda.emailed, propia.emailed]).toEqual([true, false, false]);
+
+    const programados = await avisos(t);
+    expect(programados).toHaveLength(1);
+    expect(programados[0].args[0]).toEqual({
+      to: ABUELA.email,
+      ownerName: "Marta",
+      ownerEmail: MARTA.email,
+      managed: true,
+    });
+    const correo = buildListInviteEmail(programados[0].args[0]);
+    for (const dato of ["Lucía", "Muñeca"]) {
+      expect(JSON.stringify(programados[0].args)).not.toContain(dato);
+      expect(correo.subject + correo.html).not.toContain(dato);
+    }
+    expect(correo.subject).toBe("Marta te ha compartido una lista en PickPal");
+
+    // Pasado el plazo, la siguiente lista sí avisa.
+    vi.setSystemTime(new Date(Date.now() + INVITE_EMAIL_COOLDOWN_MS + 60_000));
+    const hugo = await marta.mutation(api.lists.createManagedList, { forName: "Hugo" });
+    const tercera = await marta.mutation(api.lists.invite, { readerClerkUserId: ABUELA.subject, listId: hugo });
+    expect(tercera.emailed).toBe(true);
+    expect(await avisos(t)).toHaveLength(2);
+  });
+
+  test("el correo de la fecha cuenta solo la lista guardada en esa ficha, en cifras", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-04-25T08:00:00Z"));
+    const t = convexTest(schema, modules);
+    const { abuela, muneca, novela, coche, fichaLucia } = await familia(t);
+    await abuela.mutation(api.importantDates.create, {
+      personId: fichaLucia, label: "Cumpleaños", month: 5, day: 2, recurring: true,
+    });
+    await abuela.mutation(api.settings.setMine, { emailNotificationsEnabled: true, emailNotifyDaysBefore: [7] });
+    const evento = async () =>
+      (await t.query(internal.notifications.findEventsNeedingEmail, {}))[0].events[0];
+
+    expect(await evento()).toMatchObject({ personName: "Lucía", listUnclaimed: 2 });
+    expect(await evento()).not.toHaveProperty("listMine");
+    // Lo marcado en la lista de Marta o en la de Pablo no cuenta aquí.
+    await abuela.mutation(api.lists.claim, { itemId: novela });
+    await abuela.mutation(api.lists.claim, { itemId: coche });
+    expect(await evento()).toMatchObject({ listUnclaimed: 2 });
+    expect(await evento()).not.toHaveProperty("listMine");
+    await abuela.mutation(api.lists.claim, { itemId: muneca });
+    expect(await evento()).toMatchObject({ listUnclaimed: 1, listMine: 1 });
+    expect(JSON.stringify(await evento())).not.toContain("Muñeca");
+  });
+});
+
+describe("listas a cargo: bloquear", () => {
+  test("bloquear desde la de Lucía vale para las listas que Marta comparta después", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-02T10:00:00Z"));
+    const t = convexTest(schema, modules);
+    const { marta, abuela, deLucia, lucia } = await familia(t);
+
+    await abuela.mutation(api.lists.leaveAndBlock, { shareId: deLucia });
+    const hugo = await marta.mutation(api.lists.createManagedList, { forName: "Hugo" });
+    const aHugo = await marta.mutation(api.lists.invite, { readerClerkUserId: ABUELA.subject, listId: hugo });
+    await marta.mutation(api.lists.invite, { readerClerkUserId: ABUELA.subject, listId: lucia });
+
+    // A Marta le sale como un lector más.
+    expect((await marta.query(api.lists.myReaders, { listId: hugo })).map((r) => r.shareId)).toEqual([
+      aHugo.shareId,
+    ]);
+    // A la abuela no le llegan; las que ya tenía y no dejó siguen ahí.
+    const visibles = async () =>
+      (await abuela.query(api.lists.sharedWithMe, {})).map((s) => s.forName ?? "").sort();
+    expect(await visibles()).toEqual(["", "Pablo"]);
+    await expect(abuela.mutation(api.lists.leave, { shareId: aHugo.shareId })).rejects.toMatchObject({
+      data: "Lista no encontrada.",
+    });
+
+    // Desbloquear destapa todas las que le volvió a compartir.
+    const [bloqueo] = await abuela.query(api.lists.myBlocks, {});
+    await abuela.mutation(api.lists.unblock, { blockId: bloqueo.blockId });
+    expect(await visibles()).toEqual(["", "Hugo", "Lucía", "Pablo"]);
+  });
+});
+
+describe("listas a cargo: lo que no cambia", () => {
+  test("ninguna función de gestionar listas lee las marcas, salvo managedItems y borrar la lista", () => {
+    const fuente = fs.readFileSync("convex/lists.ts", "utf8");
+    const sinComentarios = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    for (const nombre of [
+      "myManagedLists", "managedList", "createManagedList", "renameManagedList", "linkManagedListPerson",
+    ]) {
+      const inicio = fuente.indexOf(`export const ${nombre} = `);
+      expect(inicio, `${nombre} no está en convex/lists.ts`).toBeGreaterThan(-1);
+      const fin = fuente.indexOf("\nexport ", inicio + 1);
+      const cuerpo = sinComentarios(fuente.slice(inicio, fin === -1 ? undefined : fin));
+      expect(cuerpo, nombre).not.toMatch(/listClaims|claimOf|deleteClaimsBetween/);
+    }
+  });
+
+  // Tosco, como los de arriba: los índices solo por dueño ya no existen, y
+  // esto vigila que ninguna lectura vuelva a pedir «todo lo del dueño» fuera
+  // del borrado de la cuenta, que lo hace a propósito.
+  test("ninguna lectura por dueño se queda sin la lista", () => {
+    const fuente = fs.readFileSync("convex/lists.ts", "utf8");
+    const antesDelBorrado = fuente.slice(0, fuente.indexOf("export async function deleteListDataForUser"));
+    const lecturas = [...antesDelBorrado.matchAll(/withIndex\("(?:by_owner_and_list|by_owner_list_reader)", \(q\) =>\s*q\s*\.eq\("ownerClerkUserId", [^)]*\)(\s*\.eq\("(\w+)")?/g)];
+    expect(lecturas.length).toBeGreaterThan(5);
+    for (const l of lecturas) expect(l[2], l[0]).toBe("managedListId");
+    const exportacion = fs.readFileSync("convex/exportData.ts", "utf8");
+    for (const l of exportacion.matchAll(/withIndex\("(?:by_owner_and_list|by_owner_list_reader)", \(q\) =>\s*q\s*\.eq\("ownerClerkUserId", [^)]*\)(\s*\.eq\("(\w+)")?/g)) {
+      expect(l[2], l[0]).toBe("managedListId");
+    }
+  });
+
+  test("el generador de ideas no lee nada de las listas", () => {
+    const ruta = fs.readFileSync("src/app/api/recommendations/route.ts", "utf8");
+    expect(ruta).not.toMatch(/api\.lists\.|listItems|listShares|listClaims|listAbout|managedList/);
   });
 });

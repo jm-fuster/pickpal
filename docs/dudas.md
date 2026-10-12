@@ -27,6 +27,40 @@ _Ninguna ahora mismo._
 
 ## Resueltas
 
+- [x] **Listas que lleva un adulto para otra persona (opción A).** Construida
+  el 12-oct-2026 sobre [`docs/encargo-listas-ninos.md`](encargo-listas-ninos.md),
+  con las respuestas recomendadas a las decisiones 2 a 9. Lo que se construyó
+  de verdad:
+
+  - **Datos**: tabla `managedLists` (nombre de pila y ficha opcional de quien
+    la lleva) y `managedListId` opcional en `listItems`, `listShares`,
+    `listClaims` y `listAbout`. Se quitaron los índices que leían todo lo de un
+    dueño (`by_owner`, `by_owner_and_reader`): toda lectura pasa por índices
+    con la lista (`by_owner_and_list`, `by_owner_list_reader`), para que no
+    pueda mezclar la lista de Marta con la de Lucía por descuido. Quitar el
+    filtro de lista en `ownerItems` o en `deleteClaimsBetween` hace fallar 14
+    tests cada vez.
+  - **Funciones**: `myManagedLists`, `managedList`, `createManagedList` (tope
+    5, cubo `create_managed_list` 10 al día), `renameManagedList`,
+    `linkManagedListPerson`, `deleteManagedList` y `managedItems` (la
+    excepción a «el dueño no ve las marcas»: estado libre o cogido, nunca
+    quién). Todas las funciones del dueño aceptan `listId`; quien la lleva
+    puede marcar en ella. `/api/lista/share` acepta `?lista=` y `listId`.
+  - **Interfaz**: `OwnerListView` (la vista de la dueña, ahora compartida por
+    `/mi-lista` y `/mi-lista/llevas/[listId]`), `ManagedListsCard`,
+    `ImportListView` con su ruta por lista, el selector «En qué lista» del
+    botón de la tienda y los textos de quien lee.
+  - **Decisiones de implementación que el encargo no fijaba**: los cubos
+    diarios son por usuario y se comparten entre todas sus listas; un bloqueo
+    oculta las listas futuras de ese dueño, no las que ya leías y no has
+    dejado; si quien lleva la lista quita algo que había marcado él, su marca
+    se borra sin copia; el correo de recordatorio de quien la lleva no trae
+    cifras de sus listas a cargo, porque no es lector de ellas; el correo de
+    invitación de una lista a cargo es «{Nombre} te ha compartido una lista en
+    PickPal», sin el nombre de la persona.
+  - **Pendiente de Jorge**: releer la sección de edad de los términos de la
+    Gemini API (decisión 8) y anotarlo en `privacy.md` §4.1.
+
 - [x] **«Mi lista», fase 3.** Construida el 12-oct-2026 sobre el anexo de fase 3
   de [`docs/encargo-lista.md`](encargo-lista.md). Lo que se construyó de verdad:
 

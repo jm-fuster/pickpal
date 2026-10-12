@@ -574,6 +574,26 @@ export function isAllowedListPhoto(meta: { contentType?: string; size: number })
   );
 }
 
+// Nombre de pila de para quién es una lista a cargo («Lucía»). Corto: solo
+// sirve para reconocerla.
+export const MAX_MANAGED_LIST_NAME = 40;
+// Caracteres de control. Los espacios en blanco (saltos de línea incluidos) se
+// juntan en uno antes de mirar esto.
+const MANAGED_LIST_NAME_FORBIDDEN = /[\u0000-\u001f\u007f]/;
+
+/**
+ * El nombre de una lista a cargo, tal como se guarda: sin espacios en los
+ * bordes y con los de dentro juntos en uno, entre 1 y 40 caracteres. Lo leen
+ * quien la lleva y sus lectores, nunca va en un correo.
+ */
+export function normalizeManagedListName(forName: string): string {
+  const name = forName.trim().replace(/\s+/g, " ");
+  if (name.length === 0) throw new ConvexError("Escribe para quién es la lista.");
+  if (name.length > MAX_MANAGED_LIST_NAME) throw new ConvexError("Ese nombre es demasiado largo.");
+  if (MANAGED_LIST_NAME_FORBIDDEN.test(name)) throw new ConvexError("Ese nombre no vale.");
+  return name;
+}
+
 /**
  * El cumpleaños del dueño de una lista: día y mes de verdad, sin año. Se mide
  * contra 2024, bisiesto, para que el 29 de febrero valga, igual que las fechas

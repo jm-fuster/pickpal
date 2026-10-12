@@ -1,5 +1,5 @@
 import { query } from "./_generated/server";
-import { Doc } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { requireUser } from "./auth";
 import { personHasAccess } from "./personShares";
 import { compareListItems } from "./lists";
@@ -123,16 +123,63 @@ export const mine = query({
     // los datos para saber qué te van a regalar (decisión 21 de
     // docs/encargo-lista.md). Una marca es un dato de quien la hace, y sale en
     // su exportación, en `marcasEnListasDeOtros`.
-    const [filasDeMiLista, quienVeMiLista, listasQueMeComparten, misMarcas, miNota] =
-      await Promise.all([
+    //
+    // Cada lectura por dueño lleva la lista: `miLista` es solo la propia
+    // (`managedListId` vacío) y las que llevas para otros salen aparte, en
+    // `listasQueLlevas`.
+    const listaDe = (listId: Id<"managedLists"> | undefined) =>
+      Promise.all([
         ctx.db
           .query("listItems")
-          .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", clerkUserId))
+          .withIndex("by_owner_and_list", (q) =>
+            q.eq("ownerClerkUserId", clerkUserId).eq("managedListId", listId),
+          )
           .collect(),
         ctx.db
           .query("listShares")
-          .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", clerkUserId))
+          .withIndex("by_owner_list_reader", (q) =>
+            q.eq("ownerClerkUserId", clerkUserId).eq("managedListId", listId),
+          )
           .collect(),
+        // «Una nota para quien te regala» y el cumpleaños: como mucho una
+        // fila por lista.
+        ctx.db
+          .query("listAbout")
+          .withIndex("by_owner_and_list", (q) =>
+            q.eq("ownerClerkUserId", clerkUserId).eq("managedListId", listId),
+          )
+          .first(),
+      ]);
+    // En el orden de la lista, el mismo que ves en la app.
+    const elementos = (filas: Doc<"listItems">[]) =>
+      Promise.all(
+        [...filas].sort(compareListItems).map(async (i) => ({
+          titulo: i.title,
+          enlace: i.url ?? null,
+          nota: i.note ?? null,
+          loQueMasIlusionTeHaria: i.favorite === true,
+          // En euros y no en céntimos, como lo escribiste: «unos 40 €».
+          precioAproximadoEuros: i.priceCents !== undefined ? i.priceCents / 100 : null,
+          // La foto que subiste, por su dirección: funciona mientras exista tu
+          // cuenta, que al borrarse se lleva el archivo.
+          fotoUrl: i.photoStorageId ? await ctx.storage.getUrl(i.photoStorageId) : null,
+          _creationTime: i._creationTime,
+          editadoEn: i.editedAt ?? null,
+        })),
+      );
+    // Igual que `compartidoCon` de las fichas: el `clerkUserId` de cada fila
+    // es el dato, a quién le diste acceso. Las filas ocultas salen igual y sin
+    // marca: para ti son un acceso como cualquier otro.
+    const compartidaCon = (shares: Doc<"listShares">[]) =>
+      shares.map((s) => ({ clerkUserId: s.readerClerkUserId, desde: s._creationTime }));
+    const cumpleanos = (about: Doc<"listAbout"> | null) =>
+      about?.birthdayMonth !== undefined && about.birthdayDay !== undefined
+        ? { mes: about.birthdayMonth, dia: about.birthdayDay }
+        : null;
+
+    const [[filasDeMiLista, quienVeMiLista, miNota], listasQueMeComparten, misMarcas, misListasACargo] =
+      await Promise.all([
+        listaDe(undefined),
         ctx.db
           .query("listShares")
           .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
@@ -141,28 +188,39 @@ export const mine = query({
           .query("listClaims")
           .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
           .collect(),
-        // «Una nota para quien te regala»: como mucho una fila por dueño.
         ctx.db
-          .query("listAbout")
-          .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", clerkUserId))
-          .first(),
+          .query("managedLists")
+          .withIndex("by_manager", (q) => q.eq("managerClerkUserId", clerkUserId))
+          .collect(),
       ]);
-    // En el orden de tu lista, el mismo que ves en la app.
-    const elementosDeMiLista = await Promise.all(
-      [...filasDeMiLista].sort(compareListItems).map(async (i) => ({
-        titulo: i.title,
-        enlace: i.url ?? null,
-        nota: i.note ?? null,
-        loQueMasIlusionTeHaria: i.favorite === true,
-        // En euros y no en céntimos, como lo escribiste: «unos 40 €».
-        precioAproximadoEuros: i.priceCents !== undefined ? i.priceCents / 100 : null,
-        // La foto que subiste, por su dirección: funciona mientras exista tu
-        // cuenta, que al borrarse se lleva el archivo.
-        fotoUrl: i.photoStorageId ? await ctx.storage.getUrl(i.photoStorageId) : null,
-        _creationTime: i._creationTime,
-        editadoEn: i.editedAt ?? null,
-      })),
+    const elementosDeMiLista = await elementos(filasDeMiLista);
+
+    // Las listas que llevas para otras personas (docs/encargo-listas-ninos.md):
+    // las pides para ti y para ejercer los derechos de para quien son, así que
+    // van enteras, con elementos y lectores. Sin marcas de nadie, por lo mismo
+    // que `miLista`; las tuyas en ellas salen en `marcasEnListasDeOtros`.
+    const listasQueLlevas = await Promise.all(
+      misListasACargo.map(async (lista) => {
+        const [filas, lectores, nota] = await listaDe(lista._id);
+        const ficha = lista.personId ? await ctx.db.get(lista.personId) : null;
+        return {
+          paraQuien: lista.forName,
+          // Solo si aún ves esa ficha, como `fichaAsociada` más abajo.
+          fichaEnTuLibreta: (await personHasAccess(ctx, ficha, clerkUserId))
+            ? (ficha?.name ?? null)
+            : null,
+          elementos: await elementos(filas),
+          compartidaCon: compartidaCon(lectores),
+          nota: nota?.note ?? null,
+          cumpleanos: cumpleanos(nota),
+          desde: lista._creationTime,
+        };
+      }),
     );
+    // Para quién es cada lista a cargo que sale en tus marcas o en las listas
+    // que te comparten. Solo el nombre de pila que puso quien la lleva.
+    const paraQuienDe = async (listId: Id<"managedLists"> | undefined) =>
+      listId ? ((await ctx.db.get(listId))?.forName ?? null) : null;
     // Avisos por correo de «Mi lista»: cuándo se avisó a quien invitaste y
     // cuándo te avisaron a ti. Se guardan solo para el tope de uno cada 30 días.
     const [avisosEnviados, avisosRecibidos] = await Promise.all([
@@ -193,6 +251,8 @@ export const mine = query({
         return {
           de: s.ownerName ?? null,
           email: s.ownerEmail ?? null,
+          // Para quién es, si es una lista que lleva para otra persona.
+          paraQuien: await paraQuienDe(s.managedListId),
           desde: s._creationTime,
           fichaAsociada: veoLaFicha ? (ficha?.name ?? null) : null,
         };
@@ -202,13 +262,22 @@ export const mine = query({
       misMarcas.map(async (c) => {
         const elemento = c.itemId ? await ctx.db.get(c.itemId) : null;
         // «Lo regalo yo · para…»: el nombre de la fecha, solo si sigue siendo
-        // de la ficha a la que asociaste la lista y aún la ves.
+        // de la ficha a la que asociaste esa lista (o, en una que llevas tú,
+        // de la que le pusiste) y aún la ves.
         let paraOcasion: string | null = null;
         if (c.importantDateId) {
           const permiso = listasQueMeComparten.find(
-            (s) => s.ownerClerkUserId === c.ownerClerkUserId && s.hidden !== true,
+            (s) =>
+              s.ownerClerkUserId === c.ownerClerkUserId &&
+              s.managedListId === c.managedListId &&
+              s.hidden !== true,
           );
-          const ficha = permiso?.personId ? await ctx.db.get(permiso.personId) : null;
+          const aCargo =
+            c.ownerClerkUserId === clerkUserId
+              ? misListasACargo.find((l) => l._id === c.managedListId)
+              : undefined;
+          const fichaId = permiso?.personId ?? aCargo?.personId;
+          const ficha = fichaId ? await ctx.db.get(fichaId) : null;
           const fecha = await ctx.db.get(c.importantDateId);
           if (
             ficha &&
@@ -219,6 +288,9 @@ export const mine = query({
           }
         }
         return {
+          // Para quién es la lista, si es una a cargo; `null` si es la propia
+          // de su dueño.
+          lista: await paraQuienDe(c.managedListId),
           elemento: elemento?.title ?? c.snapshot?.title ?? null,
           estado: c.status === "given" ? "regalado" : "lo regalo yo",
           sigueEnSuLista: c.itemId !== undefined,
@@ -284,9 +356,16 @@ export const mine = query({
         "mientras exista tu cuenta; " +
         "\"notaParaQuienTeRegala\" es la nota que ven quienes leen tu lista, y " +
         "\"miCumpleanos\" el día y el mes que les enseñas. " +
-        "\"marcasEnListasDeOtros\" es lo que has marcado tú en listas ajenas; " +
+        "\"listasQueLlevas\" son las listas que llevas para otras personas, " +
+        "con \"paraQuien\", la ficha de tu libreta donde la ves, sus elementos, " +
+        "con quién la compartes, su nota y su cumpleaños; tampoco incluyen qué " +
+        "ha marcado nadie. " +
+        "\"marcasEnListasDeOtros\" es lo que has marcado tú en listas ajenas o " +
+        "en las que llevas; \"lista\" es para quién es, si es una lista a cargo, " +
         "\"yaLoTiene\" dice si su dueño lo quitó porque ya lo tenía, y " +
         "\"paraOcasion\" para qué fecha de tu ficha lo guardas. " +
+        "En \"listasQueTeComparten\", \"paraQuien\" es para quién es la lista " +
+        "si quien te la comparte la lleva para otra persona. " +
         "\"listasQueNoQuieres\" son las personas a las que bloqueaste para que " +
         "no te compartan más su lista.",
       usuario: {
@@ -300,18 +379,10 @@ export const mine = query({
       miLista: {
         elementos: elementosDeMiLista,
         notaParaQuienTeRegala: miNota?.note ?? null,
-        miCumpleanos:
-          miNota?.birthdayMonth !== undefined && miNota.birthdayDay !== undefined
-            ? { mes: miNota.birthdayMonth, dia: miNota.birthdayDay }
-            : null,
-        // Igual que `compartidoCon` de las fichas: el `clerkUserId` de cada
-        // fila es el dato, a quién le diste acceso. Las filas ocultas salen
-        // igual y sin marca: para ti son un acceso como cualquier otro.
-        compartidaCon: quienVeMiLista.map((s) => ({
-          clerkUserId: s.readerClerkUserId,
-          desde: s._creationTime,
-        })),
+        miCumpleanos: cumpleanos(miNota),
+        compartidaCon: compartidaCon(quienVeMiLista),
       },
+      listasQueLlevas,
       listasQueTeComparten,
       marcasEnListasDeOtros,
       avisosDeListaPorCorreo: {

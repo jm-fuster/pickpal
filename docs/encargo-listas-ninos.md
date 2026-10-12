@@ -1,9 +1,13 @@
 # Encargo: listas que lleva un adulto para un niño
 
-Propuesta para decidir, no para construir todavía (12-oct-2026). Cuando Jorge
-cierre las decisiones del final, esto se reescribe como encargo en el formato de
-[`encargo-lista.md`](encargo-lista.md). Hasta entonces, nada de aquí cambia
-«Mi lista».
+Propuesta del 12-oct-2026. **Decidida el mismo día:** Jorge eligió la opción
+A con las respuestas recomendadas a las decisiones 2 a 9 (ver «Decisiones que
+solo puede tomar Jorge»). Lo que se construyó de verdad está en
+[`dudas.md`](dudas.md); los textos legales, en `/privacidad` («Listas que llevas
+para otra persona» y «Menores»), `/terminos` y `privacy.md` §2.6, §3 y §10.
+
+La decisión 8 pide releer la sección de edad de los términos de la Gemini API
+antes de dar la función por cerrada; esa relectura es de Jorge y sigue pendiente.
 
 **Lee antes:** `encargo-lista.md` entero, con los anexos; `privacy.md` §2.6, §7
 y §10; `security.md` §7 y §11; y `listItems`, `listShares`, `listClaims` y

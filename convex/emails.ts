@@ -274,13 +274,21 @@ function buildHtml(events: EventToNotify[]): string {
  * Clerk, así que no prueba nada: el correo enseña también el email, que está
  * verificado. No lleva nada de la lista, porque sus elementos los escribe
  * otra persona y no deben viajar por correo.
+ *
+ * Con `managed` es una lista que el dueño lleva para otra persona, como un
+ * hijo (docs/encargo-listas-ninos.md, decisión 7): «Marta te ha compartido una
+ * lista en PickPal», sin decir para quién es. El nombre de un niño no pasa por
+ * Resend; se ve al entrar en la app. Tampoco promete que el dueño no vea lo
+ * que marcas: en esas listas ve qué está cogido.
  */
 export function buildListInviteEmail({
   ownerName,
   ownerEmail,
+  managed = false,
 }: {
   ownerName?: string;
   ownerEmail?: string;
+  managed?: boolean;
 }): { subject: string; html: string } {
   const display = ownerName?.trim() || ownerEmail?.trim() || "Alguien";
   const oneLine = display.replace(/[\r\n]+/g, " ");
@@ -290,26 +298,34 @@ export function buildListInviteEmail({
       ? `<div style="font-size:13px;color:#a8c0a0;margin-top:2px;">${escapeHtml(ownerEmail)}</div>`
       : "";
   const who = ownerEmail ? escapeHtml(ownerEmail) : "otra cuenta de PickPal";
+  const title = managed
+    ? `${name} te ha compartido una lista en PickPal`
+    : `${name} te ha compartido su lista`;
+  const explanation = managed
+    ? "Entra para ver de quién es y guardarla en su ficha. Podrás marcar lo que vas a regalar, para que nadie regale lo mismo dos veces."
+    : "Son cosas que le haría ilusión recibir. Guárdala en su ficha y podrás marcar lo que vas a regalarle: no verá lo que marcas.";
   const card = `
     <table cellpadding="0" cellspacing="0" width="100%"
       style="background-color:#2D4033;border-radius:10px;margin-bottom:10px;">
       <tr>
         <td bgcolor="#2D4033"
           style="padding:16px 18px;background-color:#2D4033;border-radius:10px;">
-          <div style="font-size:15px;font-weight:600;color:#FBF7EE;">${name} te ha compartido su lista</div>
+          <div style="font-size:15px;font-weight:600;color:#FBF7EE;">${title}</div>
           ${emailLine}
-          <div style="font-size:13px;color:#a8c0a0;margin-top:10px;line-height:1.5;">Son cosas que le haría ilusión recibir. Guárdala en su ficha y podrás marcar lo que vas a regalarle: no verá lo que marcas.</div>
+          <div style="font-size:13px;color:#a8c0a0;margin-top:10px;line-height:1.5;">${explanation}</div>
         </td>
       </tr>
     </table>`;
   return {
-    subject: `PickPal · ${oneLine} te ha compartido su lista`,
+    subject: managed
+      ? `${oneLine} te ha compartido una lista en PickPal`
+      : `PickPal · ${oneLine} te ha compartido su lista`,
     html: emailShell({
       subtitle: "Lista compartida",
       body: `<p style="margin:0 0 16px;font-size:15px;color:#a8c0a0;">Tienes una lista nueva:</p>
               ${card}
-              ${ctaHtml(`${APP_BASE_URL}/agenda`, "Ver su lista", false)}`,
-      footer: `Te llega porque ${who} te ha dado acceso a su lista en PickPal. Si no te
+              ${ctaHtml(`${APP_BASE_URL}/agenda`, managed ? "Ver la lista" : "Ver su lista", false)}`,
+      footer: `Te llega porque ${who} te ha dado acceso a ${managed ? "una lista" : "su lista"} en PickPal. Si no te
                 interesa, pulsa «No me interesa» en la tarjeta de la app. Como mucho
                 recibirás un aviso cada 30 días por cada persona.`,
     }),
@@ -348,16 +364,18 @@ async function sendViaResend(
 /**
  * La programa `lists.grantAccess` al conceder un acceso nuevo. Es
  * `internalAction`: el destinatario sale de `userSettings.email` del lector,
- * nunca de un argumento del cliente.
+ * nunca de un argumento del cliente. `managed` elige la variante de una lista
+ * a cargo, que no lleva para quién es.
  */
 export const sendListInviteEmail = internalAction({
   args: {
     to: v.string(),
     ownerName: v.optional(v.string()),
     ownerEmail: v.optional(v.string()),
+    managed: v.optional(v.boolean()),
   },
-  handler: async (_ctx, { to, ownerName, ownerEmail }) => {
-    const { subject, html } = buildListInviteEmail({ ownerName, ownerEmail });
+  handler: async (_ctx, { to, ownerName, ownerEmail, managed }) => {
+    const { subject, html } = buildListInviteEmail({ ownerName, ownerEmail, managed });
     try {
       await sendEmail(to, subject, html);
     } catch (err) {

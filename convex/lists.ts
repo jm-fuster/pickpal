@@ -11,6 +11,7 @@ import { requireUser } from "./auth";
 import { checkAndIncrement } from "./rateLimit";
 import {
   isAllowedListPhoto,
+  normalizeManagedListName,
   validateBirthday,
   validateListItemInput,
   validateListItemPrice,
@@ -25,7 +26,8 @@ import { internal } from "./_generated/api";
  *
  * Hay tres públicos y cada función sirve solo a uno:
  * - **El dueño** ve sus elementos, su «nota para quien te regala» y a quién se
- *   los ha compartido. Nada de lo que le llega lee `listClaims` (decisión 7).
+ *   los ha compartido. Nada de lo que le llega de su lista propia lee
+ *   `listClaims` (decisión 7).
  * - **El lector** ve la lista y la nota por el permiso que le dio el dueño
  *   (`listShares`), nunca por tener acceso a la ficha a la que la asoció
  *   (decisión 12). Ve qué está cogido, pero no por quién (decisión 13), y en
@@ -33,14 +35,36 @@ import { internal } from "./_generated/api";
  * - **Nadie más** ve nada, ni siquiera que la lista existe.
  *
  * Un lector puede bloquear a un dueño (`leaveAndBlock`). El dueño no lo nota
- * nunca: si vuelve a compartirle la lista, la fila de `listShares` se crea
+ * nunca: si vuelve a compartirle una lista, la fila de `listShares` se crea
  * igual, con `hidden`, y al lector no le llega por ningún sitio.
+ *
+ * **Listas a cargo** (docs/encargo-listas-ninos.md, opción A). Además de la
+ * suya, un adulto puede llevar hasta 5 listas para quien no tiene cuenta
+ * (`managedLists`), como sus hijos. Sus filas cuelgan de él
+ * (`ownerClerkUserId`) con `managedListId` puesto; la lista propia lo lleva
+ * vacío. Por eso **toda lectura por dueño lleva también la lista**: los
+ * helpers de abajo (`ownerItems`, `findShare`, `aboutOf`,
+ * `deleteClaimsBetween`…) piden la lista como argumento obligatorio, y
+ * `undefined` es la propia. Las funciones del dueño reciben `listId`
+ * opcional: sin él, su lista propia; con él, esa lista a cargo, si la lleva
+ * él. Las que reciben un elemento trabajan en la lista del elemento.
+ *
+ * En una lista a cargo, quien la lleva ve qué está cogido, nunca quién
+ * (`managedItems`), y puede marcar él mismo. Es la única excepción a «el
+ * dueño no ve las marcas», y solo vale para esas listas: la propia sigue
+ * igual.
  */
 
 export const MAX_ITEMS_PER_LIST = 100;
 export const MAX_READERS_PER_LIST = 20;
 // «Lo que más ilusión te haría». Sin tope, la señal se diluye.
 export const MAX_FAVORITES = 5;
+// Listas a cargo por adulto, sin contar la suya (decisión 4 del encargo de
+// listas para niños).
+export const MAX_MANAGED_LISTS = 5;
+// Crear y borrar listas a cargo no puede servir para llenar nada: con el tope
+// de 5, diez al día dan para equivocarse y volver a empezar.
+export const CREATE_MANAGED_LIST_DAILY_LIMIT = 10;
 const CREATE_ITEM_DAILY_LIMIT = 100;
 // Una unidad por importación, no por fila: fila a fila, una lista de 100
 // gastaría el cupo diario entero de `create_list_item`.
@@ -52,7 +76,8 @@ const MAX_OWNER_NAME = 80;
 // Listas que te han compartido. No tiene tope propio (cada dueño elige a
 // quién), así que se acota la lectura.
 const MAX_SHARES_READ = 100;
-// Como mucho un correo de aviso por pareja (dueño, lector) en este plazo.
+// Como mucho un correo de aviso por pareja (dueño, lector) en este plazo, sea
+// la lista que sea.
 export const INVITE_EMAIL_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 // «Una nota para quien te regala»: unas líneas, no una carta.
 export const MAX_ABOUT_LENGTH = 300;
@@ -72,19 +97,30 @@ const ORPHAN_MIN_AGE_MS = 24 * 60 * 60 * 1000;
 const ORPHAN_SWEEP_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 const ORPHAN_SWEEP_BATCH = 200;
 const PHOTO_REJECTED = "Esa foto no vale: tiene que ser JPG, PNG o WebP de menos de 1,5 MB.";
+const LIST_NOT_FOUND = "Lista no encontrada.";
+
+/**
+ * Qué lista de un dueño: `undefined` es la suya propia, un id es una lista a
+ * cargo. Los helpers la piden siempre, sin valor por defecto, para que nadie
+ * lea «todo lo del dueño» sin querer.
+ */
+type ListaId = Id<"managedLists"> | undefined;
 
 // ─── Helpers de acceso ───────────────────────────────────────────────────────
 
+/** El permiso de `readerClerkUserId` sobre UNA lista de `ownerClerkUserId`. */
 async function findShare(
   ctx: QueryCtx | MutationCtx,
   ownerClerkUserId: string,
+  listId: ListaId,
   readerClerkUserId: string,
 ) {
   return ctx.db
     .query("listShares")
-    .withIndex("by_owner_and_reader", (q) =>
+    .withIndex("by_owner_list_reader", (q) =>
       q
         .eq("ownerClerkUserId", ownerClerkUserId)
+        .eq("managedListId", listId)
         .eq("readerClerkUserId", readerClerkUserId),
     )
     .unique();
@@ -95,15 +131,15 @@ async function findShare(
  * alguien a quien bloqueó) es como si no existiera. Todo lo que sirve al
  * lector entra por aquí o por `assertListReader`. `findShare` a secas queda
  * para el lado del dueño, que ve la fila igual esté oculta o no (`grantAccess`
- * y `sharedBack`, que mira tu propia lista), y para `unblock`, que busca
- * justo la oculta.
+ * y `sharedBack`, que mira tu propia lista).
  */
 async function visibleShare(
   ctx: QueryCtx | MutationCtx,
   ownerClerkUserId: string,
+  listId: ListaId,
   readerClerkUserId: string,
 ) {
-  const share = await findShare(ctx, ownerClerkUserId, readerClerkUserId);
+  const share = await findShare(ctx, ownerClerkUserId, listId, readerClerkUserId);
   return share && share.hidden !== true ? share : null;
 }
 
@@ -119,9 +155,60 @@ async function assertListReader(
 ): Promise<Doc<"listShares">> {
   const share = await ctx.db.get(shareId);
   if (!share || share.readerClerkUserId !== clerkUserId || share.hidden === true) {
-    throw new ConvexError("Lista no encontrada.");
+    throw new ConvexError(LIST_NOT_FOUND);
   }
   return share;
+}
+
+/**
+ * Una lista a cargo que lleva `clerkUserId`. Mismo mensaje si no existe que
+ * si la lleva otro.
+ */
+async function assertManagedList(
+  ctx: QueryCtx | MutationCtx,
+  listId: Id<"managedLists">,
+  clerkUserId: string,
+): Promise<Doc<"managedLists">> {
+  const list = await ctx.db.get(listId);
+  if (!list || list.managerClerkUserId !== clerkUserId) {
+    throw new ConvexError(LIST_NOT_FOUND);
+  }
+  return list;
+}
+
+/**
+ * La lista sobre la que trabaja una función del dueño: sin `listId`, la suya
+ * propia; con él, esa lista a cargo, que tiene que llevar él. Devuelve
+ * también la fila de `managedLists` para los mensajes.
+ */
+async function ownerList(
+  ctx: QueryCtx | MutationCtx,
+  clerkUserId: string,
+  listId: ListaId,
+): Promise<{ listId: ListaId; managed: Doc<"managedLists"> | null }> {
+  if (listId === undefined) return { listId: undefined, managed: null };
+  return { listId, managed: await assertManagedList(ctx, listId, clerkUserId) };
+}
+
+/**
+ * La ficha de una lista a cargo, si quien la lleva todavía la ve. Como
+ * `validPersonId`: se valida al leer, no al borrar la ficha.
+ */
+async function validManagedPersonId(
+  ctx: QueryCtx | MutationCtx,
+  list: Doc<"managedLists">,
+): Promise<Id<"people"> | null> {
+  if (!list.personId) return null;
+  const person = await ctx.db.get(list.personId);
+  return (await personHasAccess(ctx, person, list.managerClerkUserId))
+    ? list.personId
+    : null;
+}
+
+/** El nombre de para quién es una lista, o `null` si es la propia del dueño. */
+async function forNameOf(ctx: QueryCtx | MutationCtx, listId: ListaId) {
+  if (listId === undefined) return null;
+  return (await ctx.db.get(listId))?.forName ?? null;
 }
 
 async function blockOf(
@@ -139,6 +226,10 @@ async function blockOf(
     .first();
 }
 
+/**
+ * Un elemento de cualquier lista de `clerkUserId`, la propia o una que lleva.
+ * Quien llama trabaja después en la lista del elemento (`managedListId`).
+ */
 async function assertOwnItem(
   ctx: MutationCtx,
   itemId: Id<"listItems">,
@@ -182,16 +273,22 @@ async function validPersonId(
     : null;
 }
 
+/**
+ * Las marcas de un lector en UNA lista. Dejar la de Lucía no puede llevarse
+ * las que tiene en la propia de Marta.
+ */
 async function deleteClaimsBetween(
   ctx: MutationCtx,
   ownerClerkUserId: string,
+  listId: ListaId,
   readerClerkUserId: string,
 ) {
   const claims = await ctx.db
     .query("listClaims")
-    .withIndex("by_owner_and_reader", (q) =>
+    .withIndex("by_owner_list_reader", (q) =>
       q
         .eq("ownerClerkUserId", ownerClerkUserId)
+        .eq("managedListId", listId)
         .eq("readerClerkUserId", readerClerkUserId),
     )
     .collect();
@@ -214,20 +311,37 @@ export function compareListItems(a: Doc<"listItems">, b: Doc<"listItems">) {
 }
 
 /**
- * Los elementos de un dueño en el orden de su lista. Se leen los 100 más
+ * Los elementos de UNA lista de un dueño, en su orden. Se leen los 100 más
  * nuevos (el tope de la lista) y se ordenan en memoria: `position` es
  * opcional y no puede ir en el índice.
  */
 async function ownerItems(
   ctx: QueryCtx | MutationCtx,
   ownerClerkUserId: string,
+  listId: ListaId,
 ) {
   const items = await ctx.db
     .query("listItems")
-    .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", ownerClerkUserId))
+    .withIndex("by_owner_and_list", (q) =>
+      q.eq("ownerClerkUserId", ownerClerkUserId).eq("managedListId", listId),
+    )
     .order("desc")
     .take(MAX_ITEMS_PER_LIST);
   return items.sort(compareListItems);
+}
+
+/** Los lectores de UNA lista, ocultos incluidos (cuentan para el tope). */
+async function listReaders(
+  ctx: QueryCtx | MutationCtx,
+  ownerClerkUserId: string,
+  listId: ListaId,
+) {
+  return ctx.db
+    .query("listShares")
+    .withIndex("by_owner_list_reader", (q) =>
+      q.eq("ownerClerkUserId", ownerClerkUserId).eq("managedListId", listId),
+    )
+    .take(MAX_READERS_PER_LIST);
 }
 
 async function photoUrlOf(ctx: QueryCtx | MutationCtx, item: Doc<"listItems">) {
@@ -264,11 +378,17 @@ async function claimOf(ctx: QueryCtx | MutationCtx, itemId: Id<"listItems">) {
     .first();
 }
 
-/** La «nota para quien te regala» de un dueño, como mucho una (`setAbout`). */
-async function aboutOf(ctx: QueryCtx | MutationCtx, ownerClerkUserId: string) {
+/** La «nota para quien te regala» de UNA lista, como mucho una (`setAbout`). */
+async function aboutOf(
+  ctx: QueryCtx | MutationCtx,
+  ownerClerkUserId: string,
+  listId: ListaId,
+) {
   return ctx.db
     .query("listAbout")
-    .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", ownerClerkUserId))
+    .withIndex("by_owner_and_list", (q) =>
+      q.eq("ownerClerkUserId", ownerClerkUserId).eq("managedListId", listId),
+    )
     .unique();
 }
 
@@ -279,10 +399,16 @@ function birthdayOf(about: Doc<"listAbout"> | null) {
     : null;
 }
 
+/** «Tu lista ya tiene…» o «La lista de Lucía ya tiene…», según la lista. */
+function laLista(managed: Doc<"managedLists"> | null) {
+  return managed ? `La lista de ${managed.forName}` : "Tu lista";
+}
+
 /**
- * Concede a `readerClerkUserId` permiso para leer la lista de quien llama.
- * Compartido por `invite` (email resuelto en la API route) y `shareBack`
- * (cuenta conocida por el permiso recibido, decisión 10).
+ * Concede a `readerClerkUserId` permiso para leer una lista de quien llama: la
+ * propia (`listId` vacío) o una que lleva. Compartido por `invite` (email
+ * resuelto en la API route) y `shareBack` (cuenta conocida por el permiso
+ * recibido, decisión 10, siempre con la lista propia).
  *
  * El nombre y el email del dueño salen de su propio JWT, no del cliente: son
  * lo que verá el lector en la tarjeta de lista recibida. El nombre lo elige
@@ -290,18 +416,24 @@ function birthdayOf(about: Doc<"listAbout"> | null) {
  * enseña los dos.
  *
  * Un acceso nuevo además avisa al lector por correo (`emailed`), salvo que ya
- * se le avisara de esta misma lista en los últimos 30 días o no tenga email
- * guardado. Si ya tenía acceso no pasa nada: ni fila nueva ni correo.
+ * se le avisara de cualquier lista de este dueño en los últimos 30 días o no
+ * tenga email guardado. El plazo es por pareja y no por lista, así que la
+ * segunda lista que Marta comparte con la abuela en el mismo mes no escribe,
+ * y `emailed` lo dice. Si ya tenía acceso a esa lista no pasa nada: ni fila
+ * nueva ni correo.
  *
  * Si el lector había bloqueado a este dueño (`leaveAndBlock`), todo sigue el
  * mismo camino, con el mismo tope, el mismo cupo y el mismo `emailed`, pero
  * la fila nace oculta y el correo no sale. Lo que recibe el dueño no puede
- * depender del bloqueo: si cambiara algo, sabría que le han bloqueado.
+ * depender del bloqueo: si cambiara algo, sabría que le han bloqueado. El
+ * bloqueo es por dueño: vale para todas sus listas.
  */
 async function grantAccess(
   ctx: MutationCtx,
   ownerClerkUserId: string,
   readerClerkUserId: string,
+  listId: ListaId,
+  managed: Doc<"managedLists"> | null,
 ): Promise<{ shareId: Id<"listShares">; emailed: boolean }> {
   if (
     readerClerkUserId.length === 0 ||
@@ -313,16 +445,13 @@ async function grantAccess(
     throw new ConvexError("No puedes compartir la lista contigo.");
   }
 
-  const existing = await findShare(ctx, ownerClerkUserId, readerClerkUserId);
+  const existing = await findShare(ctx, ownerClerkUserId, listId, readerClerkUserId);
   if (existing) return { shareId: existing._id, emailed: false };
 
-  const readers = await ctx.db
-    .query("listShares")
-    .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", ownerClerkUserId))
-    .take(MAX_READERS_PER_LIST);
+  const readers = await listReaders(ctx, ownerClerkUserId, listId);
   if (readers.length >= MAX_READERS_PER_LIST) {
     throw new ConvexError(
-      `Tu lista ya la ven ${MAX_READERS_PER_LIST} personas, el máximo. Quita a alguien para invitar a otra.`,
+      `${laLista(managed)} ya la ven ${MAX_READERS_PER_LIST} personas, el máximo. Quita a alguien para invitar a otra.`,
     );
   }
 
@@ -343,6 +472,7 @@ async function grantAccess(
   const blocked = (await blockOf(ctx, readerClerkUserId, ownerClerkUserId)) !== null;
   const shareId = await ctx.db.insert("listShares", {
     ownerClerkUserId,
+    managedListId: listId,
     readerClerkUserId,
     ownerName,
     ownerEmail: identity?.email,
@@ -355,21 +485,27 @@ async function grantAccess(
     ownerName,
     identity?.email,
     !blocked,
+    listId !== undefined,
   );
   return { shareId, emailed };
 }
 
 /**
  * Programa el correo de aviso al lector, como mucho uno cada 30 días por
- * pareja. El plazo se apunta al programarlo, no al enviarlo: si Resend falla,
- * no se reintenta, pero así nadie puede encadenar invitaciones para mandar
- * correos. La dirección sale de `userSettings.email` del lector, que se sella
- * cada vez que entra en la app; nunca de un argumento.
+ * pareja, sea la lista que sea. El plazo se apunta al programarlo, no al
+ * enviarlo: si Resend falla, no se reintenta, pero así nadie puede encadenar
+ * invitaciones para mandar correos. La dirección sale de `userSettings.email`
+ * del lector, que se sella cada vez que entra en la app; nunca de un
+ * argumento.
  *
  * Con `send` en falso (el lector bloqueó al dueño) hace las mismas cuentas,
  * apunta el plazo y devuelve lo mismo, pero no programa nada: el dueño ve
  * «le hemos avisado» igual, y el siguiente intento cae en el mismo plazo de
  * 30 días que si el correo hubiera salido.
+ *
+ * Con `managed` (una lista a cargo) sale la variante sin el nombre de para
+ * quién es: «Marta te ha compartido una lista en PickPal». El nombre de un
+ * niño no viaja por Resend; se ve al entrar.
  */
 async function scheduleInviteEmail(
   ctx: MutationCtx,
@@ -378,6 +514,7 @@ async function scheduleInviteEmail(
   ownerName: string | undefined,
   ownerEmail: string | undefined,
   send: boolean,
+  managed: boolean,
 ): Promise<boolean> {
   const settings = await ctx.db
     .query("userSettings")
@@ -421,6 +558,9 @@ async function scheduleInviteEmail(
     to,
     ownerName,
     ownerEmail,
+    // Solo cuando lo es, para que el aviso de la lista propia salga igual que
+    // siempre.
+    ...(managed ? { managed: true } : {}),
   });
   return true;
 }
@@ -433,59 +573,259 @@ function normalizeItem(args: { title: string; url?: string; note?: string }) {
   };
 }
 
-// ─── El dueño ────────────────────────────────────────────────────────────────
+/** Lo que el dueño ve de cada elemento, sin nada de las marcas. */
+async function ownerItemView(ctx: QueryCtx | MutationCtx, i: Doc<"listItems">) {
+  return {
+    _id: i._id,
+    _creationTime: i._creationTime,
+    title: i.title,
+    url: i.url,
+    note: i.note,
+    favorite: i.favorite === true,
+    priceCents: i.priceCents ?? null,
+    photoUrl: await photoUrlOf(ctx, i),
+  };
+}
+
+// ─── Listas a cargo ──────────────────────────────────────────────────────────
 
 /**
- * Los elementos de tu lista, en el orden de tu lista (`ownerItems`). Solo lee
- * `listItems` y las direcciones de sus fotos: nunca cruza con `listClaims`, ni
- * para un contador.
+ * Las listas que llevas para otras personas, por orden de nombre. `itemCount`
+ * y `readerCount` cuentan elementos y lectores, nunca marcas. `personId` es
+ * la ficha de tu libreta donde la ves, si todavía la ves.
  */
-export const myItems = query({
+export const myManagedLists = query({
   args: {},
   handler: async (ctx) => {
     const clerkUserId = await requireUser(ctx);
-    const items = await ownerItems(ctx, clerkUserId);
-    return Promise.all(
-      items.map(async (i) => ({
-        _id: i._id,
-        _creationTime: i._creationTime,
-        title: i.title,
-        url: i.url,
-        note: i.note,
-        favorite: i.favorite === true,
-        priceCents: i.priceCents ?? null,
-        photoUrl: await photoUrlOf(ctx, i),
+    const lists = await ctx.db
+      .query("managedLists")
+      .withIndex("by_manager", (q) => q.eq("managerClerkUserId", clerkUserId))
+      .take(MAX_MANAGED_LISTS);
+    const views = await Promise.all(
+      lists.map(async (l) => ({
+        listId: l._id,
+        forName: l.forName,
+        personId: await validManagedPersonId(ctx, l),
+        itemCount: (await ownerItems(ctx, clerkUserId, l._id)).length,
+        readerCount: (await listReaders(ctx, clerkUserId, l._id)).length,
       })),
+    );
+    return views.sort((a, b) => a.forName.localeCompare(b.forName, "es"));
+  },
+});
+
+/** Una lista que llevas. La de otro o una que no existe: «Lista no encontrada.» */
+export const managedList = query({
+  args: { listId: v.id("managedLists") },
+  handler: async (ctx, { listId }) => {
+    const clerkUserId = await requireUser(ctx);
+    const list = await assertManagedList(ctx, listId, clerkUserId);
+    return {
+      listId: list._id,
+      forName: list.forName,
+      personId: await validManagedPersonId(ctx, list),
+    };
+  },
+});
+
+/**
+ * Empieza una lista para alguien sin cuenta. Primero el tope de 5, después el
+ * cupo: llegar al tope no gasta nada.
+ */
+export const createManagedList = mutation({
+  args: { forName: v.string() },
+  handler: async (ctx, args) => {
+    const clerkUserId = await requireUser(ctx);
+    const forName = normalizeManagedListName(args.forName);
+    const existing = await ctx.db
+      .query("managedLists")
+      .withIndex("by_manager", (q) => q.eq("managerClerkUserId", clerkUserId))
+      .take(MAX_MANAGED_LISTS);
+    if (existing.length >= MAX_MANAGED_LISTS) {
+      throw new ConvexError(
+        `Ya llevas ${MAX_MANAGED_LISTS} listas, el máximo. Borra alguna para empezar otra.`,
+      );
+    }
+    await checkAndIncrement(
+      ctx,
+      clerkUserId,
+      "create_managed_list",
+      CREATE_MANAGED_LIST_DAILY_LIMIT,
+    );
+    return ctx.db.insert("managedLists", { managerClerkUserId: clerkUserId, forName });
+  },
+});
+
+/** Cambia el nombre de para quién es. Reescribe la misma fila: sin cupo. */
+export const renameManagedList = mutation({
+  args: { listId: v.id("managedLists"), forName: v.string() },
+  handler: async (ctx, args) => {
+    const clerkUserId = await requireUser(ctx);
+    const list = await assertManagedList(ctx, args.listId, clerkUserId);
+    const forName = normalizeManagedListName(args.forName);
+    if (forName !== list.forName) await ctx.db.patch(list._id, { forName });
+  },
+});
+
+/**
+ * La ficha de tu libreta donde ves esta lista, o `null` para soltarla. Tiene
+ * que ser una ficha que ves: no da acceso a nadie, ni a ella ni a la lista.
+ */
+export const linkManagedListPerson = mutation({
+  args: {
+    listId: v.id("managedLists"),
+    personId: v.union(v.id("people"), v.null()),
+  },
+  handler: async (ctx, { listId, personId }) => {
+    const clerkUserId = await requireUser(ctx);
+    const list = await assertManagedList(ctx, listId, clerkUserId);
+    if (personId === null) {
+      if (list.personId !== undefined) await ctx.db.patch(listId, { personId: undefined });
+      return;
+    }
+    const person = await ctx.db.get(personId);
+    if (!(await personHasAccess(ctx, person, clerkUserId))) {
+      throw new ConvexError("Persona no encontrada.");
+    }
+    await ctx.db.patch(listId, { personId });
+  },
+});
+
+/**
+ * Borra una lista a cargo entera: sus elementos con sus fotos, quién la ve,
+ * todas las marcas que tenga (también las copias de elementos ya quitados),
+ * su nota y su cumpleaños, y la lista. Como al borrar la cuenta (decisión 22):
+ * no se transfiere a nadie, y lo que un lector pasó a su historial se queda.
+ * Los avisos por correo son por pareja y no por lista, así que se quedan.
+ */
+export const deleteManagedList = mutation({
+  args: { listId: v.id("managedLists") },
+  handler: async (ctx, { listId }) => {
+    const clerkUserId = await requireUser(ctx);
+    await assertManagedList(ctx, listId, clerkUserId);
+
+    const items = await ctx.db
+      .query("listItems")
+      .withIndex("by_owner_and_list", (q) =>
+        q.eq("ownerClerkUserId", clerkUserId).eq("managedListId", listId),
+      )
+      .collect();
+    for (const item of items) {
+      if (item.photoStorageId) await deleteFileIfExists(ctx, item.photoStorageId);
+      await ctx.db.delete(item._id);
+    }
+    // Todas las marcas de la lista, de cualquier lector, con elemento o con
+    // copia: todas llevan el dueño y la lista.
+    const claims = await ctx.db
+      .query("listClaims")
+      .withIndex("by_owner_list_reader", (q) =>
+        q.eq("ownerClerkUserId", clerkUserId).eq("managedListId", listId),
+      )
+      .collect();
+    for (const c of claims) await ctx.db.delete(c._id);
+    const shares = await ctx.db
+      .query("listShares")
+      .withIndex("by_owner_list_reader", (q) =>
+        q.eq("ownerClerkUserId", clerkUserId).eq("managedListId", listId),
+      )
+      .collect();
+    for (const s of shares) await ctx.db.delete(s._id);
+    const about = await aboutOf(ctx, clerkUserId, listId);
+    if (about) await ctx.db.delete(about._id);
+    await ctx.db.delete(listId);
+  },
+});
+
+/**
+ * Los elementos de una lista que llevas, con lo que está cogido. Es la única
+ * función del dueño que lee `listClaims`, y solo para listas a cargo: la
+ * propia sigue en `myItems`, sin marcas. Por cada elemento dice si está libre
+ * o cogido, nunca quién lo cogió: `claimId` solo sale en tus propias marcas,
+ * y nada de lo que devuelve lleva la cuenta, el nombre ni el id de la marca
+ * de otro.
+ *
+ * `state`: `free` nadie lo ha marcado · `taken` lo ha marcado alguien que lee
+ * la lista · `mine` lo regalas tú · `given` ya lo diste por regalado.
+ * `editedSinceMark` siempre es falso: solo quien la lleva edita la lista, y
+ * no tiene que avisarse a sí mismo. `occasionLabel`: la fecha de la ficha de
+ * la lista para la que guardas lo que has marcado, solo en tus marcas.
+ */
+export const managedItems = query({
+  args: { listId: v.id("managedLists") },
+  handler: async (ctx, { listId }) => {
+    const clerkUserId = await requireUser(ctx);
+    const list = await assertManagedList(ctx, listId, clerkUserId);
+    const personId = await validManagedPersonId(ctx, list);
+    const items = await ownerItems(ctx, clerkUserId, listId);
+    return Promise.all(
+      items.map(async (i) => {
+        const claim = await claimOf(ctx, i._id);
+        const mine = claim?.readerClerkUserId === clerkUserId;
+        return {
+          ...(await ownerItemView(ctx, i)),
+          state: !claim
+            ? ("free" as const)
+            : !mine
+              ? ("taken" as const)
+              : claim.status === "given"
+                ? ("given" as const)
+                : ("mine" as const),
+          claimId: mine ? claim._id : null,
+          editedSinceMark: false,
+          occasionLabel: mine ? ((await occasionOf(ctx, claim, personId))?.label ?? null) : null,
+        };
+      }),
     );
   },
 });
 
-/** Tu «nota para quien te regala», o `null` si no has escrito ninguna. */
-export const myAbout = query({
-  args: {},
-  handler: async (ctx) => {
+// ─── El dueño ────────────────────────────────────────────────────────────────
+
+/**
+ * Los elementos de tu lista (o de una que llevas, con `listId`), en su orden
+ * (`ownerItems`). Solo lee `listItems` y las direcciones de sus fotos: nunca
+ * cruza con `listClaims`, ni para un contador. Lo cogido de una lista a cargo
+ * está en `managedItems`.
+ */
+export const myItems = query({
+  args: { listId: v.optional(v.id("managedLists")) },
+  handler: async (ctx, args) => {
     const clerkUserId = await requireUser(ctx);
-    return (await aboutOf(ctx, clerkUserId))?.note ?? null;
+    const { listId } = await ownerList(ctx, clerkUserId, args.listId);
+    const items = await ownerItems(ctx, clerkUserId, listId);
+    return Promise.all(items.map((i) => ownerItemView(ctx, i)));
+  },
+});
+
+/** Tu «nota para quien te regala» (o la de una lista que llevas), o `null`. */
+export const myAbout = query({
+  args: { listId: v.optional(v.id("managedLists")) },
+  handler: async (ctx, args) => {
+    const clerkUserId = await requireUser(ctx);
+    const { listId } = await ownerList(ctx, clerkUserId, args.listId);
+    return (await aboutOf(ctx, clerkUserId, listId))?.note ?? null;
   },
 });
 
 /**
- * Escribe, cambia o borra tu «nota para quien te regala». Vacía (o solo
- * espacios) la quita; la fila se borra si tampoco guarda tu cumpleaños. No
- * lleva cubo de límite diario: reescribe siempre la misma fila, así que
- * repetirla no llena nada (docs/security.md §4). No toca `editedAt` de ningún
- * elemento: a quien había marcado algo no le salta «lo ha cambiado» por
- * cambiar la nota.
+ * Escribe, cambia o borra la «nota para quien te regala» de tu lista o de una
+ * que llevas. Vacía (o solo espacios) la quita; la fila se borra si tampoco
+ * guarda el cumpleaños. No lleva cubo de límite diario: reescribe siempre la
+ * misma fila, así que repetirla no llena nada (docs/security.md §4). No toca
+ * `editedAt` de ningún elemento: a quien había marcado algo no le salta «lo
+ * ha cambiado» por cambiar la nota.
  */
 export const setAbout = mutation({
-  args: { note: v.string() },
+  args: { note: v.string(), listId: v.optional(v.id("managedLists")) },
   handler: async (ctx, args) => {
     const clerkUserId = await requireUser(ctx);
+    const { listId } = await ownerList(ctx, clerkUserId, args.listId);
     const note = args.note.trim();
     if (note.length > MAX_ABOUT_LENGTH) {
       throw new ConvexError("La nota es demasiado larga.");
     }
-    const existing = await aboutOf(ctx, clerkUserId);
+    const existing = await aboutOf(ctx, clerkUserId, listId);
     if (note.length === 0) {
       if (!existing) return;
       if (existing.birthdayMonth !== undefined) {
@@ -496,33 +836,44 @@ export const setAbout = mutation({
     } else if (existing) {
       if (existing.note !== note) await ctx.db.patch(existing._id, { note });
     } else {
-      await ctx.db.insert("listAbout", { ownerClerkUserId: clerkUserId, note });
+      await ctx.db.insert("listAbout", {
+        ownerClerkUserId: clerkUserId,
+        managedListId: listId,
+        note,
+      });
     }
   },
 });
 
-/** Tu cumpleaños tal como lo ven quienes leen tu lista, o `null`. */
+/**
+ * Tu cumpleaños tal como lo ven quienes leen tu lista, o el de para quién es
+ * una lista que llevas. `null` si no hay.
+ */
 export const myBirthday = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { listId: v.optional(v.id("managedLists")) },
+  handler: async (ctx, args) => {
     const clerkUserId = await requireUser(ctx);
-    return birthdayOf(await aboutOf(ctx, clerkUserId));
+    const { listId } = await ownerList(ctx, clerkUserId, args.listId);
+    return birthdayOf(await aboutOf(ctx, clerkUserId, listId));
   },
 });
 
 /**
- * Pone o quita tu cumpleaños (día y mes, sin año), que ven quienes leen tu
- * lista. Vive en la misma fila que la nota (`listAbout`), así que tampoco
- * gasta cupo ni pone `editedAt`. `null` lo quita, y la fila se borra si
- * tampoco queda nota.
+ * Pone o quita el cumpleaños (día y mes, sin año) que ven quienes leen la
+ * lista: el tuyo, o con `listId` el de para quién es esa lista. Vive en la
+ * misma fila que la nota (`listAbout`), así que tampoco gasta cupo ni pone
+ * `editedAt`. `null` lo quita, y la fila se borra si tampoco queda nota.
  */
 export const setBirthday = mutation({
   args: {
     birthday: v.union(v.object({ month: v.number(), day: v.number() }), v.null()),
+    listId: v.optional(v.id("managedLists")),
   },
-  handler: async (ctx, { birthday }) => {
+  handler: async (ctx, args) => {
+    const { birthday } = args;
     const clerkUserId = await requireUser(ctx);
-    const existing = await aboutOf(ctx, clerkUserId);
+    const { listId } = await ownerList(ctx, clerkUserId, args.listId);
+    const existing = await aboutOf(ctx, clerkUserId, listId);
     if (birthday === null) {
       if (!existing) return;
       if (existing.note !== undefined) {
@@ -537,24 +888,27 @@ export const setBirthday = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, fields);
     } else {
-      await ctx.db.insert("listAbout", { ownerClerkUserId: clerkUserId, ...fields });
+      await ctx.db.insert("listAbout", {
+        ownerClerkUserId: clerkUserId,
+        managedListId: listId,
+        ...fields,
+      });
     }
   },
 });
 
 /**
- * A quién has compartido tu lista. Lo consume `src/app/api/lista/share/route.ts`
- * para resolver los emails en Clerk. No dice si cada lector ha asociado la
- * lista a una ficha: eso es cosa de cómo organiza su libreta (decisión 7).
+ * A quién has compartido tu lista (o una que llevas, con `listId`). Lo
+ * consume `src/app/api/lista/share/route.ts` para resolver los emails en
+ * Clerk. No dice si cada lector ha asociado la lista a una ficha: eso es
+ * cosa de cómo organiza su libreta (decisión 7).
  */
 export const myReaders = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { listId: v.optional(v.id("managedLists")) },
+  handler: async (ctx, args) => {
     const clerkUserId = await requireUser(ctx);
-    const shares = await ctx.db
-      .query("listShares")
-      .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", clerkUserId))
-      .take(MAX_READERS_PER_LIST);
+    const { listId } = await ownerList(ctx, clerkUserId, args.listId);
+    const shares = await listReaders(ctx, clerkUserId, listId);
     return shares.map((s) => ({
       shareId: s._id,
       readerClerkUserId: s.readerClerkUserId,
@@ -569,17 +923,19 @@ export const addItem = mutation({
     url: v.optional(v.string()),
     note: v.optional(v.string()),
     priceCents: v.optional(v.number()),
+    listId: v.optional(v.id("managedLists")),
   },
-  handler: async (ctx, { priceCents, ...args }) => {
+  handler: async (ctx, { priceCents, listId: listArg, ...args }) => {
     const clerkUserId = await requireUser(ctx);
+    const { listId, managed } = await ownerList(ctx, clerkUserId, listArg);
     const item = normalizeItem(args);
     validateListItemInput(item);
     if (priceCents !== undefined) validateListItemPrice(priceCents);
 
-    const existing = await ownerItems(ctx, clerkUserId);
+    const existing = await ownerItems(ctx, clerkUserId, listId);
     if (existing.length >= MAX_ITEMS_PER_LIST) {
       throw new ConvexError(
-        `Tu lista ya tiene ${MAX_ITEMS_PER_LIST} cosas, el máximo. Quita alguna para apuntar otra.`,
+        `${laLista(managed)} ya tiene ${MAX_ITEMS_PER_LIST} cosas, el máximo. Quita alguna para apuntar otra.`,
       );
     }
 
@@ -592,6 +948,7 @@ export const addItem = mutation({
 
     return ctx.db.insert("listItems", {
       ownerClerkUserId: clerkUserId,
+      managedListId: listId,
       ...item,
       priceCents,
     });
@@ -600,12 +957,12 @@ export const addItem = mutation({
 
 /**
  * «Pegar una lista»: apunta de golpe lo que la página de pegar analizó en el
- * navegador. Lo que llega del cliente no es de fiar, así que cada fila pasa la
- * misma validación que `addItem`, y todas antes de insertar ninguna: si una
- * falla, el error lleva su número para que la página la señale. Después el
- * tope de la lista y, solo si cabe todo, la unidad del cupo diario. Cualquier
- * error deshace la mutation entera: nunca queda una importación a medias ni
- * se cobra la unidad.
+ * navegador, en tu lista o en una que llevas (`listId`). Lo que llega del
+ * cliente no es de fiar, así que cada fila pasa la misma validación que
+ * `addItem`, y todas antes de insertar ninguna: si una falla, el error lleva
+ * su número para que la página la señale. Después el tope de esa lista y,
+ * solo si cabe todo, la unidad del cupo diario. Cualquier error deshace la
+ * mutation entera: nunca queda una importación a medias ni se cobra la unidad.
  *
  * Solo lee `listItems`. Lo importado llega sin estado (ni marcas ni `editedAt`
  * ni «lo que más ilusión»), y los repetidos los avisa la vista previa: aquí no
@@ -620,9 +977,11 @@ export const importItems = mutation({
         note: v.optional(v.string()),
       }),
     ),
+    listId: v.optional(v.id("managedLists")),
   },
   handler: async (ctx, args) => {
     const clerkUserId = await requireUser(ctx);
+    const { listId, managed } = await ownerList(ctx, clerkUserId, args.listId);
     if (args.items.length === 0) {
       throw new ConvexError("No hay nada que apuntar.");
     }
@@ -643,13 +1002,13 @@ export const importItems = mutation({
       return item;
     });
 
-    const existing = await ownerItems(ctx, clerkUserId);
+    const existing = await ownerItems(ctx, clerkUserId, listId);
     const caben = MAX_ITEMS_PER_LIST - existing.length;
     if (rows.length > caben) {
       throw new ConvexError(
         caben <= 0
-          ? `Tu lista ya tiene ${MAX_ITEMS_PER_LIST} cosas, el máximo. Quita alguna para apuntar otra.`
-          : `${caben === 1 ? "Cabe 1" : `Caben ${caben}`} más. Quítale la casilla a alguna o quita algo de tu lista.`,
+          ? `${laLista(managed)} ya tiene ${MAX_ITEMS_PER_LIST} cosas, el máximo. Quita alguna para apuntar otra.`
+          : `${caben === 1 ? "Cabe 1" : `Caben ${caben}`} más. Quítale la casilla a alguna o quita algo de ${managed ? "la lista" : "tu lista"}.`,
       );
     }
 
@@ -662,6 +1021,7 @@ export const importItems = mutation({
     for (let i = rows.length - 1; i >= 0; i--) {
       await ctx.db.insert("listItems", {
         ownerClerkUserId: clerkUserId,
+        managedListId: listId,
         ...rows[i],
       });
     }
@@ -713,7 +1073,8 @@ export const updateItem = mutation({
  * Pasa un elemento a «Lo que más ilusión te haría», o lo saca. Va aparte de
  * `updateItem` porque no es una edición: no pone `editedAt`, así que quien lo
  * había marcado no ve «lo ha cambiado» (decisión 15). El tope se comprueba
- * solo al pasarlo, y pasar uno que ya lo es no cuenta.
+ * solo al pasarlo, pasar uno que ya lo es no cuenta, y es por lista: los 5 de
+ * Lucía no quitan sitio a los de Marta.
  */
 export const setFavorite = mutation({
   args: { id: v.id("listItems"), favorite: v.boolean() },
@@ -723,7 +1084,7 @@ export const setFavorite = mutation({
     if (favorite === (item.favorite === true)) return;
 
     if (favorite) {
-      const items = await ownerItems(ctx, clerkUserId);
+      const items = await ownerItems(ctx, clerkUserId, item.managedListId);
       if (items.filter((i) => i.favorite === true).length >= MAX_FAVORITES) {
         throw new ConvexError(`Ya tienes ${MAX_FAVORITES}. Saca una para pasar esta.`);
       }
@@ -741,6 +1102,9 @@ export const setFavorite = mutation({
  * aviso, porque está cerrado (decisión 16). Al dueño no se le dice nada: no
  * devuelve nada, haya marcas o no, con motivo o sin él. La foto se borra con
  * el elemento: la copia de la marca no la guarda.
+ *
+ * En una lista a cargo, la marca de quien la lleva se va sin copia: lo ha
+ * quitado él mismo y no tiene que avisarse.
  */
 export const removeItem = mutation({
   args: { id: v.id("listItems"), reason: v.optional(v.literal("got")) },
@@ -753,7 +1117,7 @@ export const removeItem = mutation({
       .withIndex("by_item", (q) => q.eq("itemId", id))
       .collect();
     for (const c of claims) {
-      if (c.status === "given") {
+      if (c.status === "given" || c.readerClerkUserId === clerkUserId) {
         await ctx.db.delete(c._id);
       } else {
         await ctx.db.patch(c._id, {
@@ -840,10 +1204,10 @@ export const removeItemPhoto = mutation({
 
 /**
  * «Subir» o «Bajar» un elemento dentro de su grupo («Lo que más ilusión te
- * haría» o el resto): intercambia su sitio (`sortKey`) con el del vecino del
- * mismo grupo en esa dirección, escribiendo `position` en los dos. En el
- * borde no hace nada. No es una edición: no pone `editedAt`. Sin cupo, como
- * `setFavorite`: reescribe dos filas que ya existen.
+ * haría» o el resto) de su propia lista: intercambia su sitio (`sortKey`) con
+ * el del vecino del mismo grupo en esa dirección, escribiendo `position` en
+ * los dos. En el borde no hace nada. No es una edición: no pone `editedAt`.
+ * Sin cupo, como `setFavorite`: reescribe dos filas que ya existen.
  */
 export const moveItem = mutation({
   args: {
@@ -854,7 +1218,7 @@ export const moveItem = mutation({
     const clerkUserId = await requireUser(ctx);
     const item = await assertOwnItem(ctx, id, clerkUserId);
     const favorite = item.favorite === true;
-    const grupo = (await ownerItems(ctx, clerkUserId)).filter(
+    const grupo = (await ownerItems(ctx, clerkUserId, item.managedListId)).filter(
       (i) => (i.favorite === true) === favorite,
     );
     const at = grupo.findIndex((i) => i._id === id);
@@ -884,18 +1248,26 @@ export const reserveInviteLookup = mutation({
   },
 });
 
-/** Da acceso a tu lista a una cuenta ya resuelta por email en la API route. */
+/**
+ * Da acceso a tu lista, o con `listId` a una que llevas, a una cuenta ya
+ * resuelta por email en la API route.
+ */
 export const invite = mutation({
-  args: { readerClerkUserId: v.string() },
-  handler: async (ctx, { readerClerkUserId }) => {
+  args: {
+    readerClerkUserId: v.string(),
+    listId: v.optional(v.id("managedLists")),
+  },
+  handler: async (ctx, args) => {
     const clerkUserId = await requireUser(ctx);
-    return grantAccess(ctx, clerkUserId, readerClerkUserId);
+    const { listId, managed } = await ownerList(ctx, clerkUserId, args.listId);
+    return grantAccess(ctx, clerkUserId, args.readerClerkUserId, listId, managed);
   },
 });
 
 /**
- * Quita el acceso a un lector. Sus marcas se borran con él y esos elementos
- * vuelven a quedar libres para el resto (decisión 17).
+ * Quita el acceso a un lector. Sus marcas en esa lista se borran con él y esos
+ * elementos vuelven a quedar libres para el resto (decisión 17). Las que tenga
+ * en otras listas del mismo dueño se quedan.
  */
 export const revoke = mutation({
   args: { shareId: v.id("listShares") },
@@ -905,7 +1277,12 @@ export const revoke = mutation({
     if (!share || share.ownerClerkUserId !== clerkUserId) {
       throw new ConvexError("Esa persona ya no tiene acceso.");
     }
-    await deleteClaimsBetween(ctx, share.ownerClerkUserId, share.readerClerkUserId);
+    await deleteClaimsBetween(
+      ctx,
+      share.ownerClerkUserId,
+      share.managedListId,
+      share.readerClerkUserId,
+    );
     await ctx.db.delete(shareId);
   },
 });
@@ -925,9 +1302,14 @@ async function readerShares(ctx: QueryCtx | MutationCtx, clerkUserId: string) {
 }
 
 /**
- * Las listas que te han compartido. `personId` es la ficha asociada si todavía
+ * Las listas que te han compartido, una por permiso: si Marta te comparte la
+ * suya y la de Lucía, salen dos. `personId` es la ficha asociada si todavía
  * puedes verla, o `null`: entonces la tarjeta de lista recibida pide asociarla
  * (decisiones 9 y 11). Las de quien tienes bloqueado no salen.
+ *
+ * `listId` y `forName`: la lista a cargo y para quién es («Lucía»), o `null`
+ * si es la propia del dueño. `sharedBack` dice si ya le compartes tu lista
+ * propia, la única que se comparte de vuelta.
  */
 export const sharedWithMe = query({
   args: {},
@@ -939,8 +1321,10 @@ export const sharedWithMe = query({
         shareId: s._id,
         ownerName: s.ownerName ?? null,
         ownerEmail: s.ownerEmail ?? null,
+        listId: s.managedListId ?? null,
+        forName: await forNameOf(ctx, s.managedListId),
         personId: await validPersonId(ctx, s),
-        sharedBack: (await findShare(ctx, clerkUserId, s.ownerClerkUserId)) !== null,
+        sharedBack: (await findShare(ctx, clerkUserId, undefined, s.ownerClerkUserId)) !== null,
         since: s._creationTime,
       })),
     );
@@ -964,6 +1348,9 @@ export const sharedWithMe = query({
  * orden que les dio el dueño.
  * `occasionLabel`: la fecha de esta ficha para la que guardas lo que has
  * marcado («Lo regalo yo · para…»); solo en tus marcas, nunca en las de otros.
+ * `forName`: para quién es, si es una lista que lleva el dueño para otra
+ * persona; `null` si es la suya. Entonces quien la lleva ve lo cogido, y la
+ * página lo dice.
  */
 export const forPerson = query({
   args: { personId: v.id("people") },
@@ -978,7 +1365,7 @@ export const forPerson = query({
 
     const lists = [];
     for (const share of shares) {
-      const items = await ownerItems(ctx, share.ownerClerkUserId);
+      const items = await ownerItems(ctx, share.ownerClerkUserId, share.managedListId);
       const itemViews = [];
       for (const item of items) {
         const claim = await claimOf(ctx, item._id);
@@ -1009,12 +1396,14 @@ export const forPerson = query({
         });
       }
 
-      // Elementos que el dueño borró después de que los marcaras.
+      // Elementos que el dueño borró después de que los marcaras, solo de
+      // esta lista.
       const myClaims = await ctx.db
         .query("listClaims")
-        .withIndex("by_owner_and_reader", (q) =>
+        .withIndex("by_owner_list_reader", (q) =>
           q
             .eq("ownerClerkUserId", share.ownerClerkUserId)
+            .eq("managedListId", share.managedListId)
             .eq("readerClerkUserId", clerkUserId),
         )
         .take(MAX_ITEMS_PER_LIST);
@@ -1028,11 +1417,12 @@ export const forPerson = query({
           reason: c.snapshot!.reason ?? null,
         }));
 
-      const about = await aboutOf(ctx, share.ownerClerkUserId);
+      const about = await aboutOf(ctx, share.ownerClerkUserId, share.managedListId);
       lists.push({
         shareId: share._id,
         ownerName: share.ownerName ?? null,
         ownerEmail: share.ownerEmail ?? null,
+        forName: await forNameOf(ctx, share.managedListId),
         about: about?.note ?? null,
         birthday: birthdayOf(about),
         items: itemViews,
@@ -1045,16 +1435,19 @@ export const forPerson = query({
 
 /**
  * «Lo que vas a regalar»: lo que has marcado con «Lo regalo yo» y aún no has
- * dado por regalado, en todas las listas que te comparten. Solo para quien
- * lee: sale de tus propias marcas (`by_reader`), nunca de las de otros, y no
- * dice nada de quién más lee cada lista.
+ * dado por regalado, en todas las listas que te comparten y en las que
+ * llevas tú. Solo para quien marca: sale de tus propias marcas
+ * (`by_reader`), nunca de las de otros, y no dice nada de quién más lee cada
+ * lista.
  *
- * Una marca solo sale si sigues teniendo el permiso del dueño. Perderlo ya
- * borra tus marcas (decisión 17), pero se vuelve a mirar aquí para no fiarlo
- * todo a ese borrado. `personId` es la ficha a la que asociaste la lista si
- * todavía la ves, igual que en `sharedWithMe`. Un elemento que el dueño quitó
- * sale con `removed` y el título de la copia; `reason` es `"got"` si lo quitó
- * con «Ya lo tengo».
+ * Una marca solo sale si sigues teniendo el permiso del dueño para esa lista
+ * (o la llevas tú). Perderlo ya borra tus marcas (decisión 17), pero se
+ * vuelve a mirar aquí para no fiarlo todo a ese borrado. `personId` es la
+ * ficha a la que asociaste la lista si todavía la ves, igual que en
+ * `sharedWithMe`; en una lista que llevas, la ficha que le pusiste. Un
+ * elemento que el dueño quitó sale con `removed` y el título de la copia;
+ * `reason` es `"got"` si lo quitó con «Ya lo tengo». `forName` es para quién
+ * es la lista, o `null` si es la propia de su dueño.
  *
  * «Lo regalo yo · para…»: `occasions` son las fechas de esa ficha que se
  * pueden elegir (`[]` si la lista no está asociada a una que veas), e
@@ -1069,44 +1462,64 @@ export const myGifts = query({
       .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
       .take(MAX_GIFTS_READ);
 
-    // Una lectura por dueño, no por marca.
+    // Una lectura por lista, no por marca.
     type Lista = {
       ownerName: string | null;
       ownerEmail: string | null;
+      forName: string | null;
       personId: Id<"people"> | null;
       personName: string | null;
       occasions: { _id: Id<"importantDates">; label: string }[];
     };
     const listas = new Map<string, Lista | null>();
-    const listaDe = async (ownerClerkUserId: string) => {
-      if (listas.has(ownerClerkUserId)) return listas.get(ownerClerkUserId)!;
-      const share = await visibleShare(ctx, ownerClerkUserId, clerkUserId);
+    const fichaDe = async (personId: Id<"people"> | null) => {
+      const person = personId ? await ctx.db.get(personId) : null;
+      const fechas = personId
+        ? await ctx.db
+            .query("importantDates")
+            .withIndex("by_person", (q) => q.eq("personId", personId))
+            .take(MAX_OCCASIONS_READ)
+        : [];
+      return {
+        personId,
+        personName: person?.name ?? null,
+        occasions: fechas.map((f) => ({ _id: f._id, label: f.label })),
+      };
+    };
+    const listaDe = async (c: Doc<"listClaims">) => {
+      const clave = `${c.ownerClerkUserId}|${c.managedListId ?? ""}`;
+      if (listas.has(clave)) return listas.get(clave)!;
       let lista: Lista | null = null;
-      if (share) {
-        const personId = await validPersonId(ctx, share);
-        const person = personId ? await ctx.db.get(personId) : null;
-        const fechas = personId
-          ? await ctx.db
-              .query("importantDates")
-              .withIndex("by_person", (q) => q.eq("personId", personId))
-              .take(MAX_OCCASIONS_READ)
-          : [];
-        lista = {
-          ownerName: share.ownerName ?? null,
-          ownerEmail: share.ownerEmail ?? null,
-          personId,
-          personName: person?.name ?? null,
-          occasions: fechas.map((f) => ({ _id: f._id, label: f.label })),
-        };
+      if (c.ownerClerkUserId === clerkUserId) {
+        // Una lista que llevas: no hay permiso, la llevas tú.
+        const managed = c.managedListId ? await ctx.db.get(c.managedListId) : null;
+        if (managed && managed.managerClerkUserId === clerkUserId) {
+          lista = {
+            ownerName: null,
+            ownerEmail: null,
+            forName: managed.forName,
+            ...(await fichaDe(await validManagedPersonId(ctx, managed))),
+          };
+        }
+      } else {
+        const share = await visibleShare(ctx, c.ownerClerkUserId, c.managedListId, clerkUserId);
+        if (share) {
+          lista = {
+            ownerName: share.ownerName ?? null,
+            ownerEmail: share.ownerEmail ?? null,
+            forName: await forNameOf(ctx, share.managedListId),
+            ...(await fichaDe(await validPersonId(ctx, share))),
+          };
+        }
       }
-      listas.set(ownerClerkUserId, lista);
+      listas.set(clave, lista);
       return lista;
     };
 
     const gifts = [];
     for (const c of claims) {
       if (c.status !== "marked") continue;
-      const lista = await listaDe(c.ownerClerkUserId);
+      const lista = await listaDe(c);
       if (!lista) continue;
       const item = c.itemId ? await ctx.db.get(c.itemId) : null;
       const removed = c.itemId === undefined;
@@ -1125,7 +1538,7 @@ export const myGifts = query({
       });
     }
 
-    const quien = (g: Lista) => g.personName ?? g.ownerName ?? g.ownerEmail ?? "";
+    const quien = (g: Lista) => g.personName ?? g.forName ?? g.ownerName ?? g.ownerEmail ?? "";
     return gifts.sort(
       (a, b) =>
         quien(a).localeCompare(quien(b), "es") || a.title.localeCompare(b.title, "es"),
@@ -1147,44 +1560,52 @@ export const associate = mutation({
   },
 });
 
-/** Dejar de ver una lista. También es «No me interesa» en la tarjeta. */
+/**
+ * Dejar de ver una lista. También es «No me interesa» en la tarjeta. Solo se
+ * van las marcas de esa lista: dejar la de Lucía no toca las de la de Marta.
+ */
 export const leave = mutation({
   args: { shareId: v.id("listShares") },
   handler: async (ctx, { shareId }) => {
     const clerkUserId = await requireUser(ctx);
     const share = await assertListReader(ctx, shareId, clerkUserId);
-    await deleteClaimsBetween(ctx, share.ownerClerkUserId, clerkUserId);
+    await deleteClaimsBetween(ctx, share.ownerClerkUserId, share.managedListId, clerkUserId);
     await ctx.db.delete(shareId);
   },
 });
 
 /**
- * Comparte tu lista con quien te compartió la suya, sin escribir su email: la
- * cuenta ya se conoce por el permiso recibido (decisión 10). Mismos topes y
- * límites diarios que `invite`.
+ * Comparte tu lista propia con quien te compartió una suya, sin escribir su
+ * email: la cuenta ya se conoce por el permiso recibido (decisión 10). Mismos
+ * topes y límites diarios que `invite`. Aunque te haya compartido la de
+ * Lucía, lo que le compartes de vuelta es tu lista, no una que lleves tú.
  */
 export const shareBack = mutation({
   args: { shareId: v.id("listShares") },
   handler: async (ctx, { shareId }) => {
     const clerkUserId = await requireUser(ctx);
     const share = await assertListReader(ctx, shareId, clerkUserId);
-    return grantAccess(ctx, clerkUserId, share.ownerClerkUserId);
+    return grantAccess(ctx, clerkUserId, share.ownerClerkUserId, undefined, null);
   },
 });
 
 /**
- * «No me interesa» y que no me la vuelva a compartir: deja la lista como
- * `leave` (permiso y marcas fuera) y apunta el bloqueo. Al dueño le llega lo
- * mismo que con `leave`: desaparece de quién ve su lista, y nada más. Si
- * vuelve a compartirla, `grantAccess` crea la fila oculta y no manda correo.
- * Nombre y email se copian del permiso para enseñarlos en tus bloqueos.
+ * «No me interesa» y que no me comparta más listas: deja esta lista como
+ * `leave` (permiso y marcas de esta lista fuera) y apunta el bloqueo, que es
+ * por dueño: vale para todas sus listas, también las que lleva para otros y
+ * las que empiece después. Las que ya te compartió y no has dejado se quedan
+ * como están; puedes dejarlas una a una. Al dueño le llega lo mismo que con
+ * `leave`: desaparece de quién ve esa lista, y nada más. Si vuelve a
+ * compartirte cualquiera, `grantAccess` crea la fila oculta y no manda
+ * correo. Nombre y email se copian del permiso para enseñarlos en tus
+ * bloqueos.
  */
 export const leaveAndBlock = mutation({
   args: { shareId: v.id("listShares") },
   handler: async (ctx, { shareId }) => {
     const clerkUserId = await requireUser(ctx);
     const share = await assertListReader(ctx, shareId, clerkUserId);
-    await deleteClaimsBetween(ctx, share.ownerClerkUserId, clerkUserId);
+    await deleteClaimsBetween(ctx, share.ownerClerkUserId, share.managedListId, clerkUserId);
     await ctx.db.delete(shareId);
     if (!(await blockOf(ctx, clerkUserId, share.ownerClerkUserId))) {
       await ctx.db.insert("listBlocks", {
@@ -1216,10 +1637,10 @@ export const myBlocks = query({
 });
 
 /**
- * Quita un bloqueo. Si mientras tanto el dueño te volvió a compartir su lista,
- * la fila oculta se destapa y aparece como una lista recibida más, pendiente
- * de asociar. Sin correo: el aviso ya contó como enviado cuando te la
- * compartió.
+ * Quita un bloqueo. Si mientras tanto el dueño te volvió a compartir alguna de
+ * sus listas, las filas ocultas se destapan y aparecen como listas recibidas,
+ * pendientes de asociar. Sin correo: el aviso ya contó como enviado cuando te
+ * las compartió.
  */
 export const unblock = mutation({
   args: { blockId: v.id("listBlocks") },
@@ -1230,18 +1651,38 @@ export const unblock = mutation({
       throw new ConvexError("Bloqueo no encontrado.");
     }
     await ctx.db.delete(blockId);
-    const share = await findShare(ctx, block.ownerClerkUserId, clerkUserId);
-    if (share?.hidden === true) await ctx.db.patch(share._id, { hidden: undefined });
+    const shares = await ctx.db
+      .query("listShares")
+      .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
+      .take(MAX_SHARES_READ);
+    for (const s of shares) {
+      if (s.ownerClerkUserId === block.ownerClerkUserId && s.hidden === true) {
+        await ctx.db.patch(s._id, { hidden: undefined });
+      }
+    }
   },
 });
 
-/** «Lo regalo yo». La primera marca gana; la segunda recibe un error. */
+/**
+ * «Lo regalo yo». La primera marca gana; la segunda recibe un error. Vale para
+ * quien tiene permiso sobre la lista del elemento y para quien lleva esa
+ * lista, si es una lista a cargo. En su lista propia el dueño sigue sin poder
+ * marcar.
+ */
 export const claim = mutation({
   args: { itemId: v.id("listItems") },
   handler: async (ctx, { itemId }) => {
     const clerkUserId = await requireUser(ctx);
     const item = await ctx.db.get(itemId);
-    if (!item || !(await visibleShare(ctx, item.ownerClerkUserId, clerkUserId))) {
+    if (!item) throw new ConvexError("Elemento no encontrado.");
+    const laLleva =
+      item.managedListId !== undefined &&
+      item.ownerClerkUserId === clerkUserId &&
+      (await ctx.db.get(item.managedListId))?.managerClerkUserId === clerkUserId;
+    if (
+      !laLleva &&
+      !(await visibleShare(ctx, item.ownerClerkUserId, item.managedListId, clerkUserId))
+    ) {
       throw new ConvexError("Elemento no encontrado.");
     }
 
@@ -1255,6 +1696,7 @@ export const claim = mutation({
 
     return ctx.db.insert("listClaims", {
       ownerClerkUserId: item.ownerClerkUserId,
+      managedListId: item.managedListId,
       readerClerkUserId: clerkUserId,
       itemId,
       status: "marked",
@@ -1286,10 +1728,10 @@ export const acknowledgeEdit = mutation({
 /**
  * «Lo regalo yo · para…»: la fecha de tu ficha para la que guardas lo que has
  * marcado, o `null` para quitarla. Solo vale una fecha de la ficha a la que
- * asociaste esa lista y que todavía ves: tener acceso a otra ficha no basta
- * (docs/security.md §2, «misma persona, no solo acceso»). Solo en marcas que
- * aún no has dado por regaladas. Es un dato tuyo: no lo ve el dueño ni el
- * resto de lectores.
+ * asociaste esa lista y que todavía ves (en una lista que llevas, la ficha
+ * que le pusiste): tener acceso a otra ficha no basta (docs/security.md §2,
+ * «misma persona, no solo acceso»). Solo en marcas que aún no has dado por
+ * regaladas. Es un dato tuyo: no lo ve el dueño ni el resto de lectores.
  */
 export const setClaimOccasion = mutation({
   args: {
@@ -1308,8 +1750,16 @@ export const setClaimOccasion = mutation({
       }
       return;
     }
-    const share = await visibleShare(ctx, claim.ownerClerkUserId, clerkUserId);
-    const personId = share ? await validPersonId(ctx, share) : null;
+    let personId: Id<"people"> | null = null;
+    if (claim.ownerClerkUserId === clerkUserId) {
+      const managed = claim.managedListId ? await ctx.db.get(claim.managedListId) : null;
+      if (managed && managed.managerClerkUserId === clerkUserId) {
+        personId = await validManagedPersonId(ctx, managed);
+      }
+    } else {
+      const share = await visibleShare(ctx, claim.ownerClerkUserId, claim.managedListId, clerkUserId);
+      personId = share ? await validPersonId(ctx, share) : null;
+    }
     const date = await ctx.db.get(importantDateId);
     if (!personId || !date || date.personId !== personId) {
       throw new ConvexError("Esa fecha no es de su ficha.");
@@ -1342,9 +1792,10 @@ export const markGiven = mutation({
 
 /**
  * Cuántos elementos que nadie ha marcado tienen las listas que
- * `readerClerkUserId` asoció a `personId`. Lo usa el email de recordatorio
- * (decisión 18): solo la cifra, nunca los títulos. Una lista oculta (de un
- * dueño bloqueado) no cuenta; en la práctica no puede estar asociada.
+ * `readerClerkUserId` asoció a `personId`, cada una por su permiso. Lo usa el
+ * email de recordatorio (decisión 18): solo la cifra, nunca los títulos. Una
+ * lista oculta (de un dueño bloqueado) no cuenta; en la práctica no puede
+ * estar asociada.
  */
 export async function countUnclaimedForReader(
   ctx: QueryCtx,
@@ -1358,7 +1809,7 @@ export async function countUnclaimedForReader(
   let count = 0;
   for (const share of shares) {
     if (share.readerClerkUserId !== readerClerkUserId || share.hidden === true) continue;
-    for (const item of await ownerItems(ctx, share.ownerClerkUserId)) {
+    for (const item of await ownerItems(ctx, share.ownerClerkUserId, share.managedListId)) {
       if (!(await claimOf(ctx, item._id))) count++;
     }
   }
@@ -1368,9 +1819,10 @@ export async function countUnclaimedForReader(
 /**
  * Cuántas cosas de las listas que `readerClerkUserId` asoció a `personId` tiene
  * marcadas ese mismo lector y aún no ha dado por regalado. Es la segunda cifra
- * del email de recordatorio: cuenta solo sus propias marcas, nunca las de otros
- * lectores, y sin títulos. Las de elementos que el dueño quitó no cuentan: ya
- * no hay nada que regalarle de ahí. Una lista oculta tampoco cuenta.
+ * del email de recordatorio: cuenta solo sus propias marcas en cada una de
+ * esas listas, nunca las de otros lectores ni las de otras listas del mismo
+ * dueño, y sin títulos. Las de elementos que el dueño quitó no cuentan: ya no
+ * hay nada que regalarle de ahí. Una lista oculta tampoco cuenta.
  */
 export async function countMarkedByReader(
   ctx: QueryCtx,
@@ -1386,9 +1838,10 @@ export async function countMarkedByReader(
     if (share.readerClerkUserId !== readerClerkUserId || share.hidden === true) continue;
     const claims = await ctx.db
       .query("listClaims")
-      .withIndex("by_owner_and_reader", (q) =>
+      .withIndex("by_owner_list_reader", (q) =>
         q
           .eq("ownerClerkUserId", share.ownerClerkUserId)
+          .eq("managedListId", share.managedListId)
           .eq("readerClerkUserId", readerClerkUserId),
       )
       .collect();
@@ -1446,13 +1899,19 @@ export const sweepOrphanPhotos = internalMutation({
 
 /**
  * Todo lo de las listas al borrar la cuenta de `clerkUserId` (decisión 22).
- * Como dueño se va su lista entera, con sus fotos y su «nota para quien te
- * regala» (y su cumpleaños), sin transferir: una ficha puede seguir
- * teniendo sentido para otra persona, una lista habla de quien la escribió.
- * Como lector se van sus permisos (también los ocultos), sus marcas y sus
- * bloqueos. Los bloqueos que otros le pusieron como dueño se van también: ya
- * no queda nadie que pueda volver a compartir nada. Las entradas de historial
- * que creó a partir de la lista son de la ficha y se quedan.
+ * Como dueño se van todas sus listas, la propia y las que lleva para otros
+ * (`managedLists`), con sus elementos, sus fotos, su «nota para quien te
+ * regala» y su cumpleaños, sus accesos y todas sus marcas (también las
+ * copias de elementos quitados), sin transferir nada: una ficha puede seguir
+ * teniendo sentido para otra persona, una lista habla de para quién es y la
+ * lleva quien la escribió. Como lector se van sus permisos (también los
+ * ocultos), sus marcas y sus bloqueos. Los bloqueos que otros le pusieron
+ * como dueño se van también: ya no queda nadie que pueda volver a compartir
+ * nada. Las entradas de historial que creó a partir de una lista son de la
+ * ficha y se quedan.
+ *
+ * Aquí se recorre «todo lo del dueño» a propósito: por el prefijo del dueño
+ * en los índices de lista, sin fijar la lista.
  */
 export async function deleteListDataForUser(
   ctx: MutationCtx,
@@ -1460,33 +1919,41 @@ export async function deleteListDataForUser(
 ) {
   const ownShares = await ctx.db
     .query("listShares")
-    .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", clerkUserId))
+    .withIndex("by_owner_list_reader", (q) => q.eq("ownerClerkUserId", clerkUserId))
     .collect();
-  for (const s of ownShares) {
-    await deleteClaimsBetween(ctx, clerkUserId, s.readerClerkUserId);
-    await ctx.db.delete(s._id);
-  }
+  for (const s of ownShares) await ctx.db.delete(s._id);
+
+  // Todas las marcas en sus listas, de cualquier lector y de cualquiera de
+  // sus listas, con elemento o con copia.
+  const claimsOnOwnLists = await ctx.db
+    .query("listClaims")
+    .withIndex("by_owner_list_reader", (q) => q.eq("ownerClerkUserId", clerkUserId))
+    .collect();
+  for (const c of claimsOnOwnLists) await ctx.db.delete(c._id);
 
   const items = await ctx.db
     .query("listItems")
-    .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", clerkUserId))
+    .withIndex("by_owner_and_list", (q) => q.eq("ownerClerkUserId", clerkUserId))
     .collect();
   for (const item of items) {
-    const claims = await ctx.db
-      .query("listClaims")
-      .withIndex("by_item", (q) => q.eq("itemId", item._id))
-      .collect();
-    for (const c of claims) await ctx.db.delete(c._id);
     if (item.photoStorageId) await deleteFileIfExists(ctx, item.photoStorageId);
     await ctx.db.delete(item._id);
   }
 
-  // Su «nota para quien te regala» y su cumpleaños (como mucho una fila).
+  // La «nota para quien te regala» y el cumpleaños de cada lista.
   const about = await ctx.db
     .query("listAbout")
-    .withIndex("by_owner", (q) => q.eq("ownerClerkUserId", clerkUserId))
+    .withIndex("by_owner_and_list", (q) => q.eq("ownerClerkUserId", clerkUserId))
     .collect();
   for (const a of about) await ctx.db.delete(a._id);
+
+  // Las listas que llevaba para otros: sin transferir (decisión 6 del encargo
+  // de listas para niños).
+  const managed = await ctx.db
+    .query("managedLists")
+    .withIndex("by_manager", (q) => q.eq("managerClerkUserId", clerkUserId))
+    .collect();
+  for (const m of managed) await ctx.db.delete(m._id);
 
   // Con `collect` y no con `readerShares`: también las ocultas.
   const sharesAsReader = await ctx.db

@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { Id } from "./_generated/dataModel";
-import { encodeCssUrl, listLineHtml } from "./emails";
+import { buildListInviteEmail, encodeCssUrl, listLineHtml } from "./emails";
 
 describe("encodeCssUrl", () => {
   it("deja intacta la URL que genera el picker", () => {
@@ -101,5 +101,39 @@ describe("listLineHtml", () => {
     ]);
     expect(enlaces[0][1]).toBe(enlaces[1][1]);
     expect(enlaces[0][2]).toBe(enlaces[1][2]);
+  });
+});
+
+// El aviso de una lista que alguien lleva para otra persona, como un hijo
+// (docs/encargo-listas-ninos.md, decisión 7): no dice para quién es. El
+// nombre de un niño no pasa por Resend.
+describe("buildListInviteEmail de una lista a cargo", () => {
+  it("dice «una lista en PickPal», sin para quién ni nada de la lista", () => {
+    const { subject, html } = buildListInviteEmail({
+      ownerName: "Marta",
+      ownerEmail: "marta@example.com",
+      managed: true,
+    });
+    expect(subject).toBe("Marta te ha compartido una lista en PickPal");
+    expect(html).toContain("Marta te ha compartido una lista en PickPal");
+    expect(html).not.toContain("su lista");
+    // No promete lo que en estas listas no se cumple: quien la lleva ve lo cogido.
+    expect(html).not.toContain("no verá lo que marcas");
+    expect(html).toContain("marta@example.com");
+  });
+
+  it("sin `managed`, el aviso de siempre", () => {
+    expect(buildListInviteEmail({ ownerName: "Marta" }).subject).toBe(
+      "PickPal · Marta te ha compartido su lista",
+    );
+  });
+
+  it("escapa el nombre y no deja saltos de línea en el asunto", () => {
+    const { subject, html } = buildListInviteEmail({
+      ownerName: "<b>Marta</b>\r\nBcc: x@y.z",
+      managed: true,
+    });
+    expect(subject).not.toMatch(/[\r\n]/);
+    expect(html).not.toContain("<b>Marta</b>");
   });
 });

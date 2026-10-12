@@ -70,7 +70,7 @@ export function PersonListSection({
           list={list}
           // Con una sola lista, el nombre de la ficha, que es como la conoces
           // tú. Con dos (raro), el de cada dueña, para distinguirlas.
-          name={lists.length > 1 ? (list.ownerName ?? list.ownerEmail ?? personName) : personName}
+          name={lists.length > 1 ? (list.forName ?? list.ownerName ?? list.ownerEmail ?? personName) : personName}
           personId={personId}
           people={people ?? []}
           dates={dates}
@@ -302,7 +302,9 @@ function SharedListCard({
             La lista de {name}
           </h2>
           <p className="text-xs text-muted-foreground">
-            Lo que {name} ha apuntado que le haría ilusión. No ve lo que marcas.
+            {list.forName
+              ? `La lleva ${list.ownerName ?? list.ownerEmail ?? "otra persona"}. Ve qué está cogido, no quién lo regala.`
+              : `Lo que ${name} ha apuntado que le haría ilusión. No ve lo que marcas.`}
           </p>
         </div>
 
