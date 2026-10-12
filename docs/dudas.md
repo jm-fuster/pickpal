@@ -58,8 +58,10 @@ _Ninguna ahora mismo._
     cifras de sus listas a cargo, porque no es lector de ellas; el correo de
     invitación de una lista a cargo es «{Nombre} te ha compartido una lista en
     PickPal», sin el nombre de la persona.
-  - **Pendiente de Jorge**: releer la sección de edad de los términos de la
-    Gemini API (decisión 8) y anotarlo en `privacy.md` §4.1.
+  - **Decisión 8, cerrada el 12-oct-2026**: releída la sección de edad de los
+    términos de la Gemini API; no pide cambios en la edad mínima ni en el
+    generador, siempre que PickPal no se presente como una app para niños
+    (`privacy.md` §4.1).
 
 - [x] **«Mi lista», fase 3.** Construida el 12-oct-2026 sobre el anexo de fase 3
   de [`docs/encargo-lista.md`](encargo-lista.md). Lo que se construyó de verdad:
