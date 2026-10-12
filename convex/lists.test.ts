@@ -2999,6 +2999,57 @@ describe("listas a cargo: correos", () => {
   });
 });
 
+describe("listas a cargo: el recordatorio de quien la lleva", () => {
+  test("suma las cifras de la lista que asoció a su ficha, y solo las suyas", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-04-25T08:00:00Z"));
+    const t = convexTest(schema, modules);
+    const { marta, abuela, muneca, puzle, lucia } = await familia(t);
+    const fichaLucia = await marta.mutation(api.people.create, { name: "Lucía", relationship: "family", interests: [] });
+    await marta.mutation(api.importantDates.create, {
+      personId: fichaLucia, label: "Cumpleaños", month: 5, day: 2, recurring: true,
+    });
+    await marta.mutation(api.settings.setMine, { emailNotificationsEnabled: true, emailNotifyDaysBefore: [7] });
+    const evento = async () => {
+      const todos = await t.query(internal.notifications.findEventsNeedingEmail, {});
+      return todos.find((u) => u.clerkUserId === MARTA.subject)?.events[0];
+    };
+
+    // Sin asociar la lista a la ficha, no hay cifras.
+    expect(await evento()).not.toHaveProperty("listUnclaimed");
+    await marta.mutation(api.lists.linkManagedListPerson, { listId: lucia, personId: fichaLucia });
+    expect(await evento()).toMatchObject({ personName: "Lucía", listUnclaimed: 2 });
+    expect(await evento()).not.toHaveProperty("listMine");
+
+    // Lo que marca un lector (la abuela) ya no está libre, pero no es suyo.
+    await abuela.mutation(api.lists.claim, { itemId: muneca });
+    expect(await evento()).toMatchObject({ listUnclaimed: 1 });
+    expect(await evento()).not.toHaveProperty("listMine");
+
+    // Lo que marca ella sí cuenta como suyo.
+    await marta.mutation(api.lists.claim, { itemId: puzle });
+    expect(await evento()).toMatchObject({ listMine: 1 });
+    expect(await evento()).not.toHaveProperty("listUnclaimed");
+    expect(JSON.stringify(await evento())).not.toContain("Puzle");
+  });
+
+  test("la lista propia de Marta y la de Pablo no suman a la ficha de Lucía", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-04-25T08:00:00Z"));
+    const t = convexTest(schema, modules);
+    const { marta, lucia } = await familia(t);
+    const fichaLucia = await marta.mutation(api.people.create, { name: "Lucía", relationship: "family", interests: [] });
+    await marta.mutation(api.importantDates.create, {
+      personId: fichaLucia, label: "Cumpleaños", month: 5, day: 2, recurring: true,
+    });
+    await marta.mutation(api.settings.setMine, { emailNotificationsEnabled: true, emailNotifyDaysBefore: [7] });
+    await marta.mutation(api.lists.linkManagedListPerson, { listId: lucia, personId: fichaLucia });
+    const todos = await t.query(internal.notifications.findEventsNeedingEmail, {});
+    const evento = todos.find((u) => u.clerkUserId === MARTA.subject)!.events[0];
+    expect(evento.listUnclaimed).toBe(2);
+  });
+});
+
 describe("listas a cargo: bloquear", () => {
   test("bloquear desde la de Lucía vale para las listas que Marta comparta después", async () => {
     vi.useFakeTimers();

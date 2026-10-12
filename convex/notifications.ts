@@ -1,7 +1,12 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
-import { countMarkedByReader, countUnclaimedForReader } from "./lists";
+import {
+  countMarkedByManager,
+  countMarkedByReader,
+  countUnclaimedForManager,
+  countUnclaimedForReader,
+} from "./lists";
 
 /**
  * Días enteros entre hoy (UTC, hora 0) y la fecha objetivo (UTC, hora 0).
@@ -149,19 +154,15 @@ export const findEventsNeedingEmail = internalQuery({
           // Solo las cifras, y solo de las listas que este usuario asoció a la
           // persona, cada una por su permiso: si la abuela guarda en la ficha
           // de Lucía la lista de Lucía, cuenta esa y no la propia de Marta.
-          // El correo nunca lleva títulos de la lista de nadie. Quien lleva
-          // una lista a cargo no tiene permiso sobre ella, así que su tarjeta
-          // no lleva cifras de esa lista.
-          const listUnclaimed = await countUnclaimedForReader(
-            ctx,
-            person._id,
-            s.clerkUserId,
-          );
-          const listMine = await countMarkedByReader(
-            ctx,
-            person._id,
-            s.clerkUserId,
-          );
+          // Quien lleva una lista a cargo suma además la suya, la que asoció a
+          // esa ficha (`managedLists.personId`). El correo nunca lleva títulos
+          // de la lista de nadie.
+          const listUnclaimed =
+            (await countUnclaimedForReader(ctx, person._id, s.clerkUserId)) +
+            (await countUnclaimedForManager(ctx, person._id, s.clerkUserId));
+          const listMine =
+            (await countMarkedByReader(ctx, person._id, s.clerkUserId)) +
+            (await countMarkedByManager(ctx, person._id, s.clerkUserId));
 
           events.push({
             dateId: date._id,

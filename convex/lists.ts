@@ -1853,6 +1853,70 @@ export async function countMarkedByReader(
 }
 
 /**
+ * Las listas a cargo que `managerClerkUserId` asoció a su ficha `personId`
+ * (`managedLists.personId`). Quien las lleva no es lector de ellas, así que
+ * no sale en `listShares`: sus cifras del recordatorio se cuentan aparte.
+ */
+async function managedListsOnPerson(
+  ctx: QueryCtx,
+  personId: Id<"people">,
+  managerClerkUserId: string,
+) {
+  const lists = await ctx.db
+    .query("managedLists")
+    .withIndex("by_manager", (q) => q.eq("managerClerkUserId", managerClerkUserId))
+    .collect();
+  return lists.filter((l) => l.personId === personId);
+}
+
+/**
+ * Lo mismo que `countUnclaimedForReader`, para quien lleva la lista: cuántas
+ * cosas de las listas a cargo que tiene asociadas a `personId` no tienen
+ * ninguna marca, ni la suya ni la de un lector. Solo la cifra, sin títulos.
+ */
+export async function countUnclaimedForManager(
+  ctx: QueryCtx,
+  personId: Id<"people">,
+  managerClerkUserId: string,
+): Promise<number> {
+  let count = 0;
+  for (const list of await managedListsOnPerson(ctx, personId, managerClerkUserId)) {
+    for (const item of await ownerItems(ctx, managerClerkUserId, list._id)) {
+      if (!(await claimOf(ctx, item._id))) count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Lo mismo que `countMarkedByReader`, para quien lleva la lista: cuántas cosas
+ * de esas listas tiene marcadas ella misma con «Lo regalo yo» y aún no ha dado
+ * por regaladas. Las de los lectores no cuentan: no son suyas.
+ */
+export async function countMarkedByManager(
+  ctx: QueryCtx,
+  personId: Id<"people">,
+  managerClerkUserId: string,
+): Promise<number> {
+  let count = 0;
+  for (const list of await managedListsOnPerson(ctx, personId, managerClerkUserId)) {
+    const claims = await ctx.db
+      .query("listClaims")
+      .withIndex("by_owner_list_reader", (q) =>
+        q
+          .eq("ownerClerkUserId", managerClerkUserId)
+          .eq("managedListId", list._id)
+          .eq("readerClerkUserId", managerClerkUserId),
+      )
+      .collect();
+    for (const c of claims) {
+      if (c.itemId !== undefined && c.status === "marked") count++;
+    }
+  }
+  return count;
+}
+
+/**
  * Fotos subidas que no son de ningún elemento. Pasa cuando `setItemPhoto`
  * rechaza el archivo (el error deshace la mutation entera, también un borrado
  * que intentara), cuando la página sube la foto y se cierra antes de
