@@ -50,6 +50,12 @@ compra.
    de una de las 11 tiendas de `src/lib/stores.ts`, se muestra su logo; si no, el
    dominio en texto. El dominio se ve siempre, para saber adónde lleva el enlace
    antes de abrirlo.
+
+   **Añadido el 13-oct-2026 («Otras tiendas»):** quien lee puede desplegar, en lo
+   que aún puede regalar, búsquedas del título en sus tiendas favoritas y en
+   idealo.es para comparar precios. Siguen siendo URLs deterministas que abre el
+   navegador de quien lee: el servidor sigue sin abrir nada y PickPal no mira
+   precios. Medidas en `docs/design-system.md`, «Sección de la ficha».
 4. **Se comparte con hasta 20 personas que ya tengan cuenta.** La invitación es por
    email resuelto contra Clerk, igual que en las fichas. No hay invitaciones a gente
    sin cuenta.

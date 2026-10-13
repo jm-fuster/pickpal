@@ -139,6 +139,27 @@ export function generateStoreSearchUrl(
   }
 }
 
+/**
+ * Búsqueda en idealo.es, el comparador de «Comparar precios» en la lista de
+ * otra persona. Como las tiendas, es una URL determinista: PickPal no consulta
+ * precios ni sabe cuál es más barato; ordenar las tiendas lo hace idealo.
+ */
+export function generateCompareUrl(query: string): string {
+  return `https://www.idealo.es/resultados.html?q=${encodeURIComponent(query)}`;
+}
+
+/**
+ * Tiendas de «Otras tiendas» para un elemento de una lista: las favoritas de
+ * quien lee, menos la del propio enlace del elemento, que ya está a la vista.
+ */
+export function otherStoresFor(
+  favoriteStores: readonly StoreId[],
+  itemUrl: string | null | undefined,
+): StoreId[] {
+  const own = itemUrl ? storeIdForUrl(itemUrl) : null;
+  return favoriteStores.filter((s) => s !== own);
+}
+
 export function isStoreId(s: string): s is StoreId {
   return (ALL_STORES as readonly string[]).includes(s);
 }

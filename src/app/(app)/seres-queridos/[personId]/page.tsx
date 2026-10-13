@@ -516,6 +516,7 @@ function PersonDetailContent({
         personName={headerName}
         dates={dates}
         personBudget={{ budgetMin: person.budgetMin, budgetMax: person.budgetMax }}
+        favoriteStores={favoriteStores}
       />
 
       {/* ── Saved ideas card, agrupada por ocasión (docs/encargo-ocasiones.md) ── */}

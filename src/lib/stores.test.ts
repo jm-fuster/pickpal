@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_STORES,
+  generateCompareUrl,
   generateStoreSearchUrl,
   isStoreId,
+  otherStoresFor,
   padPriceRange,
   pickEffectiveStores,
   sanitizeFavoriteStores,
   storeIdForUrl,
+  type StoreId,
 } from "./stores";
 
 describe("generateStoreSearchUrl", () => {
@@ -252,6 +255,27 @@ describe("pickEffectiveStores", () => {
     // Preserva el orden de favoriteStores tal como llega; la página llama a
     // sanitizeFavoriteStores antes para asegurar orden canónico de STORE_IDS.
     expect(result.stores).toEqual(["amazon", "miravia"]);
+  });
+});
+
+describe("generateCompareUrl", () => {
+  it("busca el título en idealo.es, codificado", () => {
+    expect(generateCompareUrl("Vela de cera & higo")).toBe(
+      "https://www.idealo.es/resultados.html?q=Vela%20de%20cera%20%26%20higo",
+    );
+  });
+});
+
+describe("otherStoresFor", () => {
+  const favs: StoreId[] = ["amazon", "elcorteingles", "ikea"];
+
+  it("quita la tienda del enlace del elemento", () => {
+    expect(otherStoresFor(favs, "https://www.amazon.es/dp/B0X")).toEqual(["elcorteingles", "ikea"]);
+  });
+
+  it("deja todas si el enlace no es de una tienda conocida o no hay enlace", () => {
+    expect(otherStoresFor(favs, "https://www.etsy.com/listing/1")).toEqual(favs);
+    expect(otherStoresFor(favs, null)).toEqual(favs);
   });
 });
 

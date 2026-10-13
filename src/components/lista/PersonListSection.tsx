@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
-import { BookHeart, Check, Gift, X } from "lucide-react";
+import { BookHeart, Check, ChevronDown, ChevronUp, ExternalLink, Gift, X } from "lucide-react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,6 +28,14 @@ import { closestOccasionLabel, formatDayMonth, freeEventLabel } from "@/lib/date
 import { userErrorMessage } from "@/lib/errors";
 import { budgetTarget, fitsBudget, formatApproxPrice } from "@/lib/price";
 import { MAX_NEW_BADGES } from "@/lib/listSeen";
+import {
+  generateCompareUrl,
+  generateStoreSearchUrl,
+  otherStoresFor,
+  STORE_ICONS,
+  STORE_LABELS,
+  type StoreId,
+} from "@/lib/stores";
 import { cn } from "@/lib/utils";
 import { useNewSince } from "@/components/lista/useNewSince";
 
@@ -49,11 +57,14 @@ export function PersonListSection({
   personName,
   dates,
   personBudget = {},
+  favoriteStores,
 }: {
   personId: Id<"people">;
   personName: string;
   dates: DateLike[];
   personBudget?: Budget;
+  /** Las tiendas de quien lee, para «Otras tiendas». */
+  favoriteStores: StoreId[];
 }) {
   const { isLoaded, isSignedIn } = useAuth();
   const ready = isLoaded && isSignedIn;
@@ -75,6 +86,7 @@ export function PersonListSection({
           people={people ?? []}
           dates={dates}
           personBudget={personBudget}
+          favoriteStores={favoriteStores}
         />
       ))}
     </div>
@@ -88,6 +100,7 @@ function SharedListCard({
   people,
   dates,
   personBudget,
+  favoriteStores,
 }: {
   list: SharedList;
   name: string;
@@ -95,6 +108,7 @@ function SharedListCard({
   people: Array<{ _id: Id<"people">; name: string }>;
   dates: DateLike[];
   personBudget: Budget;
+  favoriteStores: StoreId[];
 }) {
   const claim = useMutation(api.lists.claim);
   const unclaim = useMutation(api.lists.unclaim);
@@ -111,6 +125,15 @@ function SharedListCard({
   const [leaving, setLeaving] = useState(false);
   const [block, setBlock] = useState(false);
   const [addingBirthday, setAddingBirthday] = useState(false);
+  // Filas con «Otras tiendas» desplegado. Solo en este navegador y esta visita.
+  const [searching, setSearching] = useState<ReadonlySet<string>>(new Set());
+  const toggleSearch = (id: string) =>
+    setSearching((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const run = async (action: () => Promise<unknown>, fallback: string) => {
     try {
@@ -193,108 +216,172 @@ function SharedListCard({
     ? list.items.filter((i) => i.priceCents !== null && fitsBudget(i.priceCents, target.budget)).length
     : 0;
 
-  const renderItem = (item: SharedItem) => (
-    <li
-      key={item._id}
-      className="rounded-lg border border-border/60 bg-background/60 p-3 text-sm"
-    >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 gap-3">
-          {item.photoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={item.photoUrl}
-              alt=""
-              className="size-14 shrink-0 rounded-md border border-border/60 object-cover"
-            />
-          )}
-          <div className="min-w-0 space-y-1">
-            <p className={cn("font-medium leading-snug", item.state === "taken" && "text-muted-foreground")}>
-              {item.title}
-              {badgeNew && fresh.has(item._id) && (
-                <Badge variant="outline" className="ml-2 align-middle text-muted-foreground">
-                  Nuevo
-                </Badge>
-              )}
-            </p>
-            {(item.priceCents !== null || item.url) && (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                {item.priceCents !== null && (
-                  <span className="text-xs text-muted-foreground">{formatApproxPrice(item.priceCents)}</span>
+  const renderItem = (item: SharedItem) => {
+    // «Otras tiendas» solo en lo que aún puedes regalar: lo libre y lo tuyo.
+    const canSearch = item.state === "free" || item.state === "mine";
+    const searchOpen = canSearch && searching.has(item._id);
+    const searchId = `otras-tiendas-${item._id}`;
+    const stores = searchOpen ? otherStoresFor(favoriteStores, item.url) : [];
+    return (
+      <li
+        key={item._id}
+        className="rounded-lg border border-border/60 bg-background/60 p-4 text-sm"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 gap-3">
+            {item.photoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.photoUrl}
+                alt=""
+                className="size-14 shrink-0 rounded-md border border-border/60 object-cover"
+              />
+            )}
+            <div className="min-w-0 space-y-1.5">
+              <p className={cn("font-medium leading-snug", item.state === "taken" && "text-muted-foreground")}>
+                {item.title}
+                {badgeNew && fresh.has(item._id) && (
+                  <Badge variant="outline" className="ml-2 align-middle text-muted-foreground">
+                    Nuevo
+                  </Badge>
                 )}
-                {item.url && <ListItemLink url={item.url} />}
-              </div>
-            )}
-            {item.note && (
-              <p className="whitespace-pre-line text-xs text-muted-foreground">{item.note}</p>
-            )}
-  </div>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {item.state === "free" && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => run(() => claim({ itemId: item._id }), "No se pudo marcar")}
-            >
-              <Gift aria-hidden />
-              Lo regalo yo
-            </Button>
-          )}
-          {item.state === "mine" && item.claimId && (
-            <>
-              <Badge variant="secondary">
-                {item.occasionLabel ? `Lo regalas tú · para ${item.occasionLabel}` : "Lo regalas tú"}
-              </Badge>
+              </p>
+              {(item.priceCents !== null || item.url) && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {item.priceCents !== null && (
+                    <span className="text-xs text-muted-foreground">{formatApproxPrice(item.priceCents)}</span>
+                  )}
+                  {item.url && <ListItemLink url={item.url} />}
+                </div>
+              )}
+              {item.note && (
+                <p className="whitespace-pre-line text-xs text-muted-foreground">{item.note}</p>
+              )}
+    </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {canSearch && (
+              // Detrás de la acción principal en móvil; a su izquierda en escritorio.
               <Button
                 size="sm"
-                className="hover:bg-primary/80"
-                onClick={() =>
-                  setGiving({ claimId: item.claimId!, title: item.title, occasionLabel: item.occasionLabel })
-                }
+                variant="ghost"
+                className="order-last text-muted-foreground sm:order-first"
+                aria-expanded={searchOpen}
+                aria-controls={searchId}
+                onClick={() => toggleSearch(item._id)}
               >
-                Ya se lo he regalado
+                Otras tiendas
+                {searchOpen ? <ChevronUp aria-hidden /> : <ChevronDown aria-hidden />}
               </Button>
-            </>
-          )}
-          {item.state === "given" && (
-            <Badge variant="outline" className="gap-1 text-muted-foreground">
-              <Check className="size-3" aria-hidden />
-              Regalado
-            </Badge>
-          )}
-          {(item.state === "mine" || item.state === "given") && item.claimId && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Quitar tu marca de ${item.title}`}
-              title="Quitar tu marca"
-              onClick={() => run(() => unclaim({ claimId: item.claimId! }), "No se pudo quitar la marca")}
-            >
-              <X className="size-3.5" aria-hidden />
-            </Button>
-          )}
-          {item.state === "taken" && (
-            <span className="text-xs text-muted-foreground">Ya lo regala otra persona</span>
-          )}
+            )}
+            {item.state === "free" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => run(() => claim({ itemId: item._id }), "No se pudo marcar")}
+              >
+                <Gift aria-hidden />
+                Lo regalo yo
+              </Button>
+            )}
+            {item.state === "mine" && item.claimId && (
+              <>
+                <Badge variant="secondary">
+                  {item.occasionLabel ? `Lo regalas tú · para ${item.occasionLabel}` : "Lo regalas tú"}
+                </Badge>
+                <Button
+                  size="sm"
+                  className="hover:bg-primary/80"
+                  onClick={() =>
+                    setGiving({ claimId: item.claimId!, title: item.title, occasionLabel: item.occasionLabel })
+                  }
+                >
+                  Ya se lo he regalado
+                </Button>
+              </>
+            )}
+            {item.state === "given" && (
+              <Badge variant="outline" className="gap-1 text-muted-foreground">
+                <Check className="size-3" aria-hidden />
+                Regalado
+              </Badge>
+            )}
+            {(item.state === "mine" || item.state === "given") && item.claimId && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Quitar tu marca de ${item.title}`}
+                title="Quitar tu marca"
+                onClick={() => run(() => unclaim({ claimId: item.claimId! }), "No se pudo quitar la marca")}
+              >
+                <X className="size-3.5" aria-hidden />
+              </Button>
+            )}
+            {item.state === "taken" && (
+              <span className="text-xs text-muted-foreground">Ya lo regala otra persona</span>
+            )}
+          </div>
         </div>
-      </div>
-      {item.editedSinceMark && item.claimId && (
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md bg-secondary/10 px-2.5 py-1.5 text-xs">
-          <span>{name} lo ha cambiado después de que lo marcaras.</span>
-          <Button
-            size="xs"
-            variant="outline"
-            onClick={() =>
-              run(() => acknowledgeEdit({ claimId: item.claimId! }), "No se pudo guardar")
-            }
+        {searchOpen && (
+          // PickPal no mira precios: son búsquedas con el título, en las tiendas
+          // de quien lee, y en idealo, que es quien ordena por precio.
+          <div
+            id={searchId}
+            className="mt-4 flex flex-col gap-3 border-t border-border/50 pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
           >
-            Entendido
-          </Button>
-        </div>
-      )}
-    </li>
-  );
+            {stores.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">Buscar en</span>
+                {stores.map((store) => (
+                  <a
+                    key={store}
+                    href={generateStoreSearchUrl(store, item.title)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Buscar ${item.title} en ${STORE_LABELS[store]} (abre en una pestaña nueva)`}
+                    className={cn(buttonVariants({ size: "xs", variant: "outline" }), "px-2.5")}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={STORE_ICONS[store]}
+                      alt=""
+                      aria-hidden
+                      className="size-3.5 shrink-0 rounded-sm bg-white object-contain p-px"
+                    />
+                    {STORE_LABELS[store]}
+                  </a>
+                ))}
+              </div>
+            )}
+            <a
+              href={generateCompareUrl(item.title)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Comparar precios de ${item.title} en idealo.es (abre en una pestaña nueva)`}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            >
+              Comparar precios en idealo.es
+              <ExternalLink className="size-3 shrink-0" aria-hidden />
+            </a>
+          </div>
+        )}
+        {item.editedSinceMark && item.claimId && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-secondary/10 px-2.5 py-1.5 text-xs">
+            <span>{name} lo ha cambiado después de que lo marcaras.</span>
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() =>
+                run(() => acknowledgeEdit({ claimId: item.claimId! }), "No se pudo guardar")
+              }
+            >
+              Entendido
+            </Button>
+          </div>
+        )}
+      </li>
+    );
+  };
 
   return (
     <Card className="border-border/60 shadow-sm">
@@ -351,29 +438,29 @@ function SharedListCard({
               <h3 id={`${groupId}-mas-ilusion`} className="font-sans text-sm font-medium">
                 Lo que más ilusión le haría
               </h3>
-              <ul className="space-y-2">{favorites.map(renderItem)}</ul>
+              <ul className="space-y-3">{favorites.map(renderItem)}</ul>
             </section>
             {rest.length > 0 && (
               <section aria-labelledby={`${groupId}-resto`} className="space-y-2">
                 <h3 id={`${groupId}-resto`} className="font-sans text-sm font-medium text-muted-foreground">
                   El resto
                 </h3>
-                <ul className="space-y-2">{rest.map(renderItem)}</ul>
+                <ul className="space-y-3">{rest.map(renderItem)}</ul>
               </section>
             )}
           </div>
         ) : (
-          <ul className="space-y-2">{list.items.map(renderItem)}</ul>
+          <ul className="space-y-3">{list.items.map(renderItem)}</ul>
         )}
 
         {list.removed.length > 0 && (
-          <ul className="space-y-2" aria-label="Marcados que ya no están en su lista">
+          <ul className="space-y-3" aria-label="Marcados que ya no están en su lista">
             {list.removed.map((r) => (
               <li
                 key={r.claimId}
-                className="flex flex-col gap-2 rounded-lg border border-dashed border-border/70 p-3 text-sm sm:flex-row sm:items-start sm:justify-between"
+                className="flex flex-col gap-3 rounded-lg border border-dashed border-border/70 p-4 text-sm sm:flex-row sm:items-start sm:justify-between"
               >
-                <div className="min-w-0 space-y-1">
+                <div className="min-w-0 space-y-1.5">
                   <p className="font-medium leading-snug text-muted-foreground">{r.title}</p>
                   {r.url && <ListItemLink url={r.url} />}
                 </div>
