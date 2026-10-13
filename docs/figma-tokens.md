@@ -83,7 +83,7 @@ La guía canónica de abajo describe un sistema de referencia con paletas Radix.
 
 ### El único sitio donde el archivo no sigue al código, a propósito
 
-La regla de desempate manda seguir al código, y la API de los componentes lo hace al pie de la letra. Comprobado el 18-sep-2026 contra `src/components/ui/`: los ejes `Size` de Button (`Sm · Default · Lg`) y Button Icon (`Icon · Icon-Sm`) espejan los valores de `buttonVariants`, y los de Switch, Avatar y Select Trigger coinciden **exactamente** con el `size` de su componente (`sm | default`, `default | sm | lg`, `sm | default`).
+La regla de desempate manda seguir al código, y la API de los componentes lo hace al pie de la letra. Comprobado el 18-sep-2026 contra `src/components/ui/`: los ejes `Size` de Button (`Xs · Sm · Default · Lg`, con `Xs` desde el 13-oct-2026) y Button Icon (`Icon · Icon-Sm`) espejan los valores de `buttonVariants`, y los de Switch, Avatar y Select Trigger coinciden **exactamente** con el `size` de su componente (`sm | default`, `default | sm | lg`, `sm | default`).
 
 **La única excepción es `Type=Primary`**, en Button y en Badge, que el código llama `variant: "default"` en los dos. Se mantiene `Primary` por una razón concreta: `Default` ya ocupa otros dos ejes del mismo componente —`Size=Default` y `State=Default`—, así que adoptarlo dejaría a Button con **tres ejes llamados igual** en el mismo panel de variantes. `default` es término tóxico justo por esto: significa a la vez «en reposo», «paso por omisión de una escala» y «variante base». `Primary` no es ambiguo y los dos componentes usan el mismo vocabulario.
 

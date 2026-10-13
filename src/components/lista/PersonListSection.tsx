@@ -339,7 +339,7 @@ function SharedListCard({
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Buscar ${item.title} en ${STORE_LABELS[store]} (abre en una pestaña nueva)`}
-                    className={cn(buttonVariants({ size: "xs", variant: "outline" }), "px-2.5")}
+                    className={cn(buttonVariants({ size: "xs", variant: "outline" }))}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
