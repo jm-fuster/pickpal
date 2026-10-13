@@ -303,7 +303,7 @@ export function OwnerListView({
       ) : (
         <div
           className={cn(
-            "flex flex-col gap-2 rounded-lg border border-border/60 bg-background/60 p-3 text-sm transition-colors duration-700",
+            "flex flex-col gap-3 rounded-lg border border-border/60 bg-background/60 p-4 text-sm transition-colors duration-700",
             highlightId === item._id && "bg-secondary/10",
           )}
         >
@@ -316,7 +316,7 @@ export function OwnerListView({
                 className="size-14 shrink-0 rounded-md border border-border/60 object-cover"
               />
             )}
-            <div className="min-w-0 flex-1 space-y-1">
+            <div className="min-w-0 flex-1 space-y-1.5">
               <p className="font-medium leading-snug">{item.title}</p>
               {uploadingId === item._id && (
                 <p className="text-xs text-muted-foreground" role="status">Subiendo la foto…</p>
@@ -460,19 +460,19 @@ export function OwnerListView({
                   <h3 id={`${t.idPrefix}-mas-ilusion`} className="font-sans text-sm font-medium">
                     {t.top}
                   </h3>
-                  <ul className="space-y-2">{favorites.map(renderRow)}</ul>
+                  <ul className="space-y-3">{favorites.map(renderRow)}</ul>
                 </section>
                 {rest.length > 0 && (
                   <section aria-labelledby={`${t.idPrefix}-resto`} className="space-y-2">
                     <h3 id={`${t.idPrefix}-resto`} className="font-sans text-sm font-medium text-muted-foreground">
                       El resto
                     </h3>
-                    <ul className="space-y-2">{rest.map(renderRow)}</ul>
+                    <ul className="space-y-3">{rest.map(renderRow)}</ul>
                   </section>
                 )}
               </div>
             ) : (
-              visible.length > 0 && <ul className="space-y-2">{visible.map(renderRow)}</ul>
+              visible.length > 0 && <ul className="space-y-3">{visible.map(renderRow)}</ul>
             )}
           </CardContent>
         </Card>
