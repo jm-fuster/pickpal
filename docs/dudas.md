@@ -279,7 +279,7 @@ _Ninguna ahora mismo._
     Proponer «Pareja» habría acertado casi siempre, pero una madre guardada
     como pareja es peor que un clic más.
   - **Confirmación al quitar un acceso y al dejar una lista**, porque no se
-    pueden deshacer sin una invitación nueva. «No me interesa» no la pide: la
+    pueden deshacer sin una invitación nueva. «Descartar» no la pide: la
     lista ni siquiera se ha llegado a ver.
   - **La sección de la ficha se llama como la ficha** («La lista de Laura» con el
     nombre que tú le pusiste). Si dos listas se guardan en la misma ficha, cada

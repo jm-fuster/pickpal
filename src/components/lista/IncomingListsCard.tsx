@@ -45,7 +45,11 @@ export function IncomingListsCard({ className }: { className?: string }) {
     });
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <section aria-labelledby="listas-recibidas" className={cn("space-y-3", className)}>
+      {/* El mismo encabezado que las fechas: es su propia sección, no la primera fecha. */}
+      <h2 id="listas-recibidas" className="text-base font-semibold">
+        Te han compartido
+      </h2>
       {visible.map((share) => (
         <IncomingListCard
           key={share.shareId}
@@ -60,6 +64,6 @@ export function IncomingListsCard({ className }: { className?: string }) {
           onDoneAskingBack={() => stopAsking(share.shareId)}
         />
       ))}
-    </div>
+    </section>
   );
 }

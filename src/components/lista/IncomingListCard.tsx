@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { BookHeart, Plus } from "lucide-react";
+import { BookHeart, Ellipsis, Plus } from "lucide-react";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,11 +21,40 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+} from "@/components/ui/select";
 import { RELATIONSHIPS } from "@/lib/options";
 import { userErrorMessage } from "@/lib/errors";
+import { suggestedPerson } from "@/lib/suggestedPerson";
 
 export type Incoming = FunctionReturnType<typeof api.lists.sharedWithMe>[number];
+
+type Person = { _id: Id<"people">; name: string; avatarUrl?: string };
+
+// Valor del selector que no es una ficha: abre el alta en el sitio.
+const CREATE = "__crear";
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+
+function PersonAvatar({ person }: { person: Person }) {
+  return (
+    <Avatar size="sm">
+      {person.avatarUrl ? <AvatarImage src={person.avatarUrl} alt="" /> : null}
+      <AvatarFallback>{initials(person.name)}</AvatarFallback>
+    </Avatar>
+  );
+}
 
 // Tarjeta de una lista recibida. Vive en su propio módulo para cargarla bajo
 // demanda desde IncomingListsCard: casi nunca hay listas pendientes, y su
@@ -37,7 +67,7 @@ export function IncomingListCard({
   onDoneAskingBack,
 }: {
   share: Incoming;
-  people: Array<{ _id: Id<"people">; name: string }>;
+  people: Person[];
   askingBack: boolean;
   onAssociated: () => void;
   onDoneAskingBack: () => void;
@@ -57,10 +87,19 @@ export function IncomingListCard({
   const [newRelationship, setNewRelationship] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmBlock, setConfirmBlock] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // El nombre lo elige cada usuario en su cuenta; el email está verificado.
   // Por eso, si hay nombre, el email se enseña debajo.
   const name = share.ownerName ?? share.ownerEmail ?? "Alguien";
+  const createLabel = forName
+    ? `Crear ficha de ${forName}`
+    : share.ownerName
+      ? `Crear ficha de ${share.ownerName}`
+      : "Crear ficha nueva";
+  const suggested = suggestedPerson(people, forName ?? share.ownerName);
+  const others = people.filter((p) => p._id !== suggested?._id);
+  const chosenPerson = people.find((p) => p._id === chosen);
 
   const withBusy = async (action: () => Promise<void>, fallback: string) => {
     setBusy(true);
@@ -116,7 +155,9 @@ export function IncomingListCard({
     }, "No se pudo compartir tu lista");
 
   return (
-    <Card className="border-border/60 shadow-sm">
+    // Tinte terracota y borde a juego: es un aviso, no una fecha más de la
+    // lista que tiene debajo.
+    <Card className="relative bg-[color-mix(in_oklab,var(--secondary)_8%,var(--card))] shadow-sm ring-secondary/40">
       <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
         <div
           aria-hidden
@@ -128,7 +169,7 @@ export function IncomingListCard({
         {askingBack ? (
           <div className="min-w-0 flex-1 space-y-3">
             <div className="space-y-1">
-              <p className="font-medium">¿Compartes tu lista con {name}?</p>
+              <p className="text-base font-semibold">¿Compartes tu lista con {name}?</p>
               <p className="text-sm text-muted-foreground">
                 Verá lo que apuntes en Mi lista. Lo que marque para regalarte, tú no lo verás.
               </p>
@@ -144,8 +185,8 @@ export function IncomingListCard({
           </div>
         ) : (
           <div className="min-w-0 flex-1 space-y-3">
-            <div className="space-y-1">
-              <p className="font-medium">
+            <div className="space-y-1 pr-8">
+              <p className="text-base font-semibold">
                 {forName ? `${name} te ha compartido la lista de ${forName}.` : `${name} te ha compartido su lista.`}
               </p>
               {share.ownerName && share.ownerEmail && (
@@ -198,60 +239,117 @@ export function IncomingListCard({
                 </div>
               </div>
             ) : (
-              <>
-                {people.length > 0 && (
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <Select value={chosen ?? ""} onValueChange={(v) => setChosen((v as Id<"people">) || null)}>
-                      <SelectTrigger aria-label="Elige su ficha" className="w-full sm:w-64">
-                        <span className={!chosen ? "text-subtle-foreground" : ""}>
-                          {people.find((p) => p._id === chosen)?.name ?? "Elige su ficha…"}
-                        </span>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {people.map((p) => (
-                          <SelectItem key={p._id} value={p._id}>{p.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      onClick={() => {
-                        const person = people.find((p) => p._id === chosen);
-                        if (person) handleAssociate(person._id, person.name);
-                      }}
-                      disabled={busy || !chosen}
-                      className="hover:bg-primary/80"
-                    >
-                      Guardar en su ficha
-                    </Button>
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setCreating(true)} disabled={busy}>
-                    <Plus aria-hidden />
-                    {forName
-                      ? `Crear ficha de ${forName}`
-                      : share.ownerName
-                        ? `Crear ficha de ${share.ownerName}`
-                        : "Crear ficha nueva"}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={handleDismiss} disabled={busy}>
-                    No me interesa
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground"
-                    onClick={() => setConfirmBlock(true)}
-                    disabled={busy}
+              // Una sola pregunta, una sola respuesta: crear ficha es una opción
+              // más del selector, y «Guardar» sale cuando ya hay una elegida.
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                {people.length > 0 ? (
+                  <Select
+                    value={chosen ?? ""}
+                    onValueChange={(v) => {
+                      if (v === CREATE) setCreating(true);
+                      else setChosen((v as Id<"people">) || null);
+                    }}
                   >
-                    No quiero más listas suyas
+                    <SelectTrigger aria-label="Elige su ficha" className="w-full sm:w-64">
+                      {chosenPerson ? (
+                        <span className="flex min-w-0 items-center gap-2">
+                          <PersonAvatar person={chosenPerson} />
+                          <span className="truncate">{chosenPerson.name}</span>
+                        </span>
+                      ) : (
+                        <span className="text-subtle-foreground">Elige su ficha…</span>
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {suggested && (
+                        <>
+                          <SelectItem value={suggested._id} className="py-1.5">
+                            <PersonAvatar person={suggested} />
+                            <span className="truncate">{suggested.name}</span>
+                            <span className="ml-auto pl-2 text-xs text-muted-foreground">Mismo nombre</span>
+                          </SelectItem>
+                          <SelectSeparator />
+                        </>
+                      )}
+                      {others.map((p) => (
+                        <SelectItem key={p._id} value={p._id} className="py-1.5">
+                          <PersonAvatar person={p} />
+                          <span className="truncate">{p.name}</span>
+                        </SelectItem>
+                      ))}
+                      <SelectSeparator />
+                      <SelectItem value={CREATE} className="py-1.5 text-brand">
+                        <span
+                          aria-hidden
+                          className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10"
+                        >
+                          <Plus className="size-3.5" />
+                        </span>
+                        {createLabel}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Button variant="outline" onClick={() => setCreating(true)} disabled={busy}>
+                    <Plus aria-hidden />
+                    {createLabel}
                   </Button>
-                </div>
-              </>
+                )}
+                {chosenPerson && (
+                  <Button
+                    onClick={() => handleAssociate(chosenPerson._id, chosenPerson.name)}
+                    disabled={busy}
+                    className="hover:bg-primary/80"
+                  >
+                    Guardar en su ficha
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="self-start sm:self-auto"
+                  onClick={handleDismiss}
+                  disabled={busy}
+                >
+                  Descartar
+                </Button>
+              </div>
             )}
           </div>
         )}
       </CardContent>
+      {/* Después del contenido en el DOM, para que el tabulador llegue antes al
+          selector; la posición absoluta lo deja en la esquina. Bloquear es raro
+          y serio: no tiene por qué estar siempre a la vista. */}
+      {!askingBack && (
+        <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+          <PopoverTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Más opciones para la lista de ${name}`}
+                className="absolute top-3 right-3"
+              />
+            }
+          >
+            <Ellipsis className="size-3.5" aria-hidden />
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-auto gap-0.5 p-1.5">
+            <button
+              type="button"
+              className="flex w-full items-center rounded-md px-2.5 py-2 text-left text-sm transition-colors outline-hidden hover:bg-muted focus-visible:bg-muted disabled:pointer-events-none disabled:opacity-50"
+              onClick={() => {
+                setMenuOpen(false);
+                setConfirmBlock(true);
+              }}
+              disabled={busy}
+            >
+              No quiero más listas suyas
+            </button>
+          </PopoverContent>
+        </Popover>
+      )}
       <Dialog open={confirmBlock} onOpenChange={setConfirmBlock}>
         <DialogContent>
           <DialogHeader>

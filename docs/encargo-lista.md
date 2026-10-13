@@ -70,7 +70,7 @@ compra.
    `/seres-queridos` hasta que el lector la resuelve. Tiene tres salidas:
    - elegir una ficha a la que ya tenga acceso, propia o compartida con él;
    - «Crear ficha de {nombre}», con el nombre ya puesto;
-   - «No me interesa», que equivale a dejar la lista.
+   - «Descartar» (hasta el 13-oct-2026, «No me interesa»), que equivale a dejar la lista.
 
    No se usa la campana, que es «Próximas fechas» y no debe cambiar de sentido.
 
@@ -79,7 +79,7 @@ compra.
    nada de la lista. Va a todas las cuentas, sin interruptor en Ajustes, porque
    es parte del servicio de listas y no un recordatorio de fechas propias. Como
    mucho uno cada 30 días por pareja de dueño y lector, para que invitar, que
-   pulsen «No me interesa» y volver a invitar no sirva para mandar correos. La
+   pulsen «Descartar» y volver a invitar no sirva para mandar correos. La
    versión original decía «no se manda email» apoyándose en Q14, pero Q14
    descartaba escribir a gente **sin cuenta**; quien ya la tiene es otro caso.
 10. **Compartir la tuya de vuelta:** después de asociar, la tarjeta pregunta
@@ -169,7 +169,7 @@ compra.
 | Elemento borrado después de marcarlo | Ya no está en su lista |
 | Elemento editado después de marcarlo | {Nombre} lo ha cambiado después de que lo marcaras · Entendido |
 | Acción sobre un elemento marcado | Ya se lo he regalado |
-| Tarjeta de lista recibida | {Nombre} te ha compartido su lista. ¿Quién es en tu libreta? · Crear ficha de {nombre} · No me interesa |
+| Tarjeta de lista recibida | Te han compartido · {Nombre} te ha compartido su lista. ¿Quién es en tu libreta? · Elige su ficha… · Mismo nombre · Crear ficha de {nombre} · Guardar en su ficha · Descartar |
 | Tarjeta, después de asociar | ¿Compartes tu lista con {nombre}? |
 | Lista vacía, vista del lector | Todavía no ha apuntado nada |
 | Texto fijo en «Mi lista» | Quien la lee puede marcar lo que va a regalarte. Tú no lo verás. |

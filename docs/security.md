@@ -460,7 +460,7 @@ a uno solo:
   sale si la transacción que concede el acceso se confirma, y como mucho una
   vez cada 30 días por pareja (`listInviteEmails`). El plazo se apunta al
   programarlo, no al enviarlo: si Resend falla no se reintenta, pero nadie
-  puede encadenar invitar y «No me interesa» para mandar correos. El nombre va
+  puede encadenar invitar y «Descartar» para mandar correos. El nombre va
   escapado en el HTML y sin saltos de línea en el asunto. El plazo es por
   pareja, no por lista: la segunda lista que Marta comparte con la abuela en
   el mismo mes no escribe, y `emailed` lo dice tal cual.
