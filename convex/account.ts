@@ -3,6 +3,7 @@ import { requireUser } from "./auth";
 import { deletePersonCascade } from "./people";
 import { deleteSharesForUser, transferToOldestInviteeOrNull } from "./personShares";
 import { deleteListDataForUser } from "./lists";
+import { deleteSavedIdea } from "./ideaPhotos";
 
 /**
  * Borra todos los datos del usuario autenticado en Convex.
@@ -69,7 +70,7 @@ export const deleteMyAccount = mutation({
       .withIndex("by_user", (q) => q.eq("clerkUserId", clerkUserId))
       .collect();
     for (const s of authoredSaved) {
-      if (!(await ctx.db.get(s.personId))) await ctx.db.delete(s._id);
+      if (!(await ctx.db.get(s.personId))) await deleteSavedIdea(ctx, s);
     }
 
     const settings = await ctx.db

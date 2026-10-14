@@ -43,6 +43,7 @@ El usuario introduce información sobre personas de su entorno (amigos, familia,
 - Notas libres
 - Rango de presupuesto
 - Fechas señaladas (cumpleaños, aniversarios)
+- Ideas de regalo guardadas: las que sugirió la IA y, desde el 14-oct-2026, las que apunta el usuario a mano en la ficha («Apuntar una idea»: título, enlace, precio aproximado, nota y una foto que el usuario pega o sube). Las apuntadas a mano no van a Gemini (§4.1); el enlace se guarda sin abrirlo, como en «Mi lista». La foto sigue las reglas de las de «Mi lista» (reducida y recodificada en el navegador, sin EXIF; JPG, PNG o WebP de hasta 1,5 MB) y se borra con la idea, con la ficha y con la cuenta. Aviso preparado en `NOTICES` como `2026-10-ideas-propias`, sin enviar (§11)
 
 **Importante:** estos datos **no son del usuario, son de terceros**. Ver sección 7.
 
@@ -238,6 +239,7 @@ Cuando el usuario pide recomendaciones, `buildPrompt` ([`src/app/api/recommendat
 | Historial de regalos (hasta 10: nombre, ocasión, año, reacción) | Sí, incluidas las entradas que vienen de una lista compartida (§2.6) — las `notes` de cada entrada del historial **no** |
 | Categorías de ideas descartadas (`dislikedCategories`, las que el usuario ha ido rechazando) | Sí |
 | Fecha de nacimiento / edad | **No** (solo la etiqueta de la ocasión) |
+| Ideas guardadas, sugeridas o apuntadas a mano | **No** |
 
 Mantener esta tabla sincronizada con `buildPrompt` y con el párrafo de Gemini en [`/privacidad`](../src/app/privacidad/page.tsx). El texto publicado decía "solo su nombre de pila y la ocasión", lo que dejaba fuera notas y alergias — precisamente los dos campos que más importa contar, porque son texto libre y datos de salud que salen de PickPal.
 

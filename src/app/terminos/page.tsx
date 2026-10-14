@@ -36,8 +36,8 @@ export default function TermsPage() {
           <p className="text-sm text-foreground">
             PickPal es una aplicación web para guardar información sobre las
             personas a las que quieres regalar (intereses, fechas señaladas,
-            notas) y obtener ideas de regalo personalizadas generadas por
-            inteligencia artificial. La ofrece y la mantiene Jorge Molina
+            notas), apuntar tus propias ideas de regalo y obtener ideas
+            personalizadas generadas por inteligencia artificial. La ofrece y la mantiene Jorge Molina
             Fuster como proyecto personal. El uso del servicio se rige por
             estos términos y por la{" "}
             <Link
@@ -98,7 +98,11 @@ export default function TermsPage() {
             <li>No automatizar el uso del servicio mediante bots o scraping.</li>
             <li>
               Si pegas en &laquo;Mi lista&raquo; una lista que tenías en otro
-              servicio, trae solo lo que tengas derecho a usar. Si crees que
+              servicio, trae solo lo que tengas derecho a usar. Lo mismo con
+              las fotos que subes, a tu lista o a una idea de regalo: que
+              sean de la cosa, no de personas, y que tengas derecho a
+              usarlas. Quienes tienen acceso a la lista o a la ficha las
+              verán. Si crees que
               algo apuntado en PickPal vulnera tus derechos, escríbenos a la
               dirección de contacto del final de esta página.
             </li>
@@ -119,8 +123,11 @@ export default function TermsPage() {
               disponibilidad y descripciones pueden no ser exactos.
             </li>
             <li>
-              Los enlaces a tiendas son búsquedas: no garantizan la existencia
-              ni el precio de un producto concreto.
+              Los enlaces a tiendas de las ideas que genera la IA son
+              búsquedas: no garantizan la existencia ni el precio de un
+              producto concreto. Los enlaces que pegas tú, en tu lista o en
+              tus ideas, PickPal los guarda sin abrirlos; solo les quita el
+              rastreo y los códigos de afiliado.
             </li>
             <li>
               PickPal no se hace responsable de las compras que realices a
@@ -313,7 +320,7 @@ export default function TermsPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 12 de octubre de 2026.
+          Última actualización: 14 de octubre de 2026.
         </p>
       </main>
 

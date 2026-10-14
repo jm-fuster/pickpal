@@ -40,14 +40,24 @@ export function ShareDialog({
   personName,
   isOwner,
   trigger,
+  open: openProp,
+  onOpenChange,
 }: {
   personId: Id<"people">;
   personName: string;
   isOwner: boolean;
-  trigger: ReactElement;
+  /** Sin `trigger`, se abre desde fuera con `open`/`onOpenChange` (el menú «⋯» de la ficha). */
+  trigger?: ReactElement;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (next: boolean) => {
+    setOpenState(next);
+    onOpenChange?.(next);
+  };
   const [members, setMembers] = useState<Members | null>(null);
   const [email, setEmail] = useState("");
   const [inviting, setInviting] = useState(false);
@@ -113,7 +123,7 @@ export function ShareDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={trigger} />
+      {trigger && <DialogTrigger render={trigger} />}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

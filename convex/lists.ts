@@ -1346,8 +1346,9 @@ export const sharedWithMe = query({
  * cumpleaños, por el mismo permiso que el resto de la lista.
  * `photoUrl`: la foto que subió el dueño, o `null`. Los elementos van en el
  * orden que les dio el dueño.
- * `occasionLabel`: la fecha de esta ficha para la que guardas lo que has
- * marcado («Lo regalo yo · para…»); solo en tus marcas, nunca en las de otros.
+ * `occasionLabel` y `occasionId`: la fecha de esta ficha para la que guardas
+ * lo que has marcado («Lo regalo yo · para…»); solo en tus marcas, nunca en
+ * las de otros. Con el id, la ficha lo sube a «Lo que tienes pensado».
  * `forName`: para quién es, si es una lista que lleva el dueño para otra
  * persona; `null` si es la suya. Entonces quien la lleva ve lo cogido, y la
  * página lo dice.
@@ -1370,6 +1371,7 @@ export const forPerson = query({
       for (const item of items) {
         const claim = await claimOf(ctx, item._id);
         const mine = claim?.readerClerkUserId === clerkUserId;
+        const occasion = mine ? await occasionOf(ctx, claim, personId) : null;
         itemViews.push({
           _id: item._id,
           title: item.title,
@@ -1379,7 +1381,8 @@ export const forPerson = query({
           priceCents: item.priceCents ?? null,
           photoUrl: await photoUrlOf(ctx, item),
           addedAt: item._creationTime,
-          occasionLabel: mine ? ((await occasionOf(ctx, claim, personId))?.label ?? null) : null,
+          occasionLabel: occasion?.label ?? null,
+          occasionId: occasion?._id ?? null,
           state: !claim
             ? ("free" as const)
             : !mine
@@ -1943,10 +1946,16 @@ export const sweepOrphanPhotos = internalMutation({
       .take(ORPHAN_SWEEP_BATCH);
     let deleted = 0;
     for (const f of files) {
-      const enUso = await ctx.db
-        .query("listItems")
-        .withIndex("by_photo", (q) => q.eq("photoStorageId", f._id))
-        .first();
+      const enUso =
+        (await ctx.db
+          .query("listItems")
+          .withIndex("by_photo", (q) => q.eq("photoStorageId", f._id))
+          .first()) ??
+        // Las ideas propias de la ficha usan las mismas subidas (convex/ideaPhotos.ts).
+        (await ctx.db
+          .query("savedIdeas")
+          .withIndex("by_photo", (q) => q.eq("photoStorageId", f._id))
+          .first());
       if (!enUso) {
         await ctx.storage.delete(f._id);
         deleted++;

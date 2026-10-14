@@ -553,6 +553,22 @@ export function validateListItemInput(input: {
   }
 }
 
+/**
+ * Una idea propia («Apuntar una idea» en la ficha). Mismos topes que un
+ * elemento de «Mi lista»: es el mismo formulario y «Ya se lo he regalado»
+ * copia el título al historial, que admite 120. El precio va en céntimos,
+ * como en la lista.
+ */
+export function validateOwnIdeaInput(input: {
+  title: string;
+  url?: string;
+  note?: string;
+  priceCents?: number;
+}) {
+  validateListItemInput(input);
+  if (input.priceCents !== undefined) validateListItemPrice(input.priceCents);
+}
+
 // La foto de un elemento de la lista. El navegador la vuelve a codificar antes
 // de subirla (eso le quita los EXIF, GPS incluido, y la deja pequeña); aquí
 // solo se puede mirar lo que Convex apunta del archivo subido, porque una

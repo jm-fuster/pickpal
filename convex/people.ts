@@ -4,6 +4,7 @@ import { Id } from "./_generated/dataModel";
 import { requireUser } from "./auth";
 import { validatePersonInput } from "./validators";
 import { checkAndIncrement } from "./rateLimit";
+import { deleteSavedIdea } from "./ideaPhotos";
 import {
   assertIsOwner,
   assertPersonAccess,
@@ -46,7 +47,7 @@ export async function deletePersonCascade(
     .query("savedIdeas")
     .withIndex("by_person", (q) => q.eq("personId", personId))
     .collect();
-  for (const s of saved) await ctx.db.delete(s._id);
+  for (const s of saved) await deleteSavedIdea(ctx, s);
 
   await deleteSharesForPerson(ctx, personId);
 

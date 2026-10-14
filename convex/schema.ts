@@ -169,11 +169,26 @@ export default defineSchema({
         }),
       ),
     ),
+    // «Apuntar una idea»: la escribió quien tiene la ficha, no la IA. Sin el
+    // campo, es una sugerencia guardada. Una idea propia guarda su nota en
+    // `description`, sin categoría ni búsqueda, y el precio aproximado en
+    // `priceMinEuros` = `priceMaxEuros` (0 = sin precio). Validada en
+    // validateOwnIdeaInput.
+    source: v.optional(v.literal("own")),
+    // Solo en las ideas propias: el enlace que pegó, http(s) y nunca abierto
+    // por el servidor, como los de «Mi lista».
+    url: v.optional(v.string()),
+    // Solo en las ideas propias: la foto que pegó o subió quien la apuntó
+    // (nunca descargada de la tienda), con las mismas reglas que las de «Mi
+    // lista». Se borra con la idea, con la ficha y con la cuenta.
+    photoStorageId: v.optional(v.id("_storage")),
   })
     .index("by_person", ["personId"])
     .index("by_user", ["clerkUserId"])
     // Para que borrar un evento encuentre sus ideas sin recorrer la ficha.
-    .index("by_important_date", ["importantDateId"]),
+    .index("by_important_date", ["importantDateId"])
+    // Para que el barrido de fotos huérfanas no borre la de una idea.
+    .index("by_photo", ["photoStorageId"]),
 
   giftHistory: defineTable({
     // Quién lo registró, no necesariamente quién es dueño de la persona:

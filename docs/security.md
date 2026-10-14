@@ -68,12 +68,33 @@ Ver §11.
 **Enlazar dos filas que cuelgan de `people`: misma persona, no solo acceso.**
 Cuando una mutation apunta una fila a otra, las dos tienen que ser de la misma
 persona; tener acceso a las dos fichas no basta. El caso es una idea guardada y
-su evento (`savedIdeas.importantDateId`, desde el 10-oct-2026): `savedIdeas.save`
-y `savedIdeas.move` comprueban `date.personId === idea.personId` además de
+su evento (`savedIdeas.importantDateId`, desde el 10-oct-2026): `savedIdeas.save`,
+`savedIdeas.move` y `savedIdeas.addOwn` comprueban `date.personId === idea.personId` además de
 `assertPersonAccess`, con el mismo error si el evento no existe que si es de
 otra ficha. Sin esa comparación, quien tenga la ficha de su madre y la de su
 padre podría colgar una idea de ella en un evento de él. Ver
 [`docs/encargo-ocasiones.md`](encargo-ocasiones.md).
+
+**Ideas propias (`savedIdeas.addOwn`, 14-oct-2026).** «Apuntar una idea» en la
+ficha escribe en `savedIdeas` con `source: "own"`. Texto que escribe el usuario
+y que verán los demás que tengan la ficha, así que pasa por
+`validateOwnIdeaInput`, que reutiliza los topes y la regla de enlace de «Mi
+lista» (`validateListItemInput`: solo `http:`/`https:`, nunca `javascript:`;
+el servidor no abre la URL) y el precio en céntimos de `validateListItemPrice`.
+Comparte el bucket `save_idea` con las sugerencias guardadas y rechaza un
+título repetido en la misma ficha antes de gastarlo. No va a Gemini: la ruta de
+recomendaciones solo lee el historial.
+
+**Foto de una idea propia (14-oct-2026).** Usa las mismas subidas que «Mi lista»
+(`lists.generatePhotoUploadUrl`, cubo `list_photo_upload`). `addOwn` acepta un
+`photoStorageId` y lo comprueba con `isUsableIdeaPhoto` (`convex/ideaPhotos.ts`):
+tipo y tamaño de `isAllowedListPhoto`, y que el archivo no sea ya la foto de un
+elemento de una lista ni de otra idea. Las ideas se borran siempre por
+`deleteSavedIdea`, que borra también el archivo (quitar la idea, pasarla al
+historial, borrar la ficha, borrar la cuenta), y `lists.sweepOrphanPhotos`
+mira el índice `by_photo` de `savedIdeas` además del de `listItems`: sin eso,
+el barrido diario borraría las fotos de las ideas. Nunca se descarga nada de
+la tienda.
 
 Si añades una tabla nueva con dueño, replica el patrón que corresponda. Si no
 es posible identificar el dueño, **no se puede exponer la operación**.

@@ -61,8 +61,11 @@ export default function PrivacyPage() {
               alergias, fechas importantes y presupuestos.
             </li>
             <li>
-              <span className="text-foreground">Tu historial de regalos</span>{" "}
-              y las recomendaciones que la IA ha generado para ti.
+              <span className="text-foreground">Tu historial de regalos</span>,
+              las ideas que guardas o apuntas tú en cada ficha (con una foto,
+              si la pegas o la subes; se reduce en tu navegador y pierde sus
+              datos de ubicación) y las
+              recomendaciones que la IA ha generado para ti.
             </li>
             <li>
               <span className="text-foreground">Tu lista:</span> lo que apuntas
@@ -500,7 +503,7 @@ export default function PrivacyPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 12 de octubre de 2026.
+          Última actualización: 14 de octubre de 2026.
         </p>
       </main>
 

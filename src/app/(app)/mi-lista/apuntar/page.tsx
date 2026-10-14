@@ -14,6 +14,7 @@ import type { ListItemDraft } from "@/components/lista/ListItemForm";
 import { bookmarkletHref, readBookmarkletFragment } from "@/lib/bookmarklet";
 import { clearPendingShare, peekPendingShare } from "@/lib/pendingShare";
 import { MAX_LIST_ITEMS } from "@/lib/listLimits";
+import { nextOccasion } from "@/lib/nextOccasion";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
@@ -46,6 +47,12 @@ function initialFragment(): ListItemDraft | null {
 }
 
 const ListItemForm = dynamic(() => import("@/components/lista/ListItemForm").then((m) => m.ListItemForm));
+const OwnIdeaForm = dynamic(() => import("@/components/people/OwnIdeaForm").then((m) => m.OwnIdeaForm));
+
+// Destino: tu lista (`OWN`), una lista que llevas (`lista:<id>`) o una idea
+// para alguien de tu libreta (`ficha:<id>`).
+const LIST = "lista:";
+const PERSON = "ficha:";
 
 /**
  * «Apuntar en PickPal»: el destino del marcador que la dueña lleva en la barra
@@ -61,9 +68,13 @@ export default function BookmarkletPage() {
   const { isLoaded, isSignedIn } = useAuth();
   const items = useQuery(api.lists.myItems, isLoaded && isSignedIn ? {} : "skip");
   const managedLists = useQuery(api.lists.myManagedLists, isLoaded && isSignedIn ? {} : "skip");
-  // En qué lista se apunta, si llevas alguna para otra persona.
+  const people = useQuery(api.people.getAll, isLoaded && isSignedIn ? {} : "skip");
+  // Dónde se apunta: tu lista, una que llevas o una idea para alguien.
   const [target, setTarget] = useState<string>(OWN);
-  const listId = target === OWN ? undefined : (target as Id<"managedLists">);
+  const listId = target.startsWith(LIST) ? (target.slice(LIST.length) as Id<"managedLists">) : undefined;
+  const personId = target.startsWith(PERSON) ? (target.slice(PERSON.length) as Id<"people">) : undefined;
+  const person = people?.find((p) => p._id === personId);
+  const personDates = useQuery(api.importantDates.getByPerson, personId ? { personId } : "skip");
   // En el servidor y al hidratar, `false`: así el HTML coincide y lo que
   // depende de la dirección solo se pinta en el navegador.
   const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
@@ -94,7 +105,17 @@ export default function BookmarkletPage() {
   }, [inBrowser, draft]);
 
   const chosen = managedLists?.find((l) => l.listId === listId);
-  const full = chosen ? chosen.itemCount >= MAX_LIST_ITEMS : items !== undefined && items.length >= MAX_LIST_ITEMS;
+  const full = personId
+    ? false
+    : chosen
+      ? chosen.itemCount >= MAX_LIST_ITEMS
+      : items !== undefined && items.length >= MAX_LIST_ITEMS;
+  const targetLabel = person
+    ? `Idea para ${person.name}`
+    : chosen
+      ? `La lista de ${chosen.forName}`
+      : "Mi lista";
+  const hasChoices = (managedLists?.length ?? 0) > 0 || (people?.length ?? 0) > 0;
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8 w-full max-w-2xl">
@@ -102,28 +123,48 @@ export default function BookmarkletPage() {
       <div>
         <h1 className="text-4xl font-medium">Apuntar desde la tienda</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Un botón en tu navegador para apuntar en tu lista lo que estás viendo en una tienda.
+          Un botón en tu navegador para apuntar lo que estás viendo en una tienda: en tu lista, o
+          como idea para alguien de tu libreta.
         </p>
       </div>
 
-      {draft && managedLists && managedLists.length > 0 && (
+      {draft && hasChoices && (
         <div className="flex items-center gap-2">
-          <Label htmlFor="apuntar-en-lista" className="text-sm">En qué lista</Label>
+          <Label htmlFor="apuntar-en-lista" className="text-sm">Dónde lo apuntas</Label>
           <Select value={target} onValueChange={(v) => v && setTarget(v)}>
             <SelectTrigger id="apuntar-en-lista" size="sm" className="min-w-48">
-              <span>{chosen ? `La lista de ${chosen.forName}` : "Mi lista"}</span>
+              <span>{targetLabel}</span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={OWN}>Mi lista</SelectItem>
-              {managedLists.map((l) => (
-                <SelectItem key={l.listId} value={l.listId}>La lista de {l.forName}</SelectItem>
+              {managedLists?.map((l) => (
+                <SelectItem key={l.listId} value={`${LIST}${l.listId}`}>La lista de {l.forName}</SelectItem>
+              ))}
+              {people?.map((p) => (
+                <SelectItem key={p._id} value={`${PERSON}${p._id}`}>Idea para {p.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
       )}
 
-      {draft && (
+      {draft && personId && (
+        personDates === undefined ? null : (
+          <OwnIdeaForm
+            key={personId}
+            personId={personId}
+            dates={personDates}
+            defaultDateId={nextOccasion(personDates)?.event._id}
+            initial={draft}
+            onDone={(saved) => {
+              if (!saved) setDismissed(true);
+              else router.push(`/seres-queridos/${personId}`);
+            }}
+          />
+        )
+      )}
+
+      {draft && !personId && (
         full ? (
           <p className="rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
             {chosen ? `La lista de ${chosen.forName}` : "Tu lista"} ya tiene {MAX_LIST_ITEMS} cosas, el máximo. Quita alguna para apuntar otra.

@@ -2,10 +2,7 @@
 
 import Link from "next/link";
 import { use, useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
-import {
-  CalendarDays, CalendarX2, Camera, Check, Gift, NotebookPen, PencilLine, Repeat2, Ruler, Star, Tags, Trash2, Users, X,
-} from "lucide-react";
+import { Camera, Check, Trash2, Users } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
@@ -14,12 +11,7 @@ import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogClose,
@@ -29,48 +21,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger,
-} from "@/components/ui/select";
-import { AddRowButton } from "@/components/layout/AddRowButton";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { BackLink } from "@/components/layout/BackLink";
 import { LoadingFallback } from "@/components/layout/LoadingFallback";
 import { AvatarPickerDialog } from "@/components/people/AvatarPickerDialog";
-import { InterestTagInput } from "@/components/people/InterestTagInput";
-import { BrandTagInput } from "@/components/people/BrandTagInput";
-import { AiNotesNotice } from "@/components/people/AiNotesNotice";
 import { ShareDialog } from "@/components/people/ShareDialog";
 import { AddToHistoryDialog, type HistoryValues } from "@/components/people/AddToHistoryDialog";
-import { PersonListSection } from "@/components/lista/PersonListSection";
-import { SavedIdeasCard } from "@/components/people/SavedIdeasCard";
-import { RELATIONSHIPS, REACTIONS } from "@/lib/options";
+import { ActionMenu } from "@/components/people/ActionMenu";
+import { NextOccasionCard } from "@/components/people/NextOccasionCard";
+import { MoreIdeasCard } from "@/components/people/MoreIdeasCard";
+import { AboutPersonCard, type AboutFields } from "@/components/people/AboutPersonCard";
+import { PersonEventsCard, loadImportantDateForm } from "@/components/people/PersonEventsCard";
+import { GiftHistoryCard, loadGiftHistoryForm } from "@/components/people/GiftHistoryCard";
+import type { GiveTarget, SharedList } from "@/components/people/ideaParts";
+import { RELATIONSHIPS } from "@/lib/options";
 import { cn } from "@/lib/utils";
 import { closestOccasionLabel } from "@/lib/dates";
+import { nextOccasion } from "@/lib/nextOccasion";
 import { ALL_STORES, sanitizeFavoriteStores, type StoreId } from "@/lib/stores";
-
-// Los formularios de evento y de historial (react-hook-form + zod, el slider de
-// presupuesto, el selector de fecha) solo se usan al pulsar «Añadir» o
-// «Editar». Van en su propio chunk, que se pide en cuanto monta la página: llega
-// en paralelo a los datos y no retrasa la hidratación. Mientras tanto, el
-// marcador es la misma fila «Añadir…» que pinta el formulario plegado.
-const loadImportantDateForm = () => import("@/components/people/ImportantDateForm");
-const loadGiftHistoryForm = () => import("@/components/people/GiftHistoryForm");
-const ImportantDateForm = dynamic(
-  () => loadImportantDateForm().then((m) => m.ImportantDateForm),
-  { loading: () => <AddRowButton>Añadir evento</AddRowButton> },
-);
-const EditImportantDateInline = dynamic(() =>
-  loadImportantDateForm().then((m) => m.EditImportantDateInline),
-);
-const GiftHistoryForm = dynamic(
-  () => loadGiftHistoryForm().then((m) => m.GiftHistoryForm),
-  { loading: () => <AddRowButton>Añadir regalo</AddRowButton> },
-);
-const EditGiftHistoryInline = dynamic(() =>
-  loadGiftHistoryForm().then((m) => m.EditGiftHistoryInline),
-);
-
-const MONTHS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
 // ─── Inner component — person is guaranteed loaded ────────────────────────────
 
@@ -79,11 +47,23 @@ type Dates = NonNullable<FunctionReturnType<typeof api.importantDates.getByPerso
 type GiftHistory = NonNullable<FunctionReturnType<typeof api.giftHistory.getByPerson>>;
 type SavedIdeas = NonNullable<FunctionReturnType<typeof api.savedIdeas.getByPerson>>;
 
+type Tab = "regalos" | "sobre";
+
+/**
+ * La ficha de un ser querido (rediseño del 14-oct-2026, docs/design-system.md
+ * · «Ficha de un ser querido»). Tres niveles: la próxima ocasión con lo que
+ * tienes pensado, a todo el ancho; debajo lo que aún no has decidido (su lista
+ * y el resto de ideas) y el historial plegado; al lado, en una columna de
+ * consulta, sus fechas y lo que sabes de ella. En el móvil esa columna es la
+ * pestaña «Sobre {nombre}».
+ */
 function PersonDetailContent({
   person,
   dates,
   giftHistory,
   savedIdeas,
+  lists,
+  people,
   favoriteStores,
   isOwner,
 }: {
@@ -91,6 +71,8 @@ function PersonDetailContent({
   dates: Dates;
   giftHistory: GiftHistory;
   savedIdeas: SavedIdeas;
+  lists: SharedList[];
+  people: Array<{ _id: Id<"people">; name: string }>;
   favoriteStores: StoreId[];
   isOwner: boolean;
 }) {
@@ -99,43 +81,30 @@ function PersonDetailContent({
   const updatePerson = useMutation(api.people.update);
   const removePerson = useMutation(api.people.remove);
   const removeDate = useMutation(api.importantDates.remove);
-  const removeHistoryEntry = useMutation(api.giftHistory.remove);
   const removeSavedIdea = useMutation(api.savedIdeas.remove);
   const createHistoryEntry = useMutation(api.giftHistory.create);
+  const markGiven = useMutation(api.lists.markGiven);
 
   // ── Local state (mirrors DB, kept in sync on every autosave) ──
   const [headerName, setHeaderName] = useState(person.name);
   const [headerRelationship, setHeaderRelationship] = useState(person.relationship);
   const [headerAvatar, setHeaderAvatar] = useState<string | undefined>(person.avatarUrl);
-  const [localInterests, setLocalInterests] = useState<string[]>(person.interests);
-  const [localBrands, setLocalBrands] = useState<string[]>(person.favoriteBrands ?? []);
-  const [localNotes, setLocalNotes] = useState(person.notes ?? "");
-  const [localShoeSize, setLocalShoeSize] = useState(person.shoeSize ?? "");
-  const [localClothingSize, setLocalClothingSize] = useState(person.clothingSize ?? "");
-  const [localAllergies, setLocalAllergies] = useState(person.allergies ?? "");
-  const [localDislikes, setLocalDislikes] = useState(person.dislikes ?? "");
 
   // ── Saved indicator ──
   const [savedRecently, setSavedRecently] = useState(false);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // ── Delete / inline edit ──
+  // ── Dialogs, tabs, forms ──
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [editingDate, setEditingDate] = useState<Dates[number] | null>(null);
   const [removingDate, setRemovingDate] = useState<{ date: Dates[number]; ideas: number } | null>(null);
-  const [editingGift, setEditingGift] = useState<GiftHistory[number] | null>(null);
-
-  // ── Convert saved idea to history ──
-  const [convertingIdea, setConvertingIdea] = useState<SavedIdeas[number] | null>(null);
+  const [giving, setGiving] = useState<GiveTarget | null>(null);
+  const [tab, setTab] = useState<Tab>("regalos");
+  const [dateFormOpen, setDateFormOpen] = useState(false);
 
   // ── Shared save (silent on success, toast on error) ──
-  type SaveFields = {
-    name?: string; relationship?: string; interests?: string[];
-    favoriteBrands?: string[];
-    notes?: string; shoeSize?: string; clothingSize?: string;
-    allergies?: string; dislikes?: string; avatarUrl?: string;
-  };
+  type SaveFields = AboutFields & { name?: string; relationship?: string; avatarUrl?: string };
   const save = async (fields: SaveFields) => {
     try {
       await updatePerson({ id, ...fields });
@@ -152,17 +121,39 @@ function PersonDetailContent({
     catch { toast.error("No se pudo eliminar el evento"); }
   };
 
-  const handleConvertToHistory = async (values: HistoryValues) => {
-    if (!convertingIdea) return;
+  const requestRemoveDate = (d: Dates[number]) => {
+    // Con ideas guardadas se confirma antes, porque pasan a «Sin ocasión»;
+    // sin ideas, como siempre.
+    const ideas = savedIdeas.filter((s) => s.importantDateId === d._id).length;
+    if (ideas > 0) setRemovingDate({ date: d, ideas });
+    else void handleRemoveDate(d._id);
+  };
+
+  // «Ya se lo he regalado»: una idea guardada pasa al historial y sale de las
+  // ideas; algo de su lista pasa al historial y queda marcado como regalado.
+  const handleGiven = async (values: HistoryValues) => {
+    if (!giving) return;
+    const title = giving.kind === "idea" ? giving.idea.title : giving.title;
     await createHistoryEntry({
       personId: id,
-      giftName: convertingIdea.title,
+      giftName: title,
       occasionLabel: values.occasionLabel,
       year: values.year,
       reaction: values.reaction,
       notes: values.notes,
     });
-    await removeSavedIdea({ id: convertingIdea._id });
+    if (giving.kind === "idea") await removeSavedIdea({ id: giving.idea._id });
+    else await markGiven({ claimId: giving.claimId });
+  };
+
+  // «Añadir una fecha» en la cabecera: abre el formulario de Eventos, que en el
+  // móvil vive en la otra pestaña.
+  const handleAddDate = () => {
+    setTab("sobre");
+    setDateFormOpen(true);
+    requestAnimationFrame(() =>
+      document.getElementById("eventos")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
   };
 
   const handleDelete = async () => {
@@ -174,19 +165,38 @@ function PersonDetailContent({
     } catch { toast.error("Algo salió mal"); setDeleting(false); }
   };
 
+  // Lo que ya enseña «Lo que tienes pensado» no se repite debajo.
+  const next = nextOccasion(dates);
+  const knownDate = (dateId?: Id<"importantDates">) => dateId !== undefined && dates.some((d) => d._id === dateId);
+  const inHero = (s: SavedIdeas[number]) =>
+    next ? s.importantDateId === next.event._id : !knownDate(s.importantDateId);
+  const otherIdeas = savedIdeas.filter((s) => !inHero(s));
+  const hiddenItemIds = new Set<string>(
+    next
+      ? lists.flatMap((l) => l.items.filter((i) => i.state === "mine" && i.occasionId === next.event._id).map((i) => i._id))
+      : [],
+  );
+  const favoriteBrands = person.favoriteBrands ?? [];
+  const firstName = headerName.trim().split(/\s+/)[0] || headerName;
+
+  const tabs: Array<{ id: Tab; label: string }> = [
+    { id: "regalos", label: "Regalos" },
+    { id: "sobre", label: `Sobre ${firstName}` },
+  ];
+
   return (
-    <main className="flex flex-1 flex-col gap-8 p-4 sm:p-6 lg:p-8 w-full max-w-6xl">
+    <main className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8 w-full max-w-6xl">
       {/* Título de página para navegación por encabezados (el nombre visible es un input editable) */}
       <h1 className="sr-only">{headerName}</h1>
       <BackLink />
 
       {/* ── Header ── */}
-      <header className="flex flex-col gap-6 sm:flex-row sm:items-start">
+      <header className="flex items-center gap-4 sm:gap-6">
         {/* Avatar with camera overlay */}
-        <div className="relative shrink-0 w-24 h-24 group">
-          <Avatar className="size-24 ring-1 ring-border">
+        <div className="relative shrink-0 size-16 sm:size-24 group">
+          <Avatar className="size-16 sm:size-24 ring-1 ring-border">
             {headerAvatar ? <AvatarImage src={headerAvatar} alt={headerName} /> : null}
-            <AvatarFallback className="text-xl">
+            <AvatarFallback className="text-lg sm:text-xl">
               {headerName.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -205,17 +215,17 @@ function PersonDetailContent({
           />
         </div>
 
-        <div className="flex-1 space-y-2 min-w-0">
+        <div className="flex-1 min-w-0">
           {/* Name — autosave on blur / Enter */}
           <input
             value={headerName}
             onChange={(e) => setHeaderName(e.target.value)}
             onBlur={() => { if (headerName.trim()) save({ name: headerName.trim() }); }}
             onKeyDown={(e) => { if (e.key === "Enter" && headerName.trim()) { (e.target as HTMLInputElement).blur(); } }}
-            className="w-full text-4xl font-medium bg-transparent border-0 border-b-2 border-transparent outline-none focus:border-primary/40 transition-colors leading-tight"
+            className="w-full font-heading text-3xl sm:text-4xl font-medium bg-transparent border-0 border-b-2 border-transparent outline-none focus:border-primary/40 transition-colors leading-tight"
             aria-label="Nombre"
           />
-          {/* Relationship — autosave on change */}
+          {/* Relationship — autosave on change. Se lee como texto; el chevron dice que se cambia. */}
           <Select
             value={headerRelationship}
             onValueChange={(v) => {
@@ -224,7 +234,10 @@ function PersonDetailContent({
               save({ relationship: v });
             }}
           >
-            <SelectTrigger aria-label="Relación" className="w-fit">
+            <SelectTrigger
+              aria-label="Relación"
+              className="-ml-2 w-fit border-transparent bg-transparent px-2 text-muted-foreground shadow-none hover:border-input dark:bg-transparent"
+            >
               <span>{RELATIONSHIPS.find((r) => r.value === headerRelationship)?.label ?? headerRelationship}</span>
             </SelectTrigger>
             <SelectContent>
@@ -235,36 +248,29 @@ function PersonDetailContent({
           </Select>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Link href={`/seres-queridos/${person._id}/gifts?from=person`} className={buttonVariants()}>
-            <Gift className="size-4" aria-hidden />
-            Ideas de regalo
-          </Link>
-          <ShareDialog
-            personId={id}
-            personName={person.name}
-            isOwner={isOwner}
-            trigger={
-              <Button variant="outline" size="icon" aria-label={`Compartir la ficha de ${person.name}`}>
-                <Users className="size-4" aria-hidden />
-              </Button>
-            }
-          />
-          {/* Borrar la ficha para todos es solo de quien la creó (decisión 1
-              de docs/dudas.md); un invitado se desliga desde "Compartir". */}
-          {isOwner && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setConfirmDeleteOpen(true)}
-              aria-label={`Eliminar a ${person.name}`}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="size-4" aria-hidden />
-            </Button>
-          )}
-        </div>
+        <ActionMenu
+          label={`Más acciones para la ficha de ${person.name}`}
+          className="self-start"
+          groups={[
+            { actions: [{ label: "Compartir la ficha", icon: Users, onSelect: () => setShareOpen(true) }] },
+            // Borrar la ficha para todos es solo de quien la creó (decisión 1
+            // de docs/dudas.md); un invitado se desliga desde «Compartir».
+            {
+              actions: isOwner
+                ? [{ label: `Eliminar a ${person.name}`, icon: Trash2, destructive: true, onSelect: () => setConfirmDeleteOpen(true) }]
+                : [],
+            },
+          ]}
+        />
       </header>
+
+      <ShareDialog
+        personId={id}
+        personName={person.name}
+        isOwner={isOwner}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
 
       {/* Delete dialog */}
       <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
@@ -311,185 +317,93 @@ function PersonDetailContent({
         </DialogContent>
       </Dialog>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* ── Interests + Notes card ── */}
-        <Card className="border-border/60 shadow-sm">
-          <CardContent className="space-y-4 p-5">
-            <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-              <Star className="size-3.5" aria-hidden />
-              Intereses
-            </h2>
-            {/* Interests — autosave on each tag change */}
-            <InterestTagInput
-              value={localInterests}
-              onChange={(tags) => {
-                setLocalInterests(tags);
-                save({ interests: tags });
-              }}
-            />
+      {/* ── Nivel 1: la próxima ocasión y lo que tienes pensado ── */}
+      <NextOccasionCard
+        personId={id}
+        personName={firstName}
+        dates={dates}
+        savedIdeas={savedIdeas}
+        lists={lists}
+        favoriteStores={favoriteStores}
+        favoriteBrands={favoriteBrands}
+        onGive={setGiving}
+        onAddDate={handleAddDate}
+      />
 
-            <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2 pt-2">
-              <Tags className="size-3.5" aria-hidden />
-              Marcas favoritas
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Si siempre compra en alguna marca, la IA lo tendrá en cuenta y podrá enlazar a su tienda oficial.
-            </p>
-            {/* Favorite brands — autosave on each tag change */}
-            <BrandTagInput
-              value={localBrands}
-              onChange={(tags) => {
-                setLocalBrands(tags);
-                save({ favoriteBrands: tags });
-              }}
-            />
-
-            <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2 pt-2">
-              <NotebookPen className="size-3.5" aria-hidden />
-              Notas
-            </h2>
-            {/* Notes — autosave on blur */}
-            <Textarea
-              value={localNotes}
-              onChange={(e) => setLocalNotes(e.target.value)}
-              onBlur={() => save({ notes: localNotes || undefined })}
-              rows={4}
-              placeholder="Restricciones, preferencias, contexto…"
-            />
-            <AiNotesNotice />
-          </CardContent>
-        </Card>
-
-        {/* ── Events card ── */}
-        <Card className="border-border/60 shadow-sm">
-          <CardContent className="space-y-4 p-5">
-            <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-              <CalendarDays className="size-3.5" aria-hidden />
-              Eventos
-            </h2>
-            {dates.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Aún no hay eventos guardados. Añade el primero abajo.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {dates.map((d) => (
-                  <li key={d._id}>
-                    {editingDate?._id === d._id ? (
-                      <EditImportantDateInline date={d} onClose={() => setEditingDate(null)} />
-                    ) : (
-                      <div className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-background/60 p-3 text-sm">
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium">{d.label}</span>
-                            {d.recurring === false ? (
-                              <Badge variant="outline" className="gap-1 text-muted-foreground">
-                                <CalendarX2 className="size-3" aria-hidden />Única
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="gap-1 text-muted-foreground">
-                                <Repeat2 className="size-3" aria-hidden />Anual
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {d.day} {MONTHS[d.month - 1]}{d.year ? ` ${d.year}` : ""}
-                          </p>
-                          {(d.budgetMin !== undefined || d.budgetMax !== undefined) && (
-                            <p className="text-xs text-muted-foreground">
-                              Presupuesto:{" "}
-                              {d.budgetMin !== undefined && d.budgetMax !== undefined
-                                ? `${(d.budgetMin / 100).toFixed(0)}€ – ${(d.budgetMax / 100).toFixed(0)}€`
-                                : d.budgetMin !== undefined
-                                  ? `desde ${(d.budgetMin / 100).toFixed(0)}€`
-                                  : `hasta ${(d.budgetMax! / 100).toFixed(0)}€`}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button variant="ghost" size="icon-sm" aria-label="Editar evento" onClick={() => setEditingDate(d)}>
-                            <PencilLine className="size-3.5" aria-hidden />
-                          </Button>
-                          <Button
-                            variant="ghost" size="icon-sm" aria-label="Quitar evento"
-                            onClick={() => {
-                              // Con ideas guardadas se confirma antes, porque
-                              // pasan a «Sin ocasión»; sin ideas, como siempre.
-                              const ideas = savedIdeas.filter((s) => s.importantDateId === d._id).length;
-                              if (ideas > 0) setRemovingDate({ date: d, ideas });
-                              else void handleRemoveDate(d._id);
-                            }}
-                          >
-                            <X className="size-3.5" aria-hidden />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
+      {/* En el móvil, dos pestañas; desde md, las dos columnas a la vez. */}
+      <div role="tablist" aria-label="Secciones de la ficha" className="-mb-2 flex border-b border-border md:hidden">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            id={`tab-${t.id}`}
+            aria-selected={tab === t.id}
+            aria-controls={`panel-${t.id}`}
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "flex-1 border-b-2 px-3 pb-2.5 pt-1 text-sm font-medium transition-colors",
+              tab === t.id ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
             )}
-            <ImportantDateForm personId={id} />
-          </CardContent>
-        </Card>
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* ── Practical data card ── */}
-      <Card className="border-border/60 shadow-sm">
-        <CardContent className="space-y-4 p-5">
-          <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-            <Ruler className="size-3.5" aria-hidden />
-            Datos prácticos
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Tallas y restricciones para que la IA no sugiera nada que no se pueda usar.
-          </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="shoeSize">Talla de zapato</Label>
-              <Input
-                id="shoeSize"
-                placeholder="EU 42, 38…"
-                value={localShoeSize}
-                onChange={(e) => setLocalShoeSize(e.target.value)}
-                onBlur={() => save({ shoeSize: localShoeSize || undefined })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="clothingSize">Talla de ropa</Label>
-              <Input
-                id="clothingSize"
-                placeholder="M, L, 38…"
-                value={localClothingSize}
-                onChange={(e) => setLocalClothingSize(e.target.value)}
-                onBlur={() => save({ clothingSize: localClothingSize || undefined })}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="allergies">Alergias o restricciones</Label>
-            <Textarea
-              id="allergies"
-              rows={2}
-              placeholder="Frutos secos, gluten, látex…"
-              value={localAllergies}
-              onChange={(e) => setLocalAllergies(e.target.value)}
-              onBlur={() => save({ allergies: localAllergies || undefined })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="dislikes">Cosas que no le gustan</Label>
-            <Textarea
-              id="dislikes"
-              rows={2}
-              placeholder="Color amarillo, perfumes fuertes…"
-              value={localDislikes}
-              onChange={(e) => setLocalDislikes(e.target.value)}
-              onBlur={() => save({ dislikes: localDislikes || undefined })}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_22rem]">
+        {/* ── Niveles 2 y 3: lo que aún no has decidido y el historial ── */}
+        <div
+          id="panel-regalos"
+          role="tabpanel"
+          aria-labelledby="tab-regalos"
+          className={cn("min-w-0 space-y-6", tab !== "regalos" && "hidden md:block")}
+        >
+          <MoreIdeasCard
+            personId={id}
+            personName={firstName}
+            lists={lists}
+            people={people}
+            dates={dates}
+            personBudget={{ budgetMin: person.budgetMin, budgetMax: person.budgetMax }}
+            ideas={otherIdeas}
+            hiddenItemIds={hiddenItemIds}
+            favoriteStores={favoriteStores}
+            favoriteBrands={favoriteBrands}
+            onGive={setGiving}
+          />
+          <GiftHistoryCard personId={id} entries={giftHistory} />
+        </div>
+
+        {/* ── Columna de consulta: sus fechas y lo que sabes de ella ── */}
+        <div
+          id="panel-sobre"
+          role="tabpanel"
+          aria-labelledby="tab-sobre"
+          className={cn("min-w-0 space-y-6", tab !== "sobre" && "hidden md:block")}
+        >
+          <PersonEventsCard
+            personId={id}
+            dates={dates}
+            formOpen={dateFormOpen}
+            onFormOpenChange={setDateFormOpen}
+            onRemove={requestRemoveDate}
+          />
+          <AboutPersonCard
+            name={firstName}
+            initial={{
+              interests: person.interests,
+              favoriteBrands: person.favoriteBrands,
+              notes: person.notes,
+              shoeSize: person.shoeSize,
+              clothingSize: person.clothingSize,
+              allergies: person.allergies,
+              dislikes: person.dislikes,
+            }}
+            save={save}
+          />
+        </div>
+      </div>
 
       {/* ── Autosave indicator (fixed, always visible) ──
           El texto se renderiza condicionalmente DENTRO de la región aria-live:
@@ -508,92 +422,20 @@ function PersonDetailContent({
         ) : null}
       </div>
 
-      {/* ── Lista que esta persona te ha compartido («Mi lista» suya) ──
-          Solo sale si tú la has asociado a esta ficha; otro invitado de la
-          ficha no la ve (decisión 12 de docs/encargo-lista.md). */}
-      <PersonListSection
-        personId={id}
-        personName={headerName}
-        dates={dates}
-        personBudget={{ budgetMin: person.budgetMin, budgetMax: person.budgetMax }}
-        favoriteStores={favoriteStores}
-      />
-
-      {/* ── Saved ideas card, agrupada por ocasión (docs/encargo-ocasiones.md) ── */}
-      <SavedIdeasCard
-        savedIdeas={savedIdeas}
-        dates={dates}
-        favoriteStores={favoriteStores}
-        favoriteBrands={localBrands}
-        onGiven={setConvertingIdea}
-      />
-
-      {/* ── Convert saved idea to history dialog ──
-          La ocasión es el nombre actual del evento de la idea. Sin evento
-          («Sin ocasión») se pregunta, como en la lista, proponiendo la fecha
-          de la ficha más cercana (decisión 13 de docs/encargo-ocasiones.md). */}
+      {/* «Ya se lo he regalado», venga de una idea o de su lista. Una idea
+          trae su ocasión; sin evento («Sin ocasión») o desde la lista se
+          pregunta, proponiendo la fecha marcada o la más cercana (decisión 13
+          de docs/encargo-ocasiones.md, 16 de docs/encargo-lista.md). */}
       <AddToHistoryDialog
-        key={convertingIdea?._id ?? "cerrado"}
-        gift={convertingIdea}
-        fixedOccasion={dates.find((d) => d._id === convertingIdea?.importantDateId)?.label}
-        defaultOccasion={closestOccasionLabel(dates)}
-        onClose={() => setConvertingIdea(null)}
-        onConfirm={handleConvertToHistory}
+        key={giving ? (giving.kind === "idea" ? giving.idea._id : giving.claimId) : "cerrado"}
+        gift={giving ? { title: giving.kind === "idea" ? giving.idea.title : giving.title } : null}
+        fixedOccasion={
+          giving?.kind === "idea" ? dates.find((d) => d._id === giving.idea.importantDateId)?.label : undefined
+        }
+        defaultOccasion={(giving?.kind === "claim" && giving.occasionLabel) || closestOccasionLabel(dates)}
+        onClose={() => setGiving(null)}
+        onConfirm={handleGiven}
       />
-
-      {/* ── Gift history card ── */}
-      <Card className="border-border/60 shadow-sm">
-        <CardContent className="space-y-4 p-5">
-          <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-            <Gift className="size-3.5" aria-hidden />
-            Historial de regalos
-          </h2>
-          {giftHistory.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Aún no hay regalos registrados. Añade el primero para que la IA aprenda qué funciona y qué no.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {giftHistory.map((h) => {
-                const reaction = REACTIONS.find((r) => r.value === h.reaction);
-                return (
-                  <li key={h._id}>
-                    {editingGift?._id === h._id ? (
-                      <EditGiftHistoryInline entry={h} onClose={() => setEditingGift(null)} />
-                    ) : (
-                      <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/60 p-3 text-sm">
-                        <span className="flex items-center gap-2 min-w-0">
-                          <span className="truncate">
-                            <span className="font-medium">{h.giftName}</span>
-                            <span className="text-muted-foreground">
-                              {" · "}{h.occasionLabel}{h.year ? ` ${h.year}` : ""}{reaction ? ` · ${reaction.label}` : ""}
-                            </span>
-                          </span>
-                        </span>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button variant="ghost" size="icon-sm" aria-label="Editar regalo" onClick={() => setEditingGift(h)}>
-                            <PencilLine className="size-3.5" aria-hidden />
-                          </Button>
-                          <Button
-                            variant="ghost" size="icon-sm" aria-label="Quitar entrada"
-                            onClick={async () => {
-                              try { await removeHistoryEntry({ id: h._id }); toast.success("Entrada eliminada"); }
-                              catch { toast.error("No se pudo eliminar la entrada"); }
-                            }}
-                          >
-                            <X className="size-3.5" aria-hidden />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <GiftHistoryForm personId={id} />
-        </CardContent>
-      </Card>
     </main>
   );
 }
@@ -614,6 +456,8 @@ export default function PersonDetailPage({
   const dates = useQuery(api.importantDates.getByPerson, ready ? { personId: id } : "skip");
   const giftHistory = useQuery(api.giftHistory.getByPerson, ready ? { personId: id } : "skip");
   const savedIdeas = useQuery(api.savedIdeas.getByPerson, ready ? { personId: id } : "skip");
+  const lists = useQuery(api.lists.forPerson, ready ? { personId: id } : "skip");
+  const people = useQuery(api.people.getAll, ready ? {} : "skip");
   const settings = useQuery(api.settings.getMine, ready ? {} : "skip");
 
   useEffect(() => {
@@ -621,7 +465,14 @@ export default function PersonDetailPage({
     void loadGiftHistoryForm();
   }, []);
 
-  if (!ready || person === undefined || dates === undefined || giftHistory === undefined || savedIdeas === undefined) {
+  if (
+    !ready ||
+    person === undefined ||
+    dates === undefined ||
+    giftHistory === undefined ||
+    savedIdeas === undefined ||
+    lists === undefined
+  ) {
     return <LoadingFallback />;
   }
 
@@ -649,6 +500,8 @@ export default function PersonDetailPage({
       dates={dates}
       giftHistory={giftHistory}
       savedIdeas={savedIdeas}
+      lists={lists}
+      people={people ?? []}
       favoriteStores={favoriteStores}
       isOwner={person.clerkUserId === userId}
     />

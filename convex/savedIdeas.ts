@@ -3,9 +3,10 @@ import { v, ConvexError } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 import { requireUser } from "./auth";
 import { checkAndIncrement } from "./rateLimit";
-import { validateSavedIdeaInput } from "./validators";
+import { validateOwnIdeaInput, validateSavedIdeaInput } from "./validators";
 import { assertPersonAccess, personHasAccess } from "./personShares";
 import { findEventByLabel } from "./eventLabels";
+import { deleteSavedIdea, IDEA_PHOTO_REJECTED, ideaPhotoUrl, isUsableIdeaPhoto } from "./ideaPhotos";
 
 /**
  * El evento en el que entra una idea al guardarla. Con id, tiene que ser de la
@@ -40,11 +41,13 @@ export const getByPerson = query({
     // filtran por quién las guardó.
     const person = await ctx.db.get(personId);
     if (!(await personHasAccess(ctx, person, clerkUserId))) return [];
-    return ctx.db
+    const ideas = await ctx.db
       .query("savedIdeas")
       .withIndex("by_person", (q) => q.eq("personId", personId))
       .order("desc")
       .take(200);
+    // `photoUrl`: la foto que pegaste en una idea propia, o `null`.
+    return Promise.all(ideas.map(async (idea) => ({ ...idea, photoUrl: await ideaPhotoUrl(ctx, idea) })));
   },
 });
 
@@ -119,6 +122,71 @@ export const save = mutation({
   },
 });
 
+/**
+ * «Apuntar una idea» desde la ficha: una idea que se te ocurre a ti, sin la
+ * IA. Entra en la misma tabla que las sugerencias guardadas para que comparta
+ * con ellas ocasión, menú y «Ya se lo he regalado». No se manda a Gemini: la
+ * ruta de recomendaciones solo lee el historial.
+ */
+export const addOwn = mutation({
+  args: {
+    personId: v.id("people"),
+    // null = «Sin ocasión».
+    importantDateId: v.union(v.id("importantDates"), v.null()),
+    title: v.string(),
+    url: v.optional(v.string()),
+    note: v.optional(v.string()),
+    priceCents: v.optional(v.number()),
+    // Recién subida con `lists.generatePhotoUploadUrl`. Se comprueba aquí.
+    photoStorageId: v.optional(v.id("_storage")),
+  },
+  handler: async (ctx, args) => {
+    const clerkUserId = await requireUser(ctx);
+    await assertPersonAccess(ctx, args.personId, clerkUserId, "No autorizado");
+    const title = args.title.trim();
+    const note = args.note?.trim() || undefined;
+    const url = args.url?.trim() || undefined;
+    validateOwnIdeaInput({ title, url, note, priceCents: args.priceCents });
+    let date: Doc<"importantDates"> | null = null;
+    if (args.importantDateId !== null) {
+      // Como al mover: el evento tiene que ser de esta misma ficha.
+      date = await ctx.db.get(args.importantDateId);
+      if (!date || date.personId !== args.personId) throw new ConvexError("No autorizado");
+    }
+    // Mismo criterio que `save`: el título es la idea. Aquí se dice, porque lo
+    // ha escrito a mano y si no pasa nada parecería que no se guardó.
+    const existing = await ctx.db
+      .query("savedIdeas")
+      .withIndex("by_person", (q) => q.eq("personId", args.personId))
+      .take(500);
+    if (existing.some((s) => s.title === title)) {
+      throw new ConvexError("Ya tienes una idea con ese nombre.");
+    }
+    if (args.photoStorageId !== undefined && !(await isUsableIdeaPhoto(ctx, args.photoStorageId))) {
+      // El archivo rechazado se queda sin dueño y lo recoge el barrido de
+      // fotos huérfanas (`lists.sweepOrphanPhotos`).
+      throw new ConvexError(IDEA_PHOTO_REJECTED);
+    }
+    await checkAndIncrement(ctx, clerkUserId, "save_idea", 50);
+    const euros = args.priceCents !== undefined ? args.priceCents / 100 : 0;
+    return ctx.db.insert("savedIdeas", {
+      clerkUserId,
+      personId: args.personId,
+      occasionLabel: date?.label ?? "Sin ocasión",
+      importantDateId: date?._id,
+      title,
+      description: note ?? "",
+      priceMinEuros: euros,
+      priceMaxEuros: euros,
+      category: [],
+      amazonQuery: "",
+      source: "own",
+      url,
+      photoStorageId: args.photoStorageId,
+    });
+  },
+});
+
 export const move = mutation({
   args: {
     id: v.id("savedIdeas"),
@@ -152,6 +220,6 @@ export const remove = mutation({
     // Igual que el historial: quitar una idea guardada es de quien tiene
     // acceso a la ficha, no solo de quien la guardó.
     await assertPersonAccess(ctx, entry.personId, clerkUserId, "No autorizado");
-    await ctx.db.delete(id);
+    await deleteSavedIdea(ctx, entry);
   },
 });

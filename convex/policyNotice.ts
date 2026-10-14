@@ -54,6 +54,15 @@ export const NOTICES: Record<string, PolicyNotice> = {
       "Si un lector pasa una cosa de tu lista a su historial con «Ya se lo he regalado», su título puede viajar a la IA de Google al generar ideas para esa persona, como el resto de ese historial.",
     ],
   },
+  // Preparado el 14-oct-2026, sin enviar: decide Jorge si se manda y con qué
+  // fecha de entrada en vigor (docs/privacy.md §11).
+  "2026-10-ideas-propias": {
+    id: "2026-10-ideas-propias",
+    changes: [
+      "En la ficha de cada persona puedes apuntar tus propias ideas de regalo, con enlace, precio aproximado, nota y una foto que pegas o subes tú. Las ven quienes tienen acceso a esa ficha, como el resto de ideas guardadas. Las fotos se reducen en tu navegador antes de subirlas y pierden sus datos de ubicación.",
+      "Estas ideas no se envían a la IA de Google, y PickPal nunca abre sus enlaces ni descarga nada de la tienda.",
+    ],
+  },
 };
 
 /**

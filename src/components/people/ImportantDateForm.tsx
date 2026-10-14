@@ -24,9 +24,23 @@ import { DatePickerDialog, MONTHS, formatDate } from "./DatePickerDialog";
 
 // ─── Main form ────────────────────────────────────────────────────────────────
 
-export function ImportantDateForm({ personId }: { personId: Id<"people"> }) {
+export function ImportantDateForm({
+  personId,
+  open,
+  onOpenChange,
+}: {
+  personId: Id<"people">;
+  /** Para abrirlo desde fuera: «Añadir una fecha» en la cabecera de la ficha. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const create = useMutation(api.importantDates.create);
-  const [showForm, setShowForm] = useState(false);
+  const [showFormState, setShowFormState] = useState(false);
+  const showForm = open ?? showFormState;
+  const setShowForm = (next: boolean) => {
+    setShowFormState(next);
+    onOpenChange?.(next);
+  };
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const {

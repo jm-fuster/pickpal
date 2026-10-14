@@ -312,3 +312,9 @@ viejas aparecen en «Sin ocasión».
 
 La pantalla de la ficha en Figma se actualiza después, en una pasada aparte. No
 forma parte de este cambio.
+
+## Anexo: la ficha en tres niveles (14-oct-2026)
+
+- **La tarjeta «Ideas guardadas» desaparece como tal.** Las ideas de la próxima ocasión salen arriba, en «Lo que tienes pensado», junto a lo que marcaste de su lista para esa fecha; el resto, en «Otras ideas», con la misma agrupación por ocasión de esta propuesta (`groupSavedIdeas`). Sin fechas por delante, las de «Sin ocasión» suben a la cabecera.
+- **«Lo regalé» pasa a llamarse «Ya se lo he regalado»** y va en el «⋯» de cada idea, junto a «Mover a otra ocasión» y «Quitar idea». Es el mismo verbo que en la lista recibida y el mismo diálogo (`AddToHistoryDialog`).
+- **Ideas propias** («Apuntar una idea», `savedIdeas.addOwn`): título, enlace, precio aproximado, nota y ocasión. Van a la misma tabla con `source: "own"`, así que se mueven, se quitan y se pasan al historial igual que las sugeridas. No van a Gemini.

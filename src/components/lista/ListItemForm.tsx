@@ -28,7 +28,7 @@ type Item = {
 export type ListItemDraft = { title?: string; url?: string; priceCents?: number };
 
 /** Lo que se dice bajo «Enlace» después de limpiarlo. Ninguna pista es un error. */
-function linkHint(link: PreparedLink): string | null {
+export function linkHint(link: PreparedLink): string | null {
   if (link.wishlistCom) return "Ese enlace lleva a wishlist.com, no a la tienda. Pega el de la tienda.";
   if (link.foreignAmazon) return "Es Amazon de otro país; quizá prefieras el enlace de amazon.es.";
   if (link.shortened) return "Enlace acortado: lleva a la misma página.";
