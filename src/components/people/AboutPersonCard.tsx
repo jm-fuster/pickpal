@@ -95,13 +95,14 @@ export function AboutPersonCard({
             )}
           </Row>
           <Row label="Notas" htmlFor={`${id}-notes`}>
-            <Textarea
+            <TextField
               id={`${id}-notes`}
+              multiline
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              onBlur={() => save({ notes: notes || undefined })}
-              placeholder="Añadir una nota"
-              className={cn(GHOST, "min-h-0 resize-none py-1")}
+              onChange={setNotes}
+              onSave={() => save({ notes: notes || undefined })}
+              addLabel="Añadir una nota"
+              placeholder="Lo que la hace especial, lo que no le pegaría…"
             />
             <div className="mt-1">
               <AiNotesNotice />
@@ -111,50 +112,103 @@ export function AboutPersonCard({
 
         <hr className="border-border/60" />
 
-        <dl className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 text-sm">
+        <dl className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-sm">
           <Row label="Zapato" htmlFor={`${id}-shoe`}>
-            <Input
+            <TextField
               id={`${id}-shoe`}
               value={shoeSize}
-              onChange={(e) => setShoeSize(e.target.value)}
-              onBlur={() => save({ shoeSize: shoeSize || undefined })}
-              placeholder="Añadir"
-              className={GHOST}
+              onChange={setShoeSize}
+              onSave={() => save({ shoeSize: shoeSize || undefined })}
+              addLabel="Añadir talla de zapato"
+              placeholder="EU 42, 38…"
             />
           </Row>
           <Row label="Ropa" htmlFor={`${id}-clothing`}>
-            <Input
+            <TextField
               id={`${id}-clothing`}
               value={clothingSize}
-              onChange={(e) => setClothingSize(e.target.value)}
-              onBlur={() => save({ clothingSize: clothingSize || undefined })}
-              placeholder="Añadir"
-              className={GHOST}
+              onChange={setClothingSize}
+              onSave={() => save({ clothingSize: clothingSize || undefined })}
+              addLabel="Añadir talla de ropa"
+              placeholder="M, L, 38…"
             />
           </Row>
           <Row label="Alergias" htmlFor={`${id}-allergies`}>
-            <Input
+            <TextField
               id={`${id}-allergies`}
               value={allergies}
-              onChange={(e) => setAllergies(e.target.value)}
-              onBlur={() => save({ allergies: allergies || undefined })}
-              placeholder="Añadir"
-              className={GHOST}
+              onChange={setAllergies}
+              onSave={() => save({ allergies: allergies || undefined })}
+              addLabel="Añadir alergias"
+              placeholder="Frutos secos, gluten, látex…"
             />
           </Row>
           <Row label="No le gusta" htmlFor={`${id}-dislikes`}>
-            <Input
+            <TextField
               id={`${id}-dislikes`}
               value={dislikes}
-              onChange={(e) => setDislikes(e.target.value)}
-              onBlur={() => save({ dislikes: dislikes || undefined })}
-              placeholder="Añadir"
-              className={GHOST}
+              onChange={setDislikes}
+              onSave={() => save({ dislikes: dislikes || undefined })}
+              addLabel="Añadir lo que no le gusta"
+              placeholder="Color amarillo, perfumes fuertes…"
             />
           </Row>
         </dl>
       </CardContent>
     </Card>
+  );
+}
+
+// El botón de «Añadir…» y el de «Editar» de los chips: con borde, redondo y
+// de 36 px en el móvil para el dedo; 28 desde sm.
+const ADD_BUTTON = "h-9 rounded-full px-3 text-muted-foreground sm:h-7";
+
+/**
+ * Un dato de «Sobre {nombre}». Vacío, es un botón con borde que dice qué falta
+ * («Añadir talla de zapato»), como el «Editar» de los chips; al pulsarlo pasa a
+ * ser el campo, con el cursor dentro. Con valor, se lee como texto y se edita
+ * al pulsar encima. Guarda al salir; si sale vacío, vuelve a ser el botón.
+ */
+function TextField({
+  id,
+  value,
+  onChange,
+  onSave,
+  addLabel,
+  placeholder,
+  multiline = false,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  onSave: () => void;
+  addLabel: string;
+  placeholder: string;
+  multiline?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  if (!value && !editing) {
+    return (
+      <Button id={id} type="button" variant="outline" size="sm" onClick={() => setEditing(true)} className={ADD_BUTTON}>
+        <Plus aria-hidden />
+        {addLabel}
+      </Button>
+    );
+  }
+  const common = {
+    id,
+    value,
+    placeholder,
+    autoFocus: editing,
+    onBlur: () => {
+      onSave();
+      setEditing(false);
+    },
+  };
+  return multiline ? (
+    <Textarea {...common} onChange={(e) => onChange(e.target.value)} className={cn(GHOST, "min-h-0 resize-none py-1")} />
+  ) : (
+    <Input {...common} onChange={(e) => onChange(e.target.value)} className={GHOST} />
   );
 }
 
@@ -186,7 +240,7 @@ function Chips({ values, onAdd, label }: { values: string[]; onAdd: () => void; 
         size="sm"
         onClick={onAdd}
         aria-label={values.length > 0 ? `Añadir o quitar ${label}` : `Añadir ${label}`}
-        className="h-9 rounded-full px-3 text-muted-foreground sm:h-7"
+        className={ADD_BUTTON}
       >
         {values.length > 0 ? <PencilLine aria-hidden /> : <Plus aria-hidden />}
         {values.length > 0 ? "Editar" : "Añadir"}
