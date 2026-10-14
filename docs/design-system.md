@@ -502,6 +502,22 @@ Las seis pantallas de la ficha (escritorio 1440, tableta 1024 y móvil 390, en c
 
 «Otras tiendas» y sus enlaces del prototipo no cambian. Los marcos ahora miden lo que la tarjeta. Versión «Other stores states in the new person page».
 
+#### La ficha de `Screens & prototype`, con una forma por acción (14-oct-2026)
+
+Las pantallas de la ficha enseñan ya lo publicado en 88bf8cb («Una forma por acción»). Se partió de la v2 aprobada en el Playground (`Playground · Person profile · Consistent actions`):
+- **Escritorio y móvil** (claro y oscuro): se cambió el `Content` entero, como la vez anterior, y se rehicieron dentro los enlaces de «Buscar ideas» y, en el móvil, «Volver».
+- **Tableta**: el Playground no tiene tableta, así que se cambiaron los hijos de `main` por los del escritorio, con la columna de consulta fija a 288 px. El sombreado del atajo en «Le gusta» se ajustó al ancho y al alto de la fila, que en tableta ocupa tres líneas.
+- **`Screens · Person profile states`**: en «Fecha lejana» y «Sin fechas» se cambiaron la cabecera, la columna de consulta y las filas de su lista. En el móvil con fecha, «Apuntar una idea» pasa a fila punteada; sin fechas sigue siendo el botón con borde junto a «Añadir una fecha», como en el código. La pestaña «Sobre Marta» se cambió entera.
+- **Ocho estados nuevos** en la misma sección, a la derecha, con su gemelo oscuro debajo:
+  - «Gustos» en edición, en escritorio y en móvil;
+  - la cabecera en edición;
+  - el «⋯» de la cabecera abierto.
+
+  La sección mide ahora 8.232 px de ancho.
+- **`Screens · Other stores states`**: la aspa de «Regalado» y «Ya no está en su lista» pasa a «⋯» en los cuatro marcos. A 358 px, en lo que ya no está en su lista, el «⋯» baja a otra línea, como en el código.
+
+Al clonar, los rellenos con opacidad sobre una variable (el fondo de la libreta de «Tuya» y el sombreado del atajo) volvían al 100 %. Se copiaron del original después de cada clon. La cabecera pasa de 92 a **100 marcos**. Versión del archivo «Person profile: one way per action».
+
 ### Figma — arquitectura de variables
 
 El archivo [PickPal — Design System](https://www.figma.com/design/4hQt4BnsEluKsYk5qbKkCz/PickPal---Design-System) espeja este documento y `globals.css`, no al revés: **si Figma contradice el código, gana el código**. Sus 372 variables están organizadas en las cuatro capas del patrón de design tokens, y cada una aliasa a la de abajo sin saltarse eslabones.
