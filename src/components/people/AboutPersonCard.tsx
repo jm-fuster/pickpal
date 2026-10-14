@@ -177,15 +177,20 @@ function Chips({ values, onAdd, label }: { values: string[]; onAdd: () => void; 
           {v}
         </Badge>
       ))}
-      <button
+      {/* Un botón de verdad, no una etiqueta: en el móvil mide 36 px para que
+          se pueda pulsar con el dedo; desde sm, 28 px como el resto de botones
+          pequeños. */}
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
         onClick={onAdd}
         aria-label={values.length > 0 ? `Añadir o quitar ${label}` : `Añadir ${label}`}
-        className="inline-flex h-5 items-center gap-1 rounded-4xl border border-border px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="h-9 rounded-full px-3 text-muted-foreground sm:h-7"
       >
-        {values.length > 0 ? <PencilLine className="size-3" aria-hidden /> : <Plus className="size-3" aria-hidden />}
+        {values.length > 0 ? <PencilLine aria-hidden /> : <Plus aria-hidden />}
         {values.length > 0 ? "Editar" : "Añadir"}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -194,7 +199,7 @@ function TagEditor({ children, onDone }: { children: ReactNode; onDone: () => vo
   return (
     <div className="space-y-2">
       {children}
-      <Button size="xs" variant="ghost" onClick={onDone}>
+      <Button size="sm" variant="outline" onClick={onDone} className="h-9 sm:h-7">
         Listo
       </Button>
     </div>

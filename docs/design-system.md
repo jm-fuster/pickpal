@@ -1639,7 +1639,7 @@ La visibilidad se detecta con un listener de `scroll` en `scrollContainerRef` qu
 La sección "Eventos" en `/seres-queridos/[personId]` gestiona fechas importantes de esa persona. Terminología: **evento** (no "fecha importante").
 
 **Collapsed / expanded:**
-- Por defecto solo se muestra el botón "Nuevo evento" (borde punteado, `border-dashed`).
+- Por defecto solo se muestra el botón "Nuevo evento" (borde punteado, `border-dashed`). Desde el 14-oct-2026 el punteado de lo que se pulsa para añadir (`AddRowButton`, la fila de `PersonForm`, la tarjeta «Apuntar una idea» y la zona de la foto) es `border-input/50`, y al pasar por encima `border-input`: con `border-border/70` en oscuro se quedaba en un 7 % de blanco y no se veía. Las cajas punteadas de los formularios abiertos y los estados vacíos siguen en `border-border/70`.
 - Al pulsarlo, el formulario se expande en la misma card sin navegación ni dialog.
 - Al guardar o cancelar, el formulario vuelve a colapsar.
 
@@ -1825,7 +1825,7 @@ Se probó en el Playground del Figma (sección `Playground · Person profile · 
 - **«⋯» en vez de lápiz y aspa** en eventos, historial, ideas y marcas (`ActionMenu`): sirve igual en táctil y quita dos iconos por fila. Lo destructivo, al final y en rojo.
 - **«Anual» desaparece**: es lo normal. Solo se marca «Única».
 - **Fila de evento**: el nombre y, debajo, «24 jun · 30 – 60 €». El presupuesto con el formato de la Agenda.
-- **«Sobre {nombre}» se lee como texto**: filas etiqueta–valor, chips con «Editar», que abre el campo de intereses con sus sugerencias, y campos sin borde hasta el hover o el foco. Sigue el autosave de siempre.
+- **«Sobre {nombre}» se lee como texto**: filas etiqueta–valor, chips con «Editar» (un `Button outline sm` redondo de 36 px de alto en el móvil y 28 desde `sm`, igual que «Listo»: la versión anterior, de 20 px, no se podía pulsar con el dedo), que abre el campo de intereses con sus sugerencias, y campos sin borde hasta el hover o el foco. Sigue el autosave de siempre.
 - **«Su cumpleaños: …» en la lista** solo sale si la ficha aún no tiene esa fecha.
 - **Cabecera**: avatar 64 px en móvil y 96 desde `sm`, relación como texto con chevron (un `Select` sin borde) y un «⋯» con «Compartir la ficha» y «Eliminar» (solo quien la creó).
 

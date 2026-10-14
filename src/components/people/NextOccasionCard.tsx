@@ -176,7 +176,7 @@ export function NextOccasionCard({
                 <button
                   type="button"
                   onClick={() => setAdding(true)}
-                  className="flex h-full min-h-48 w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 p-4 text-center text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
+                  className="flex h-full min-h-48 w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-input/50 p-4 text-center text-muted-foreground transition-colors hover:border-input hover:bg-muted/40 hover:text-foreground"
                 >
                   <Plus className="size-5" aria-hidden />
                   <span className="text-sm font-medium text-foreground">Apuntar una idea</span>

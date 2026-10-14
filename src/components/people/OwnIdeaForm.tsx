@@ -221,7 +221,7 @@ export function OwnIdeaForm({
               "flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed px-4 py-6 text-center transition-colors",
               dragging
                 ? "border-primary bg-primary/5 text-foreground"
-                : "border-border/70 text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground",
+                : "border-input/50 text-muted-foreground hover:border-input hover:bg-muted/40 hover:text-foreground",
             )}
           >
             <ImagePlus className="size-5" aria-hidden />
