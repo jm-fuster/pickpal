@@ -480,6 +480,28 @@ Las seis pantallas de la ficha (escritorio 1440, tableta 1024 y móvil 390, en c
 
 **Dos defectos que ya estaban en la ficha móvil, sin tocar:** las filas del historial se salen de la tarjeta por la derecha, y en «Datos prácticos» faltan los campos de talla.
 
+#### La ficha de `Screens & prototype` pasa a tres niveles (14-oct-2026)
+
+Las seis pantallas de la ficha (escritorio 1440, tableta 1024 y móvil 390, en claro y en oscuro) enseñan ya la ficha publicada en dba61a8. Se cambió solo el `Content` de cada marco, no el marco: así siguen valiendo los ocho enlaces que llegan desde la Agenda, «Seres queridos» y las ideas del móvil, y los dos flujos. Dentro se rehicieron a mano los enlaces que vivían en el contenido: «Buscar ideas» lleva a las ideas de regalo, como antes «Ideas de regalo», y en el móvil «Volver» lleva a la Agenda. Se partió de la versión del Playground (`Playground · Person profile · Simpler`), puesta antes al día con lo que el código cambió al construirla:
+- título con el nombre del evento y «Mañana · 10 de septiembre · 40 – 80 €» debajo;
+- «Entendido» en el aviso de cambio de la tarjeta;
+- el aviso de la IA entero, pegado a las notas;
+- «Editar» con lápiz en los chips;
+- «Otras tiendas» en las filas de su lista;
+- columna de consulta de 288 px en la tableta.
+
+**Sección nueva `Screens · Person profile states`** (y = 16.216), con su gemela oscura debajo de cada marco: «Fecha lejana» y «Sin fechas» en escritorio y móvil, y la pestaña «Sobre Marta» del móvil. La cabecera pasa de 82 a **92 marcos**. Versión del archivo «Person profile in three levels».
+
+**`Screens · Other stores states` puesta al día el mismo día.** Sus cuatro marcos (escritorio y móvil, claro y oscuro) enseñan la sección de la lista como en el código:
+- sin icono, con «⋯» en el rótulo y «Marta no ve lo que marcas.»;
+- sin la línea del cumpleaños (ya está en la ficha) ni la del presupuesto (con el aniversario como próxima fecha, nada encaja);
+- filas planas, sin línea bajo la última de cada grupo;
+- lo que ya no está en su lista, tras una línea;
+- sin pie;
+- en lo marcado, «Lo regalas tú · para Cumpleaños» y «⋯» en vez del botón y la aspa.
+
+«Otras tiendas» y sus enlaces del prototipo no cambian. Los marcos ahora miden lo que la tarjeta. Versión «Other stores states in the new person page».
+
 ### Figma — arquitectura de variables
 
 El archivo [PickPal — Design System](https://www.figma.com/design/4hQt4BnsEluKsYk5qbKkCz/PickPal---Design-System) espeja este documento y `globals.css`, no al revés: **si Figma contradice el código, gana el código**. Sus 372 variables están organizadas en las cuatro capas del patrón de design tokens, y cada una aliasa a la de abajo sin saltarse eslabones.
