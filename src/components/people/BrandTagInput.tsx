@@ -12,6 +12,10 @@ interface BrandTagInputProps {
   value: string[];
   onChange: (next: string[]) => void;
   placeholder?: string;
+  /** Con el cursor dentro al aparecer: el atajo de «Gustos» (tocar un dato abre su campo). */
+  autoFocus?: boolean;
+  /** Para que la etiqueta del bloque apunte al campo. */
+  id?: string;
 }
 
 /**
@@ -23,6 +27,8 @@ export function BrandTagInput({
   value,
   onChange,
   placeholder = "LEGO, Nike, Apple…",
+  autoFocus = false,
+  id,
 }: BrandTagInputProps) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -77,13 +83,16 @@ export function BrandTagInput({
       <div className="flex gap-2">
         <Input
           ref={inputRef}
+          id={id}
+          autoFocus={autoFocus}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
           enterKeyHint="done"
           placeholder={atCap ? "Máximo alcanzado" : placeholder}
           disabled={atCap}
-          aria-label="Nueva marca favorita"
+          // Con `id`, el nombre lo da la etiqueta que apunta al campo.
+          aria-label={id ? undefined : "Nueva marca favorita"}
         />
         <Button
           type="button"

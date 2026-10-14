@@ -1,16 +1,18 @@
 "use client";
 
 import { useId, useState, type ReactNode } from "react";
-import { PencilLine, Plus } from "lucide-react";
+import { PencilLine } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { InterestTagInput } from "@/components/people/InterestTagInput";
 import { BrandTagInput } from "@/components/people/BrandTagInput";
 import { AiNotesNotice } from "@/components/people/AiNotesNotice";
-import { cn } from "@/lib/utils";
+import { useRestoreFocus } from "@/components/people/useRestoreFocus";
+import { missingSentence, type MissingField } from "@/lib/missingSentence";
 
 export type AboutFields = {
   interests?: string[];
@@ -22,240 +24,306 @@ export type AboutFields = {
   dislikes?: string;
 };
 
-// Un campo que se lee como texto y se edita al pulsarlo: sin borde hasta que
-// pasas por encima o entras. El mismo truco que los títulos de «Pegar una
-// lista». El margen negativo alinea el texto con las etiquetas.
-const GHOST =
-  "-mx-2 border-transparent bg-transparent px-2 shadow-none hover:border-input focus-visible:border-ring dark:bg-transparent";
+/** Un bloque en edición y, si se abrió con el atajo, el campo donde entra el cursor. */
+export type BlockEditing = { field?: string };
+
+type BlockProps = {
+  /** `null` en lectura; con valor, en edición. */
+  editing: BlockEditing | null;
+  /** Abre el bloque; con `field`, con el cursor en ese campo (el atajo). */
+  onEdit: (field?: string) => void;
+  onDone: () => void;
+  save: (fields: AboutFields) => void;
+};
+
+// Los botones de la cabecera de un bloque: 36 px en el móvil, para el dedo;
+// 28 desde sm, como el resto de botones pequeños.
+const BLOCK_BUTTON = "h-9 sm:h-7";
 
 /**
- * «Sobre {nombre}»: lo que sabes de ella, en una sola tarjeta que se lee como
- * una ficha de papel. Gustos, marcas, notas y tallas en filas etiqueta–valor;
- * todo se guarda solo al salir del campo, como antes. Las sugerencias de
- * intereses solo salen al pulsar «Añadir».
- *
- * El aviso de que las notas van a la IA de Google se queda pegado al campo de
- * notas: es información que hay que dar donde se escribe (AiNotesNotice).
+ * Un bloque de datos de la persona (docs/design-system.md · «Una forma por
+ * acción»). En lectura, texto: sin bordes, sin botones por campo y sin los
+ * campos vacíos, que se nombran juntos en una sola línea. «Editar» lo pasa
+ * entero a formulario; cada campo se guarda solo al salir de él, y «Listo»,
+ * en el mismo sitio que «Editar», lo cierra. Tocar un dato o la línea de lo
+ * que falta es un atajo: abre el bloque con el cursor en ese campo.
  */
-export function AboutPersonCard({
-  name,
-  initial,
-  save,
+function EditableCard({
+  title,
+  editing,
+  onEdit,
+  onDone,
+  children,
 }: {
-  name: string;
-  initial: Required<Pick<AboutFields, "interests">> & AboutFields;
-  save: (fields: AboutFields) => void;
+  title: string;
+  editing: boolean;
+  onEdit: () => void;
+  onDone: () => void;
+  children: ReactNode;
 }) {
-  const id = useId();
-  const [interests, setInterests] = useState<string[]>(initial.interests);
-  const [brands, setBrands] = useState<string[]>(initial.favoriteBrands ?? []);
-  const [notes, setNotes] = useState(initial.notes ?? "");
-  const [shoeSize, setShoeSize] = useState(initial.shoeSize ?? "");
-  const [clothingSize, setClothingSize] = useState(initial.clothingSize ?? "");
-  const [allergies, setAllergies] = useState(initial.allergies ?? "");
-  const [dislikes, setDislikes] = useState(initial.dislikes ?? "");
-  const [editing, setEditing] = useState<"interests" | "brands" | null>(null);
-
+  const { ref: editRef, restore: restoreFocus } = useRestoreFocus(editing);
   return (
     <Card className="border-border/60 shadow-sm">
-      <CardContent className="space-y-4 p-5">
-        <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Sobre {name}
-        </h2>
-
-        <dl className="grid grid-cols-[6rem_minmax(0,1fr)] items-start gap-x-3 gap-y-3 text-sm">
-          <Row label="Le gusta">
-            {editing === "interests" ? (
-              <TagEditor onDone={() => setEditing(null)}>
-                <InterestTagInput
-                  value={interests}
-                  onChange={(tags) => {
-                    setInterests(tags);
-                    save({ interests: tags });
-                  }}
-                />
-              </TagEditor>
-            ) : (
-              <Chips values={interests} onAdd={() => setEditing("interests")} label="intereses" />
-            )}
-          </Row>
-          <Row label="Marcas">
-            {editing === "brands" ? (
-              <TagEditor onDone={() => setEditing(null)}>
-                <BrandTagInput
-                  value={brands}
-                  onChange={(tags) => {
-                    setBrands(tags);
-                    save({ favoriteBrands: tags });
-                  }}
-                />
-              </TagEditor>
-            ) : (
-              <Chips values={brands} onAdd={() => setEditing("brands")} label="marcas" />
-            )}
-          </Row>
-          <Row label="Notas" htmlFor={`${id}-notes`}>
-            <TextField
-              id={`${id}-notes`}
-              multiline
-              value={notes}
-              onChange={setNotes}
-              onSave={() => save({ notes: notes || undefined })}
-              addLabel="Añadir una nota"
-              placeholder="Lo que la hace especial, lo que no le pegaría…"
-            />
-            <div className="mt-1">
-              <AiNotesNotice />
+      <CardContent className="space-y-3 p-5">
+        <div className="flex min-h-9 items-center justify-between gap-2 sm:min-h-7">
+          <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{title}</h2>
+          {editing ? (
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs text-muted-foreground">Se guarda solo</span>
+              <Button
+                size="sm"
+                onClick={() => {
+                  restoreFocus();
+                  onDone();
+                }}
+                className={BLOCK_BUTTON}
+              >
+                Listo
+              </Button>
             </div>
-          </Row>
-        </dl>
-
-        <hr className="border-border/60" />
-
-        <dl className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-sm">
-          <Row label="Zapato" htmlFor={`${id}-shoe`}>
-            <TextField
-              id={`${id}-shoe`}
-              value={shoeSize}
-              onChange={setShoeSize}
-              onSave={() => save({ shoeSize: shoeSize || undefined })}
-              addLabel="Añadir talla de zapato"
-              placeholder="EU 42, 38…"
-            />
-          </Row>
-          <Row label="Ropa" htmlFor={`${id}-clothing`}>
-            <TextField
-              id={`${id}-clothing`}
-              value={clothingSize}
-              onChange={setClothingSize}
-              onSave={() => save({ clothingSize: clothingSize || undefined })}
-              addLabel="Añadir talla de ropa"
-              placeholder="M, L, 38…"
-            />
-          </Row>
-          <Row label="Alergias" htmlFor={`${id}-allergies`}>
-            <TextField
-              id={`${id}-allergies`}
-              value={allergies}
-              onChange={setAllergies}
-              onSave={() => save({ allergies: allergies || undefined })}
-              addLabel="Añadir alergias"
-              placeholder="Frutos secos, gluten, látex…"
-            />
-          </Row>
-          <Row label="No le gusta" htmlFor={`${id}-dislikes`}>
-            <TextField
-              id={`${id}-dislikes`}
-              value={dislikes}
-              onChange={setDislikes}
-              onSave={() => save({ dislikes: dislikes || undefined })}
-              addLabel="Añadir lo que no le gusta"
-              placeholder="Color amarillo, perfumes fuertes…"
-            />
-          </Row>
-        </dl>
+          ) : (
+            <Button
+              ref={editRef}
+              size="sm"
+              variant="outline"
+              onClick={onEdit}
+              className={BLOCK_BUTTON}
+              aria-label={`Editar ${title.toLowerCase()}`}
+            >
+              <PencilLine aria-hidden />
+              Editar
+            </Button>
+          )}
+        </div>
+        {children}
       </CardContent>
     </Card>
   );
 }
 
-// El botón de «Añadir…» y el de «Editar» de los chips: con borde, redondo y
-// de 36 px en el móvil para el dedo; 28 desde sm.
-const ADD_BUTTON = "h-9 rounded-full px-3 text-muted-foreground sm:h-7";
-
-/**
- * Un dato de «Sobre {nombre}». Vacío, es un botón con borde que dice qué falta
- * («Añadir talla de zapato»), como el «Editar» de los chips; al pulsarlo pasa a
- * ser el campo, con el cursor dentro. Con valor, se lee como texto y se edita
- * al pulsar encima. Guarda al salir; si sale vacío, vuelve a ser el botón.
- */
-function TextField({
-  id,
-  value,
-  onChange,
-  onSave,
-  addLabel,
-  placeholder,
-  multiline = false,
-}: {
-  id: string;
-  value: string;
-  onChange: (v: string) => void;
-  onSave: () => void;
-  addLabel: string;
-  placeholder: string;
-  multiline?: boolean;
-}) {
-  const [editing, setEditing] = useState(false);
-  if (!value && !editing) {
-    return (
-      <Button id={id} type="button" variant="outline" size="sm" onClick={() => setEditing(true)} className={ADD_BUTTON}>
-        <Plus aria-hidden />
-        {addLabel}
-      </Button>
-    );
-  }
-  const common = {
-    id,
-    value,
-    placeholder,
-    autoFocus: editing,
-    onBlur: () => {
-      onSave();
-      setEditing(false);
-    },
-  };
-  return multiline ? (
-    <Textarea {...common} onChange={(e) => onChange(e.target.value)} className={cn(GHOST, "min-h-0 resize-none py-1")} />
-  ) : (
-    <Input {...common} onChange={(e) => onChange(e.target.value)} className={GHOST} />
-  );
-}
-
-function Row({ label, htmlFor, children }: { label: string; htmlFor?: string; children: ReactNode }) {
+/** Una fila de lectura, etiqueta y valor. Toda la fila es el atajo a su campo. */
+function ViewRow({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
   return (
-    <>
-      <dt className="pt-1 text-muted-foreground">
-        {htmlFor ? <label htmlFor={htmlFor}>{label}</label> : label}
-      </dt>
-      <dd className="min-w-0">{children}</dd>
-    </>
+    <button
+      type="button"
+      onClick={onClick}
+      className="-mx-2 grid w-[calc(100%+1rem)] grid-cols-[6rem_minmax(0,1fr)] items-start gap-x-3 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="text-muted-foreground">
+        <span className="sr-only">Editar · </span>
+        {label}
+      </span>
+      <span className="min-w-0">{children}</span>
+    </button>
   );
 }
 
-function Chips({ values, onAdd, label }: { values: string[]; onAdd: () => void; label: string }) {
+type Missing = MissingField & { field: string };
+
+function MissingLine({ text, onClick }: { text: string; onClick: () => void }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {values.map((v) => (
-        <Badge key={v} variant="secondary">
-          {v}
-        </Badge>
-      ))}
-      {/* Un botón de verdad, no una etiqueta: en el móvil mide 36 px para que
-          se pueda pulsar con el dedo; desde sm, 28 px como el resto de botones
-          pequeños. */}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={onAdd}
-        aria-label={values.length > 0 ? `Añadir o quitar ${label}` : `Añadir ${label}`}
-        className={ADD_BUTTON}
-      >
-        {values.length > 0 ? <PencilLine aria-hidden /> : <Plus aria-hidden />}
-        {values.length > 0 ? "Editar" : "Añadir"}
-      </Button>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="-mx-2 block rounded-md px-2 py-1 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {text}
+    </button>
   );
 }
 
-function TagEditor({ children, onDone }: { children: ReactNode; onDone: () => void }) {
+function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
   return (
     <div className="space-y-2">
+      <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-      <Button size="sm" variant="outline" onClick={onDone} className="h-9 sm:h-7">
-        Listo
-      </Button>
     </div>
+  );
+}
+
+function Tags({ values }: { values: string[] }) {
+  return (
+    <span className="flex flex-wrap gap-1.5">
+      {values.map((t) => (
+        <Badge key={t} variant="secondary">
+          {t}
+        </Badge>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * «Gustos»: lo que le gusta, sus marcas y las notas. El aviso de que las
+ * notas van a la IA de Google solo sale en edición, pegado al campo de notas:
+ * se da donde se escribe (AiNotesNotice).
+ */
+export function TastesCard({
+  initial,
+  editing,
+  onEdit,
+  onDone,
+  save,
+}: BlockProps & { initial: Required<Pick<AboutFields, "interests">> & AboutFields }) {
+  const id = useId();
+  const [interests, setInterests] = useState<string[]>(initial.interests);
+  const [brands, setBrands] = useState<string[]>(initial.favoriteBrands ?? []);
+  const [notes, setNotes] = useState(initial.notes ?? "");
+  // Con «Editar», el cursor entra en el primer campo; con el atajo, en el suyo.
+  const focus = editing?.field ?? "interests";
+
+  const missing: Missing[] = [
+    ...(interests.length === 0 ? [{ field: "interests", text: "lo que le gusta", plural: false }] : []),
+    ...(brands.length === 0 ? [{ field: "brands", text: "sus marcas", plural: true }] : []),
+    ...(notes.trim() === "" ? [{ field: "notes", text: "una nota", plural: false }] : []),
+  ];
+
+  return (
+    <EditableCard title="Gustos" editing={editing !== null} onEdit={() => onEdit()} onDone={onDone}>
+      {editing ? (
+        <div className="space-y-4">
+          <Field label="Le gusta" htmlFor={`${id}-interests`}>
+            <InterestTagInput
+              id={`${id}-interests`}
+              autoFocus={focus === "interests"}
+              value={interests}
+              onChange={(tags) => {
+                setInterests(tags);
+                save({ interests: tags });
+              }}
+            />
+          </Field>
+          <Field label="Marcas" htmlFor={`${id}-brands`}>
+            <BrandTagInput
+              id={`${id}-brands`}
+              autoFocus={focus === "brands"}
+              value={brands}
+              onChange={(tags) => {
+                setBrands(tags);
+                save({ favoriteBrands: tags });
+              }}
+            />
+          </Field>
+          <Field label="Notas" htmlFor={`${id}-notes`}>
+            <Textarea
+              id={`${id}-notes`}
+              autoFocus={focus === "notes"}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              onBlur={() => save({ notes: notes || undefined })}
+              rows={3}
+              placeholder="Lo que la hace especial, lo que no le pegaría…"
+            />
+            <AiNotesNotice />
+          </Field>
+        </div>
+      ) : missing.length === 3 ? (
+        <MissingLine text="Aún no has apuntado sus gustos." onClick={() => onEdit("interests")} />
+      ) : (
+        <div className="space-y-1">
+          {interests.length > 0 && (
+            <ViewRow label="Le gusta" onClick={() => onEdit("interests")}>
+              <Tags values={interests} />
+            </ViewRow>
+          )}
+          {brands.length > 0 && (
+            <ViewRow label="Marcas" onClick={() => onEdit("brands")}>
+              <Tags values={brands} />
+            </ViewRow>
+          )}
+          {notes.trim() !== "" && (
+            <ViewRow label="Notas" onClick={() => onEdit("notes")}>
+              <span className="line-clamp-4 whitespace-pre-line">{notes}</span>
+            </ViewRow>
+          )}
+          {missing.length > 0 && (
+            <MissingLine text={missingSentence(missing)} onClick={() => onEdit(missing[0].field)} />
+          )}
+        </div>
+      )}
+    </EditableCard>
+  );
+}
+
+/** «Tallas y cuidado»: tallas, alergias y lo que no le gusta. */
+export function CareCard({ initial, editing, onEdit, onDone, save }: BlockProps & { initial: AboutFields }) {
+  const id = useId();
+  const [shoeSize, setShoeSize] = useState(initial.shoeSize ?? "");
+  const [clothingSize, setClothingSize] = useState(initial.clothingSize ?? "");
+  const [allergies, setAllergies] = useState(initial.allergies ?? "");
+  const [dislikes, setDislikes] = useState(initial.dislikes ?? "");
+  const focus = editing?.field ?? "shoeSize";
+
+  const rows = [
+    { field: "shoeSize", label: "Zapato", value: shoeSize, text: "su talla de zapato", plural: false },
+    { field: "clothingSize", label: "Ropa", value: clothingSize, text: "su talla de ropa", plural: false },
+    { field: "allergies", label: "Alergias", value: allergies, text: "sus alergias", plural: true },
+    { field: "dislikes", label: "No le gusta", value: dislikes, text: "lo que no le gusta", plural: false },
+  ];
+  const filled = rows.filter((r) => r.value.trim() !== "");
+  const missing = rows.filter((r) => r.value.trim() === "");
+
+  return (
+    <EditableCard title="Tallas y cuidado" editing={editing !== null} onEdit={() => onEdit()} onDone={onDone}>
+      {editing ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Talla de zapato" htmlFor={`${id}-shoe`}>
+              <Input
+                id={`${id}-shoe`}
+                autoFocus={focus === "shoeSize"}
+                value={shoeSize}
+                onChange={(e) => setShoeSize(e.target.value)}
+                onBlur={() => save({ shoeSize: shoeSize || undefined })}
+                placeholder="EU 42, 38…"
+              />
+            </Field>
+            <Field label="Talla de ropa" htmlFor={`${id}-clothing`}>
+              <Input
+                id={`${id}-clothing`}
+                autoFocus={focus === "clothingSize"}
+                value={clothingSize}
+                onChange={(e) => setClothingSize(e.target.value)}
+                onBlur={() => save({ clothingSize: clothingSize || undefined })}
+                placeholder="M, L, 38…"
+              />
+            </Field>
+          </div>
+          <Field label="Alergias o restricciones" htmlFor={`${id}-allergies`}>
+            <Input
+              id={`${id}-allergies`}
+              autoFocus={focus === "allergies"}
+              value={allergies}
+              onChange={(e) => setAllergies(e.target.value)}
+              onBlur={() => save({ allergies: allergies || undefined })}
+              placeholder="Frutos secos, gluten, látex…"
+            />
+          </Field>
+          <Field label="Cosas que no le gustan" htmlFor={`${id}-dislikes`}>
+            <Input
+              id={`${id}-dislikes`}
+              autoFocus={focus === "dislikes"}
+              value={dislikes}
+              onChange={(e) => setDislikes(e.target.value)}
+              onBlur={() => save({ dislikes: dislikes || undefined })}
+              placeholder="Color amarillo, perfumes fuertes…"
+            />
+          </Field>
+        </div>
+      ) : filled.length === 0 ? (
+        <MissingLine text="Aún no has apuntado sus tallas ni alergias." onClick={() => onEdit("shoeSize")} />
+      ) : (
+        <div className="space-y-1">
+          {filled.map((r) => (
+            <ViewRow key={r.field} label={r.label} onClick={() => onEdit(r.field)}>
+              {r.value}
+            </ViewRow>
+          ))}
+          {missing.length > 0 && (
+            <MissingLine text={missingSentence(missing)} onClick={() => onEdit(missing[0].field)} />
+          )}
+        </div>
+      )}
+    </EditableCard>
   );
 }

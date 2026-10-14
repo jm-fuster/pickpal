@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { use, useEffect, useRef, useState } from "react";
-import { Camera, Check, Trash2, Users } from "lucide-react";
+import { Check } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,20 +20,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { BackLink } from "@/components/layout/BackLink";
 import { LoadingFallback } from "@/components/layout/LoadingFallback";
-import { AvatarPickerDialog } from "@/components/people/AvatarPickerDialog";
 import { ShareDialog } from "@/components/people/ShareDialog";
 import { AddToHistoryDialog, type HistoryValues } from "@/components/people/AddToHistoryDialog";
-import { ActionMenu } from "@/components/people/ActionMenu";
+import { PersonHeader } from "@/components/people/PersonHeader";
 import { NextOccasionCard } from "@/components/people/NextOccasionCard";
 import { MoreIdeasCard } from "@/components/people/MoreIdeasCard";
-import { AboutPersonCard, type AboutFields } from "@/components/people/AboutPersonCard";
+import { CareCard, TastesCard, type AboutFields, type BlockEditing } from "@/components/people/AboutPersonCard";
 import { PersonEventsCard, loadImportantDateForm } from "@/components/people/PersonEventsCard";
 import { GiftHistoryCard, loadGiftHistoryForm } from "@/components/people/GiftHistoryCard";
 import type { GiveTarget, SharedList } from "@/components/people/ideaParts";
-import { RELATIONSHIPS } from "@/lib/options";
 import { cn } from "@/lib/utils";
 import { closestOccasionLabel } from "@/lib/dates";
 import { nextOccasion } from "@/lib/nextOccasion";
@@ -48,6 +44,9 @@ type GiftHistory = NonNullable<FunctionReturnType<typeof api.giftHistory.getByPe
 type SavedIdeas = NonNullable<FunctionReturnType<typeof api.savedIdeas.getByPerson>>;
 
 type Tab = "regalos" | "sobre";
+
+/** Los bloques de datos de la persona; solo uno en edición a la vez. */
+type Block = "cabecera" | "gustos" | "cuidado";
 
 /**
  * La ficha de un ser querido (rediseño del 14-oct-2026, docs/design-system.md
@@ -85,10 +84,13 @@ function PersonDetailContent({
   const createHistoryEntry = useMutation(api.giftHistory.create);
   const markGiven = useMutation(api.lists.markGiven);
 
-  // ── Local state (mirrors DB, kept in sync on every autosave) ──
-  const [headerName, setHeaderName] = useState(person.name);
-  const [headerRelationship, setHeaderRelationship] = useState(person.relationship);
-  const [headerAvatar, setHeaderAvatar] = useState<string | undefined>(person.avatarUrl);
+  // ── Qué bloque está en edición (cabecera, «Gustos», «Tallas y cuidado») ──
+  const [editing, setEditing] = useState<({ block: Block } & BlockEditing) | null>(null);
+  const blockProps = (block: Block) => ({
+    editing: editing?.block === block ? { field: editing.field } : null,
+    onEdit: (field?: string) => setEditing({ block, field }),
+    onDone: () => setEditing(null),
+  });
 
   // ── Saved indicator ──
   const [savedRecently, setSavedRecently] = useState(false);
@@ -177,7 +179,7 @@ function PersonDetailContent({
       : [],
   );
   const favoriteBrands = person.favoriteBrands ?? [];
-  const firstName = headerName.trim().split(/\s+/)[0] || headerName;
+  const firstName = person.name.trim().split(/\s+/)[0] || person.name;
 
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: "regalos", label: "Regalos" },
@@ -186,83 +188,17 @@ function PersonDetailContent({
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8 w-full max-w-6xl">
-      {/* Título de página para navegación por encabezados (el nombre visible es un input editable) */}
-      <h1 className="sr-only">{headerName}</h1>
       <BackLink />
 
-      {/* ── Header ── */}
-      <header className="flex items-center gap-4 sm:gap-6">
-        {/* Avatar with camera overlay */}
-        <div className="relative shrink-0 size-16 sm:size-24 group">
-          <Avatar className="size-16 sm:size-24 ring-1 ring-border">
-            {headerAvatar ? <AvatarImage src={headerAvatar} alt={headerName} /> : null}
-            <AvatarFallback className="text-lg sm:text-xl">
-              {headerName.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <AvatarPickerDialog
-            value={headerAvatar}
-            onChange={(url) => { setHeaderAvatar(url); if (url) save({ avatarUrl: url }); }}
-            trigger={
-              <button
-                type="button"
-                className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Cambiar avatar"
-              >
-                <Camera className="size-6 text-white" />
-              </button>
-            }
-          />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          {/* Name — autosave on blur / Enter */}
-          <input
-            value={headerName}
-            onChange={(e) => setHeaderName(e.target.value)}
-            onBlur={() => { if (headerName.trim()) save({ name: headerName.trim() }); }}
-            onKeyDown={(e) => { if (e.key === "Enter" && headerName.trim()) { (e.target as HTMLInputElement).blur(); } }}
-            className="w-full font-heading text-3xl sm:text-4xl font-medium bg-transparent border-0 border-b-2 border-transparent outline-none focus:border-primary/40 transition-colors leading-tight"
-            aria-label="Nombre"
-          />
-          {/* Relationship — autosave on change. Se lee como texto; el chevron dice que se cambia. */}
-          <Select
-            value={headerRelationship}
-            onValueChange={(v) => {
-              if (!v) return;
-              setHeaderRelationship(v);
-              save({ relationship: v });
-            }}
-          >
-            <SelectTrigger
-              aria-label="Relación"
-              className="-ml-2 w-fit border-transparent bg-transparent px-2 text-muted-foreground shadow-none hover:border-input dark:bg-transparent"
-            >
-              <span>{RELATIONSHIPS.find((r) => r.value === headerRelationship)?.label ?? headerRelationship}</span>
-            </SelectTrigger>
-            <SelectContent>
-              {RELATIONSHIPS.map((r) => (
-                <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <ActionMenu
-          label={`Más acciones para la ficha de ${person.name}`}
-          className="self-start"
-          groups={[
-            { actions: [{ label: "Compartir la ficha", icon: Users, onSelect: () => setShareOpen(true) }] },
-            // Borrar la ficha para todos es solo de quien la creó (decisión 1
-            // de docs/dudas.md); un invitado se desliga desde «Compartir».
-            {
-              actions: isOwner
-                ? [{ label: `Eliminar a ${person.name}`, icon: Trash2, destructive: true, onSelect: () => setConfirmDeleteOpen(true) }]
-                : [],
-            },
-          ]}
-        />
-      </header>
+      {/* ── Cabecera: foto, nombre y relación, un bloque editable más ── */}
+      <PersonHeader
+        initial={{ name: person.name, relationship: person.relationship, avatarUrl: person.avatarUrl }}
+        isOwner={isOwner}
+        save={save}
+        onShare={() => setShareOpen(true)}
+        onDelete={() => setConfirmDeleteOpen(true)}
+        {...blockProps("cabecera")}
+      />
 
       <ShareDialog
         personId={id}
@@ -389,18 +325,20 @@ function PersonDetailContent({
             onFormOpenChange={setDateFormOpen}
             onRemove={requestRemoveDate}
           />
-          <AboutPersonCard
-            name={firstName}
+          <TastesCard
+            initial={{ interests: person.interests, favoriteBrands: person.favoriteBrands, notes: person.notes }}
+            save={save}
+            {...blockProps("gustos")}
+          />
+          <CareCard
             initial={{
-              interests: person.interests,
-              favoriteBrands: person.favoriteBrands,
-              notes: person.notes,
               shoeSize: person.shoeSize,
               clothingSize: person.clothingSize,
               allergies: person.allergies,
               dislikes: person.dislikes,
             }}
             save={save}
+            {...blockProps("cuidado")}
           />
         </div>
       </div>

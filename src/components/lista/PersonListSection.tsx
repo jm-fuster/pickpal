@@ -287,15 +287,11 @@ export function SharedListSection({
                 <Button size="sm" variant="outline" onClick={() => onGive({ kind: "claim", claimId: r.claimId, title: r.title })}>
                   Ya se lo he regalado
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Quitar tu marca de ${r.title}`}
-                  title="Quitar tu marca"
-                  onClick={() => run(() => unclaim({ claimId: r.claimId }), "No se pudo quitar la marca")}
-                >
-                  <X className="size-3.5" aria-hidden />
-                </Button>
+                {/* Quitar es secundario: va al «⋯», como en el resto de la ficha. */}
+                <ActionMenu
+                  label={`Más acciones para ${r.title}`}
+                  groups={unclaimMenu(() => run(() => unclaim({ claimId: r.claimId }), "No se pudo quitar la marca"))}
+                />
               </div>
             </li>
           ))}
@@ -336,6 +332,11 @@ export function SharedListSection({
     </section>
   );
 }
+
+/** El «⋯» de lo que ya no puedes cambiar más que quitando tu marca. */
+const unclaimMenu = (onSelect: () => unknown): MenuGroup[] => [
+  { actions: [{ label: "Quitar tu marca", icon: X, destructive: true, onSelect }] },
+];
 
 function ListRow({
   item,
@@ -441,15 +442,7 @@ function ListRow({
                 Regalado
               </Badge>
               {item.claimId && (
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Quitar tu marca de ${item.title}`}
-                  title="Quitar tu marca"
-                  onClick={onUnclaim}
-                >
-                  <X className="size-3.5" aria-hidden />
-                </Button>
+                <ActionMenu label={`Más acciones para ${item.title}`} groups={unclaimMenu(onUnclaim)} />
               )}
             </>
           )}

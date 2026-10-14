@@ -10,6 +10,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ListItemLink } from "@/components/lista/ListItemLink";
+import { AddRowButton } from "@/components/layout/AddRowButton";
 import { ActionMenu } from "@/components/people/ActionMenu";
 import { OwnIdeaForm } from "@/components/people/OwnIdeaForm";
 import {
@@ -186,10 +187,11 @@ export function NextOccasionCard({
             )}
           </ul>
           {next && !adding && (
-            <Button variant="ghost" size="sm" onClick={() => setAdding(true)} className="@2xl:hidden">
-              <Plus aria-hidden />
+            // En el móvil la casilla punteada no cabe en el carrusel: la misma
+            // acción, como fila punteada debajo (regla 1: añadir es punteado).
+            <AddRowButton onClick={() => setAdding(true)} className="@2xl:hidden">
               Apuntar una idea
-            </Button>
+            </AddRowButton>
           )}
         </div>
       )}
@@ -238,11 +240,12 @@ function ItemTile({
         <div className="mt-auto space-y-1.5 pt-2">
           <Badge variant="secondary">Lo regalas tú</Badge>
           {item.editedSinceMark && item.claimId && (
-            <p className="flex flex-wrap items-center gap-x-2 text-xs text-brand-secondary">
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-brand-secondary">
               {personName} lo ha cambiado.
-              <button
-                type="button"
-                className="underline underline-offset-4 hover:text-foreground"
+              {/* El mismo «Entendido» que en la fila de su lista: un botón, no un enlace. */}
+              <Button
+                size="xs"
+                variant="outline"
                 onClick={async () => {
                   try {
                     await acknowledgeEdit({ claimId: item.claimId! });
@@ -252,7 +255,7 @@ function ItemTile({
                 }}
               >
                 Entendido
-              </button>
+              </Button>
             </p>
           )}
         </div>

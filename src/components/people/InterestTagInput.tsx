@@ -19,12 +19,18 @@ interface InterestTagInputProps {
   value: string[];
   onChange: (next: string[]) => void;
   placeholder?: string;
+  /** Con el cursor dentro al aparecer: el atajo de «Gustos» (tocar un dato abre su campo). */
+  autoFocus?: boolean;
+  /** Para que la etiqueta del bloque apunte al campo. */
+  id?: string;
 }
 
 export function InterestTagInput({
   value,
   onChange,
   placeholder = "Añade un interés y pulsa +",
+  autoFocus = false,
+  id,
 }: InterestTagInputProps) {
   const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(false);
@@ -131,6 +137,8 @@ export function InterestTagInput({
         <div className="flex gap-2">
           <Input
             ref={inputRef}
+            id={id}
+            autoFocus={autoFocus}
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);
@@ -143,7 +151,8 @@ export function InterestTagInput({
             enterKeyHint="done"
             placeholder={atCap ? "Máximo alcanzado" : placeholder}
             disabled={atCap}
-            aria-label="Nuevo interés"
+            // Con `id`, el nombre lo da la etiqueta que apunta al campo.
+            aria-label={id ? undefined : "Nuevo interés"}
             role="combobox"
             aria-expanded={showDropdown}
             aria-controls={listboxId}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type Ref } from "react";
 import { Ellipsis, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -31,11 +31,14 @@ export function ActionMenu({
   label,
   groups,
   className,
+  triggerRef,
 }: {
   /** Nombre accesible del botón: «Más acciones para Cumpleaños». */
   label: string;
   groups: MenuGroup[];
   className?: string;
+  /** Para devolverle el foco al «⋯» (la cabecera, al salir de edición). */
+  triggerRef?: Ref<HTMLButtonElement>;
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,7 +58,7 @@ export function ActionMenu({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={<Button variant="ghost" size="icon-sm" aria-label={label} className={className} />}
+        render={<Button ref={triggerRef} variant="ghost" size="icon-sm" aria-label={label} className={className} />}
       >
         <Ellipsis className="size-3.5" aria-hidden />
       </PopoverTrigger>
