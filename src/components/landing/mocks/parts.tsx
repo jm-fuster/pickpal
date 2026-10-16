@@ -14,20 +14,19 @@ import { cn } from "@/lib/utils";
 // el original, se cambia aquí (lista de sincronía en docs/design-system.md).
 
 /**
- * `ui/avatar` con iniciales, sin su `"use client"`. El tamaño de la letra va
- * en `className` («size-16 text-lg»): lo hereda el círculo de dentro.
+ * `ui/avatar` con su dibujo (`AvatarImage`), sin su `"use client"`. Decorativo:
+ * va dentro de un MockFrame, que ya nombra a la persona en su aria-label.
  */
-export function InitialsAvatar({ initials, className }: { initials: string; className?: string }) {
+export function PersonAvatar({ src, className }: { src: string; className?: string }) {
   return (
     <span
       className={cn(
-        "relative flex shrink-0 rounded-full text-sm after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken dark:after:mix-blend-lighten",
+        "relative flex shrink-0 rounded-full after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken dark:after:mix-blend-lighten",
         className,
       )}
     >
-      <span className="flex size-full items-center justify-center rounded-full bg-muted text-muted-foreground">
-        {initials}
-      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt="" width={80} height={80} className="aspect-square size-full rounded-full object-cover" />
     </span>
   );
 }

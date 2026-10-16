@@ -25,7 +25,8 @@ const MOCKS: [string, ReactElement][] = [
 
 describe("réplicas de la landing", () => {
   it.each(MOCKS)("%s es una imagen con descripción", (_, mock) => {
-    const html = renderToStaticMarkup(mock);
+    // React 19 antepone un <link rel="preload"> por cada <img> (el avatar).
+    const html = renderToStaticMarkup(mock).replace(/^(<link[^>]*>)+/, "");
     const outer = html.slice(0, html.indexOf(">") + 1);
     expect(outer).toContain('role="img"');
     expect(outer).toMatch(/aria-label="[^"]*\S[^"]*"/);
@@ -36,6 +37,16 @@ describe("réplicas de la landing", () => {
     const html = renderToStaticMarkup(mock);
     for (const banned of [/<a[\s>]/, /<button/, /<input/, /<select/, /<textarea/, /tabindex/i, /<h[1-6]/]) {
       expect(html).not.toMatch(banned);
+    }
+  });
+
+  it.each(MOCKS)("%s solo carga imágenes propias, decorativas", (_, mock) => {
+    // El avatar de Marta es una copia local del de DiceBear: la landing no pide
+    // nada a terceros, y dentro del MockFrame la imagen no se anuncia.
+    const html = renderToStaticMarkup(mock);
+    for (const [img] of html.matchAll(/<img[^>]*>/g)) {
+      expect(img).toMatch(/src="\/landing\//);
+      expect(img).toContain('alt=""');
     }
   });
 });

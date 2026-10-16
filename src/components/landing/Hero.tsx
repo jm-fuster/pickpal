@@ -41,9 +41,8 @@ export function Hero() {
           >
             {HERO_TITLE}
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Apunta lo que sabes de cada persona y sus fechas. PickPal te avisa cuando se acercan y, si le pides
-            ideas, te propone hasta nueve a partir de lo que apuntaste.
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
+            Apunta lo que sabes de cada persona. PickPal te avisa antes de sus fechas y te propone ideas con lo que apuntaste.
           </p>
           <div className="mt-8 flex flex-col gap-3 min-[400px]:flex-row">
             <Link href="/sign-up" className={cn(buttonVariants({ size: "lg" }), CTA)}>

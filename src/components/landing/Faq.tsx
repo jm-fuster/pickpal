@@ -13,29 +13,25 @@ const STORE_LIST = new Intl.ListFormat("es", { type: "conjunction" }).format(
 const QUESTIONS: { q: string; a: ReactNode }[] = [
   {
     q: "¿Cuánto cuesta?",
-    a: "Nada. PickPal es un proyecto personal y gratuito. Está en beta, así que algunas cosas pueden cambiar, y de momento puedes pedir diez tandas de ideas al día.",
+    a: "Nada. Es un proyecto personal, todavía en beta. De momento puedes pedir ideas diez veces al día.",
   },
   {
     q: "¿Sirve para algo más que cumpleaños?",
-    a: "Sí. Cada fecha lleva el nombre que tú le pongas, sea un aniversario, un santo o Navidad, y su propio presupuesto. Puede repetirse todos los años o ser una sola vez.",
+    a: "Sí: aniversarios, santos, Navidad o la fecha que quieras, y cada una puede llevar su presupuesto.",
   },
   {
     q: "¿De dónde salen las ideas?",
-    // Los enlaces no son siempre búsquedas: el botón de una marca favorita
-    // puede abrir su portada (BrandStoreLink). Lo que vale para todos es que
-    // ninguno lleva a un producto concreto.
     a: (
       <>
-        Las escribe una IA a partir de la ficha de esa persona, del presupuesto de la fecha y de lo que ya le
-        regalaste. Son orientativas: los precios son aproximados y los enlaces te llevan a buscarlas, no a un
-        producto concreto. En la{" "}
+        Las escribe una IA con la ficha de la persona, el presupuesto de la fecha y los diez últimos regalos de su
+        historial. Son orientativas. La{" "}
         <Link
           href="/privacidad"
           className="rounded-sm underline underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           política de privacidad
         </Link>{" "}
-        tienes qué datos recibe y cuándo.
+        explica qué datos recibe la IA.
       </>
     ),
   },
@@ -44,15 +40,15 @@ const QUESTIONS: { q: string; a: ReactNode }[] = [
     // Solo «Producto físico» reparte la búsqueda por tiendas
     // (GiftRecommendationCard, isPhysical); los demás tipos, también
     // «Sorpréndeme» aunque la idea sea un objeto, llevan un único botón a Google.
-    a: `Las ideas de «Producto físico» se buscan en las que marques en Ajustes, de estas once: ${STORE_LIST}. Al empezar están todas marcadas. Las demás, también las de «Sorpréndeme», se buscan en Google.`,
+    a: `Las ideas de «Producto físico» se buscan en las tiendas que marques en Ajustes, de estas once: ${STORE_LIST}. Las demás, en Google.`,
   },
   {
     q: "¿Hay que instalar algo?",
-    a: "No. PickPal es una web y funciona en el navegador del móvil y del ordenador. En Android puedes instalarla y mandar enlaces a tu lista desde el botón Compartir de otras apps.",
+    a: "No, es una web y funciona en el navegador. En Android puedes instalarla y mandar enlaces a tu lista desde el botón Compartir de otras apps.",
   },
   {
     q: "Ya tengo mi lista en otra app. ¿Empiezo de cero?",
-    a: "No. Pégala y PickPal la lee en tu navegador: una cosa por línea, Markdown, un chat de WhatsApp o filas de una hoja de cálculo. También puedes subir un archivo .csv, .tsv o .txt.",
+    a: "No. Pégala y PickPal la lee en tu navegador, sea una cosa por línea, un chat de WhatsApp o una hoja de cálculo.",
   },
 ];
 

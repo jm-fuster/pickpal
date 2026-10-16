@@ -85,8 +85,7 @@ export function IdeasSwitcher() {
           ))}
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          Ideas de ejemplo para la ficha de Marta. En la app salen hasta nueve por tanda, y guardas en su ficha las que
-          te convencen.
+          Ideas de ejemplo para Marta.
         </p>
       </div>
     </div>

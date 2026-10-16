@@ -4,7 +4,7 @@ import { LogoMark } from "@/components/ui/LogoMark";
 import { MockFrame } from "@/components/landing/MockFrame";
 import { beat, reveal } from "@/components/landing/motion";
 import { EMAIL, OCCASION, PERSON } from "@/components/landing/sample";
-import { StackCell } from "@/components/landing/mocks/parts";
+import { PersonAvatar, StackCell } from "@/components/landing/mocks/parts";
 import { cn } from "@/lib/utils";
 
 // Capítulo 2a: el bloque de correo de Ajustes (settings/page.tsx) y el correo
@@ -74,7 +74,8 @@ export function RemindersMock({ className }: { className?: string }) {
     <MockFrame label={LABEL} className={cn("mt-8", className)} {...reveal()}>
       <div className="grid gap-4 md:grid-cols-2 md:items-start">
         {/* Ajustes · Notificaciones por correo. Sin la línea «Los avisos
-            llegarán a…», que llevaría un email. */}
+            llegarán a…», que llevaría un email, ni la ayuda «Recibirás un
+            correo cada vez…», que ya cuenta el capítulo. */}
         <div className="@container space-y-3 rounded-xl border bg-background p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -102,9 +103,6 @@ export function RemindersMock({ className }: { className?: string }) {
                 <LeadRow key={lead.label} {...lead} />
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Recibirás un correo cada vez que se cumpla una de las antelaciones marcadas. Puedes elegir varias.
-            </p>
           </div>
         </div>
 
@@ -122,9 +120,9 @@ export function RemindersMock({ className }: { className?: string }) {
             <div className="space-y-4 p-5">
               <p className="text-sm text-muted-foreground">Tienes un evento próximo:</p>
               <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-background px-4 py-3">
-                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-muted text-sm font-medium text-muted-foreground">
-                  {PERSON.name.charAt(0)}
-                </span>
+                {/* El correo real pinta el avatar como fondo de un círculo de 44 px
+                    (avatarHtml en convex/emails.ts). */}
+                <PersonAvatar src={PERSON.avatar} className="size-11" />
                 <div className="min-w-0">
                   <p className="text-[15px] font-semibold">{PERSON.name}</p>
                   <p className="mt-0.5 text-[13px] text-muted-foreground">{OCCASION.label}</p>

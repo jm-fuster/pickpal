@@ -7,8 +7,8 @@ import { PERSON } from "@/components/landing/sample";
 import {
   Eyebrow,
   FakeButton,
-  InitialsAvatar,
   MissingLine,
+  PersonAvatar,
   TagChip,
   ViewRow,
 } from "@/components/landing/mocks/parts";
@@ -44,7 +44,7 @@ export function ProfileMock({ className }: { className?: string }) {
     <MockFrame label={LABEL} className={cn("relative mt-8", className)} {...reveal()}>
       <div className="space-y-5 pb-12">
         <div className="flex items-center gap-4">
-          <InitialsAvatar initials={PERSON.initials} className="size-16 ring-1 ring-border text-lg" />
+          <PersonAvatar src={PERSON.avatar} className="size-16 ring-1 ring-border" />
           <div className="min-w-0">
             <p className="font-heading text-3xl leading-tight font-medium">{PERSON.name}</p>
             <p className="text-muted-foreground">{PERSON.relationship}</p>

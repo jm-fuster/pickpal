@@ -1,66 +1,26 @@
 import { reveal } from "@/components/landing/motion";
 import { NotebookIllustration } from "@/components/landing/StepIllustrations";
 
-type Claim = { claim: string; proof: string };
+type Claim = { claim: string; detail?: string };
 
 // Cada frase está comprobada contra el código y contra /privacidad y
-// /terminos (tabla «Claim → source» de la spec). Si cambia lo que hace la
-// app, se cambia aquí en el mismo commit: esta sección promete, no adorna.
-const GROUPS: { title: string; items: Claim[] }[] = [
+// /terminos. Si cambia lo que hace la app, se cambia aquí en el mismo commit:
+// esta sección promete, no adorna. Una línea por promesa; el detalle, solo
+// cuando sin él la frase se lee más fuerte de lo que es.
+const CLAIMS: Claim[] = [
   {
-    title: "Con tus datos",
-    items: [
-      {
-        // La prueba dice para qué sirve, no qué guarda: también se guardan las
-        // tandas de ideas, los contadores del límite diario y el registro de
-        // correos enviados (convex/schema.ts), y /privacidad los enumera.
-        claim: "No usa lo que apuntas para nada más.",
-        proof: "Lo que apuntas sirve para tus avisos, para las ideas que pides y para lo que decides compartir.",
-      },
-      {
-        claim: "No abre los enlaces que apuntas.",
-        proof:
-          "Solo los guarda. Y una lista pegada se lee en tu navegador: a PickPal solo llega lo que eliges apuntar.",
-      },
-      {
-        claim: "No publica tu lista.",
-        proof:
-          "No tiene enlace público. La ven las personas que invitas por email, y puedes quitarles el acceso cuando quieras.",
-      },
-      {
-        claim: "No usa cookies de publicidad ni de seguimiento.",
-        proof: "Solo las necesarias para mantener tu sesión iniciada.",
-      },
-    ],
+    claim: "No le enseña a la IA toda tu libreta.",
+    detail: "Solo la ficha de la persona para la que pides ideas, al pulsar el botón.",
   },
-  {
-    title: "Con las ideas y los avisos",
-    items: [
-      {
-        claim: "No da ideas sin una fecha.",
-        proof: "Siempre se piden para una ocasión concreta.",
-      },
-      {
-        claim: "No le enseña a la IA toda tu libreta.",
-        proof:
-          "Solo la ficha de la persona para la que pides ideas, con su nombre de pila, y solo cuando pulsas el botón.",
-      },
-      {
-        // No «una búsqueda en la tienda»: las ideas que no son para comprar
-        // buscan en Google y el botón de una marca puede abrir su portada
-        // (BrandStoreLink), así que se dice lo que vale para todos los enlaces.
-        claim: "No es una tienda.",
-        proof:
-          "Sus enlaces te llevan a buscar la idea en otras webs, como las tiendas que elijas, y el precio de verdad lo ves allí.",
-      },
-      {
-        // «Recordatorios» y no «avisos»: el correo de una lista compartida
-        // llega sin pasar por ese interruptor (convex/emails.ts).
-        claim: "No te manda recordatorios por correo si no los activas.",
-        proof: "Vienen apagados, y cada uno dice cómo quitarlos.",
-      },
-    ],
-  },
+  { claim: "No da ideas sin una fecha." },
+  { claim: "No publica tu lista.", detail: "La ven las personas que invitas." },
+  // «Recordatorios» y no «avisos»: el correo de una lista compartida llega sin
+  // pasar por ese interruptor (convex/emails.ts).
+  { claim: "No te manda recordatorios por correo si no los activas." },
+  { claim: "No usa cookies de publicidad ni de seguimiento." },
+  // No «sus enlaces son búsquedas»: el botón de una marca puede abrir su
+  // portada (BrandStoreLink). Lo que vale para todos es que no vende nada.
+  { claim: "No vende nada.", detail: "El precio de verdad lo ves donde lo compres." },
 ];
 
 export function TrustSection() {
@@ -77,23 +37,16 @@ export function TrustSection() {
         </div>
 
         <div className="mt-10 lg:col-span-8 lg:mt-0">
-          <div className="grid gap-10 sm:grid-cols-2">
-            {GROUPS.map((group) => (
-              <div key={group.title}>
-                <h3 className="font-sans text-sm font-medium text-muted-foreground">{group.title}</h3>
-                <ul className="mt-4 space-y-5">
-                  {group.items.map(({ claim, proof }) => (
-                    <li key={claim}>
-                      <p className="font-medium">{claim}</p>
-                      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{proof}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+          <ul className="grid gap-x-10 gap-y-6 sm:grid-cols-2">
+            {CLAIMS.map(({ claim, detail }) => (
+              <li key={claim}>
+                <p className="font-medium text-pretty">{claim}</p>
+                {detail && <p className="mt-1 text-sm leading-relaxed text-pretty text-muted-foreground">{detail}</p>}
+              </li>
             ))}
-          </div>
+          </ul>
           <p className="mt-10 text-sm text-muted-foreground">
-            Desde Ajustes puedes descargar tus datos o cerrar tu cuenta cuando quieras.
+            Puedes descargar tus datos o cerrar tu cuenta desde Ajustes cuando quieras.
           </p>
         </div>
       </div>

@@ -5,8 +5,12 @@
 import type { GiftImageKey, GiftType } from "@/lib/giftCatalog";
 import type { StoreId } from "@/lib/stores";
 
+// El avatar es el de la app (DiceBear, estilo «dylan»: rizos largos, fondo
+// naranja), copiado en local para que la landing no pida nada a DiceBear. El
+// crédito a Natalia Spivak (CC BY 4.0) va en /terminos, como en la app, y en
+// los metadatos del propio SVG.
 export const PERSON = {
-  name: "Marta", initials: "MA", relationship: "Familia",
+  name: "Marta", avatar: "/landing/marta.svg", relationship: "Familia",
   interests: ["Cerámica", "Café de especialidad", "Plantas"],
   notes: "Está montando un rincón para el café en casa.",
   care: [

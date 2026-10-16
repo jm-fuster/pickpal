@@ -1,6 +1,6 @@
 import { MockFrame } from "@/components/landing/MockFrame";
 import { beat } from "@/components/landing/motion";
-import { CompactTile, InitialsAvatar, OccasionCard, StackCell } from "@/components/landing/mocks/parts";
+import { CompactTile, OccasionCard, PersonAvatar, StackCell } from "@/components/landing/mocks/parts";
 import { OCCASION, PERSON, TILES } from "@/components/landing/sample";
 
 const LABEL =
@@ -18,7 +18,7 @@ export function OccasionMock({ className }: { className?: string }) {
     <MockFrame label={LABEL} className={className}>
       <div {...beat("rise", 150)}>
         <div className="mb-4 flex items-center gap-3">
-          <InitialsAvatar initials={PERSON.initials} className="size-10 ring-1 ring-border" />
+          <PersonAvatar src={PERSON.avatar} className="size-10 ring-1 ring-border" />
           <div className="min-w-0">
             <p className="font-heading text-xl leading-tight font-medium">{PERSON.name}</p>
             <p className="text-sm text-muted-foreground">{PERSON.relationship}</p>
