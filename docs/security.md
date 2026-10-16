@@ -156,7 +156,7 @@ Los cubos de «Mi lista» son **por persona, no por lista**: quien lleva listas 
 
 No hace falta en `update`/`remove` (no son superficie de abuso de almacenamiento).
 
-**Notificaciones por correo**: el cron `internal.emails.runDailyEmailNotifications` corre 1 vez/día y la dedup por `(importantDateId, occurrenceYear)` impide repetir envíos para una misma ocurrencia, así que no necesita rate limit. Si más adelante se añade un endpoint manual tipo "enviar email de prueba", aplicar `checkAndIncrement` con bucket `email_test` (p.ej. 5/día). El email destino se lee de `ctx.auth.getUserIdentity().email` (claim del JWT de Clerk) — **nunca** se acepta como argumento del cliente. Las funciones de envío (`internal.emails.*`, `internal.notifications.*`) son `internal*` y no se exponen en `api.*`.
+**Notificaciones por correo**: el cron `internal.emails.runDailyEmailNotifications` corre 1 vez/día y la dedupe por destinatario y `(importantDateId, occurrenceYear, leadDays)` (índice `by_user_date_year_lead`) impide repetir envíos para una misma ocurrencia, así que no necesita rate limit. Si más adelante se añade un endpoint manual tipo "enviar email de prueba", aplicar `checkAndIncrement` con bucket `email_test` (p.ej. 5/día). El email destino se lee de `ctx.auth.getUserIdentity().email` (claim del JWT de Clerk) — **nunca** se acepta como argumento del cliente. Las funciones de envío (`internal.emails.*`, `internal.notifications.*`) son `internal*` y no se exponen en `api.*`.
 
 ### 5. Endpoints API: validar token, validar body, sanitizar errores
 
@@ -255,7 +255,8 @@ El `clerkUserId` siempre se lee de la sesión vía `requireUser` — la mutation
 dueño sigue siendo `people.clerkUserId`; esta tabla solo añade invitados.
 Índices: `by_person` (listar/borrar en cascada), `by_person_and_user`
 (comprobar acceso de uno concreto) y `by_user` (fichas que te han
-compartido, usado por `people.getAll` e `importantDates.getUpcoming`).
+compartido, usado por `people.getAll`, `importantDates.getUpcoming` y el
+cron de avisos por correo).
 
 - **Resolución de email → `clerkUserId` fuera de Convex.** Convex no tiene
   acceso al backend de Clerk, así que `personShares.invite` recibe ya un
@@ -280,6 +281,14 @@ compartido, usado por `people.getAll` e `importantDates.getUpcoming`).
   propia fila.** No hay forma de que el dueño expulse a un invitado sin que
   el invitado se vaya solo — ver "Lo que NO está implementado todavía".
 - **Ownership check ampliado, no nuevo:** ver §2 (`assertPersonAccess`).
+- **Los avisos por correo también llegan al invitado (16-oct-2026)**, con sus
+  propios ajustes. El cron no tiene sesión, así que decide por cada
+  destinatario con `personShares.peopleWithAccess`: sus fichas más las
+  compartidas, cada una comprobada con `personHasAccess`. Una fila huérfana de
+  `personShares` no manda nada, y quien se desliga deja de recibirlos. La
+  dedupe de `emailNotifications` es por destinatario: antes era global por
+  fecha y el aviso de la dueña habría tapado el del invitado. Ver
+  [`email-notifications.md`](email-notifications.md) · «Fichas compartidas».
 
 ### 10. La app no se indexa en buscadores
 

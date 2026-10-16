@@ -66,6 +66,37 @@ export function assertIsOwner(
   return person;
 }
 
+/**
+ * Todas las fichas a las que `clerkUserId` tiene acceso: las suyas y las que
+ * le han compartido. Lo usa el cron de avisos por correo, que no tiene sesión
+ * y decide por cada destinatario: cada ficha compartida pasa además por
+ * `personHasAccess`, el mismo punto único que usa la app, para que ni una
+ * fila huérfana ni una repetida le metan a nadie un aviso de más.
+ */
+export async function peopleWithAccess(
+  ctx: QueryCtx,
+  clerkUserId: string,
+): Promise<Doc<"people">[]> {
+  const owned = await ctx.db
+    .query("people")
+    .withIndex("by_user", (q) => q.eq("clerkUserId", clerkUserId))
+    .collect();
+  const shares = await ctx.db
+    .query("personShares")
+    .withIndex("by_user", (q) => q.eq("clerkUserId", clerkUserId))
+    .collect();
+  const seen = new Set<Id<"people">>(owned.map((p) => p._id));
+  const people = [...owned];
+  for (const share of shares) {
+    if (seen.has(share.personId)) continue;
+    const person = await ctx.db.get(share.personId);
+    if (!(await personHasAccess(ctx, person, clerkUserId))) continue;
+    seen.add(share.personId);
+    people.push(person as Doc<"people">);
+  }
+  return people;
+}
+
 /** Usado por `deletePersonCascade`: sin esto, borrar una persona compartida
  * dejaría filas de `personShares` huérfanas apuntando a un `personId` muerto. */
 export async function deleteSharesForPerson(

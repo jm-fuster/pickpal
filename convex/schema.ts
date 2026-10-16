@@ -60,12 +60,14 @@ export default defineSchema({
     occurrenceYear: v.number(),
     // Antelación con la que se envió este aviso (0/2/7/14). Optional para
     // documentos previos a la migración multi-trigger; los nuevos siempre lo
-    // tienen. La dedupe se hace por (dateId, year, leadDays).
+    // tienen. La dedupe se hace por destinatario y (dateId, year, leadDays):
+    // la dueña de una ficha y cada invitado reciben el suyo.
     leadDays: v.optional(v.number()),
     sentAt: v.number(),
   })
     .index("by_date_year", ["importantDateId", "occurrenceYear"])
-    .index("by_date_year_lead", [
+    .index("by_user_date_year_lead", [
+      "clerkUserId",
       "importantDateId",
       "occurrenceYear",
       "leadDays",

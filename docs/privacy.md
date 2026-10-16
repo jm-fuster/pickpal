@@ -6,7 +6,7 @@
 
 > **Bloqueo resuelto (20-sep-2026):** `pickpal@jorgemolinafuster.com` ya entrega, vía Cloudflare Email Routing sobre el apex `jorgemolinafuster.com` (3 MX de Cloudflare + `v=spf1 include:_spf.mx.cloudflare.net ~all`, reenvío a buzón personal). Comprobado con un envío real desde fuera del dominio. El subdominio `pickpal.jorgemolinafuster.com` sigue siendo un CNAME a Vercel y **no puede** recibir correo; no intentes ponerle MX.
 
-Última actualización: `12 de octubre de 2026`
+Última actualización: `16 de octubre de 2026`
 
 > Cuando se publique la app, este contenido debe servirse en `/privacy` (p. ej. `src/app/(legal)/privacy/page.tsx`) y enlazarse desde el footer y desde la pantalla de registro.
 
@@ -88,6 +88,15 @@ de la propia app, no un tercero pasivo.
   decisión que no tomó él. Ver §6.
 - **Base legal:** ejecución de contrato — es una funcionalidad que el usuario
   activa explícitamente, no un tratamiento por defecto.
+- **Avisos por correo (desde el 16-oct-2026):** quien recibe el acceso recibe
+  también los avisos de las fechas de esa ficha si tiene activados los suyos,
+  con sus antelaciones y en el mismo correo del día que los de sus fichas
+  (`personShares.peopleWithAccess`, ver
+  [`email-notifications.md`](email-notifications.md) · «Fichas compartidas»).
+  Son datos que ya ve en la app; lo nuevo es que llegan a su buzón por Resend.
+  La base es su consentimiento, el mismo interruptor de Ajustes (§3). Se
+  publicó como aclaración, sin el aviso de §11: no hay dato, proveedor ni
+  finalidad nuevos, y quién ve qué no cambia.
 
 ### 2.6 «Mi lista»
 
@@ -218,7 +227,7 @@ Compartimos datos con los siguientes proveedores que actúan como encargados:
 | [Convex](https://convex.dev) | Base de datos y backend | EE. UU. (el deployment de producción está en la región por defecto; el de desarrollo, en `eu-west-1`) | DPA incorporado a sus términos, con las SCCs incorporadas por referencia |
 | [Google (Gemini API)](https://ai.google.dev) | Generación de recomendaciones | EE. UU. | DPA de Google como encargado («Data Processing Addendum for Products Where Google is a Data Processor»), que Google aplica a quien usa la API desde el EEE (§4.1). Google LLC está adherida al EU-US DPF |
 | [Vercel](https://vercel.com) | Hosting de la web y analítica de uso *cookieless* (Vercel Web Analytics) | EE. UU. | Adherida al EU-US DPF, así que la transferencia está cubierta |
-| [Resend](https://resend.com) | Envío de los correos de aviso | EE. UU. | DPA vinculante al aceptar sus términos, con las SCCs incorporadas; además, adherida al EU-US DPF. Recibe el email del usuario, el **nombre del ser querido**, el evento, la fecha y la URL del avatar (ver 4.3) y, si el usuario guardó en esa ficha la lista que le compartió esa persona, cuántos elementos no ha marcado nadie y cuántos ha marcado él (§2.6). Para el aviso de lista compartida, el email del lector y el nombre y el email del dueño (§2.6) |
+| [Resend](https://resend.com) | Envío de los correos de aviso | EE. UU. | DPA vinculante al aceptar sus términos, con las SCCs incorporadas; además, adherida al EU-US DPF. Recibe el email del usuario, el **nombre del ser querido** (de sus fichas y de las que le han compartido, §2.5), el evento, la fecha y la URL del avatar (ver 4.3) y, si el usuario guardó en esa ficha la lista que le compartió esa persona, cuántos elementos no ha marcado nadie y cuántos ha marcado él (§2.6). Para el aviso de lista compartida, el email del lector y el nombre y el email del dueño (§2.6) |
 | [Pexels](https://www.pexels.com) | Fotos de stock que ilustran las ideas de regalo | EE. UU. | Solo recibe búsquedas genéricas en inglés (server-side) y la IP del navegador al cargar las fotos (ver 4.2) |
 | [Brandfetch](https://brandfetch.com) | Resolver la web oficial de las marcas favoritas + servir sus logos | EE. UU. | Solo recibe el **nombre de la marca** (server-side) y la IP del navegador al cargar el logo (ver 4.2) |
 | [DiceBear](https://www.dicebear.com) | Avatares ilustrados de los seres queridos | UE | Recibe los rasgos elegidos para el dibujo (en el query string) y la IP del navegador (ver 4.2) |

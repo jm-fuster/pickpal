@@ -6,7 +6,7 @@ Documento vivo. Captura cómo funciona el envío automático de emails de record
 
 ## Qué hace
 
-Un cron diario de Convex revisa los `userSettings` de todos los usuarios. Para cada usuario que tenga las notificaciones por correo activadas, busca las `importantDates` cuya próxima ocurrencia coincida con **alguna** de las antelaciones marcadas por el usuario (`emailNotifyDaysBefore`, array — opciones: 0 / 2 / 7 / 14 días) y le envía **un único email agrupado** con esos eventos. Cada disparo concreto se identifica por `(importantDateId, occurrenceYear, leadDays)` y se registra en una tabla aparte para no duplicar.
+Un cron diario de Convex revisa los `userSettings` de todos los usuarios. Para cada usuario que tenga las notificaciones por correo activadas, busca las `importantDates` de sus fichas y de las que le han compartido cuya próxima ocurrencia coincida con **alguna** de las antelaciones marcadas por el usuario (`emailNotifyDaysBefore`, array — opciones: 0 / 2 / 7 / 14 días) y le envía **un único email agrupado** con esos eventos. Cada disparo concreto se identifica por destinatario y `(importantDateId, occurrenceYear, leadDays)` y se registra en una tabla aparte para no duplicar.
 
 La activación y la antelación son configurables desde `/settings`.
 
@@ -20,7 +20,7 @@ La activación y la antelación son configurables desde `/settings`.
 | `userSettings.emailNotifyDaysBefore` | **Gatillos** del email (array). "Avísame cuando falten 14, 7, 2 días o el mismo día". Opciones permitidas: `[0, 2, 7, 14]`. Default `[14]`. Cada antelación marcada produce un email independiente cuando se alcanza. |
 | `userSettings.emailNotificationsEnabled` | Toggle on/off. **Desactivado por defecto** — opt-in explícito (ver "Defaults para nuevos usuarios"). |
 | `userSettings.email` | Copia local del email del usuario (vino del JWT de Clerk al guardar ajustes). El cron lo lee de aquí, sin volver a pedírselo a Clerk. |
-| `emailNotifications` (tabla) | Registro de envíos para deduplicar. Una fila = una ocurrencia notificada. |
+| `emailNotifications` (tabla) | Registro de envíos para deduplicar. Una fila = un aviso enviado a un destinatario: una ocurrencia con una antelación. |
 
 **Por qué dos campos de "días"** y no uno solo: la ventana de la campanita es ancha por diseño (muestra muchos eventos por adelantado, scroll cómodo). El email es push y solo dispara una vez por evento. Si compartieran valor, un usuario con `notifyDaysBefore = 60` recibiría correos 60 días antes, lo cual es ruido.
 
@@ -36,9 +36,10 @@ internal.emails.runDailyEmailNotifications  (action)
         │
         ├─► internal.notifications.findEventsNeedingEmail  (query)
         │     ├─ recorre userSettings con emailNotificationsEnabled=true
-        │     ├─ para cada user, calcula daysUntil de cada importantDate
+        │     ├─ para cada user, toma sus fichas y las compartidas (peopleWithAccess)
+        │     ├─ calcula daysUntil de cada importantDate
         │     ├─ filtra eventos cuyo daysUntil ∈ emailNotifyDaysBefore
-        │     └─ descarta los ya presentes en emailNotifications(date, year, lead)
+        │     └─ descarta los ya presentes en emailNotifications(user, date, year, lead)
         │
         ├─► internal.emails.sendBatchedReminderEmail  (action, una por usuario)
         │     └─ POST https://api.resend.com/emails
@@ -48,6 +49,20 @@ internal.emails.runDailyEmailNotifications  (action)
 ```
 
 Si el envío a un usuario falla (Resend devuelve 4xx/5xx, red caída, etc.), el orquestador **no** marca ese envío como hecho y continúa con el siguiente usuario. Como la ocurrencia sigue sin estar marcada, el cron del día siguiente lo vuelve a intentar — pero ese día ya `daysUntil` no coincidirá con esa antelación concreta y el filtro no matcheará, así que se pierde ese aviso (los demás disparos de la misma fecha siguen funcionando). Asumido conscientemente: simplificar > reintentar (una recuperación robusta requeriría una tabla de "pendientes").
+
+---
+
+## Fichas compartidas (16-oct-2026)
+
+Quien tiene una ficha compartida como invitado (`personShares`) recibe los avisos de sus fechas igual que los de sus propias fichas: con su interruptor, sus antelaciones y en el mismo correo del día. La dueña sigue recibiendo los suyos con sus ajustes, y lo que haga uno no cambia lo que recibe el otro. Hasta esta fecha el invitado veía esas fechas en la agenda y en la campana, pero nunca le llegaban por correo.
+
+- **De qué fichas avisa:** `findEventsNeedingEmail` pide a `personShares.peopleWithAccess` las fichas de cada destinatario: las suyas (`people.by_user`) y las compartidas (`personShares.by_user`), cada una comprobada con `personHasAccess`, el mismo punto único que usa la app. Una fila de `personShares` que apunte a una ficha borrada no cuenta, y ninguna ficha entra dos veces.
+- **Dedupe por destinatario:** antes era global, por `(importantDateId, occurrenceYear, leadDays)`; con dos destinatarios para la misma fecha, el aviso de la dueña habría tapado el del invitado. Ahora el índice es `by_user_date_year_lead`, con `clerkUserId` delante, y la búsqueda usa `first()` en vez de `unique()` para que una fila repetida no tumbe el cron de todos. `markEmailsSent` siempre ha guardado `clerkUserId`, así que las filas anteriores sirven sin migración.
+- **Cómo deja de recibirlos:** apagando su interruptor o desligándose de la ficha (`personShares.leave`). Sin su fila en `personShares`, la ficha deja de entrar en su correo.
+- **El correo es el mismo:** no dice quién creó la ficha ni que es compartida. El botón de un solo evento lleva a `/seres-queridos/{personId}/gifts`, que el invitado puede abrir porque tiene acceso.
+- **Las cifras de «Mi lista»** cuentan solo las listas que guardó en esa ficha quien recibe el correo, nunca las que asoció la dueña: compartir una ficha no da acceso a sus listas ([`security.md`](security.md) §2).
+
+Tests en [`convex/notifications.test.ts`](../convex/notifications.test.ts): quién lo recibe, con qué antelaciones, que va en un solo correo junto a las fichas propias y que el aviso de la dueña no tapa el del invitado.
 
 ---
 
@@ -81,7 +96,8 @@ Los usuarios creados con el default viejo se corrigieron con `migrations:resetEm
 | [`convex/schema.ts`](../convex/schema.ts) | Campos nuevos en `userSettings` y tabla `emailNotifications` con sus índices. |
 | [`convex/settings.ts`](../convex/settings.ts) | `getMine` devuelve los nuevos campos + email del JWT. `setMine` valida y los persiste. `ensureDefaults` inicializa la fila al primer acceso. Si se activa el toggle sin email en JWT, lanza error. |
 | [`src/components/layout/UserInitializer.tsx`](../src/components/layout/UserInitializer.tsx) | Componente cliente (renderizado en el app layout). Llama a `ensureDefaults` al montar, una vez por sesión autenticada. |
-| [`convex/notifications.ts`](../convex/notifications.ts) | Cálculo de próxima ocurrencia (recurrente / no recurrente), matching contra antelación, dedup vs. `emailNotifications`. Exporta el tipo `EventToNotify` (incluye `personId` para el CTA y `personAvatarUrl` para el avatar en la tarjeta). |
+| [`convex/notifications.ts`](../convex/notifications.ts) | Cálculo de próxima ocurrencia (recurrente / no recurrente), matching contra antelación, dedup por destinatario vs. `emailNotifications`. Exporta el tipo `EventToNotify` (incluye `personId` para el CTA y `personAvatarUrl` para el avatar en la tarjeta). |
+| [`convex/personShares.ts`](../convex/personShares.ts) | `peopleWithAccess`: las fichas de un usuario y las que le han compartido, cada una por `personHasAccess`. El cron la usa para saber de qué fichas avisar a cada destinatario. |
 | [`convex/emails.ts`](../convex/emails.ts) | Llama a Resend (vía `fetch`, sin SDK) y orquesta el cron diario. Construye HTML inline en español con diseño visual propio (ver sección "Plantilla de email"). |
 | [`convex/crons.ts`](../convex/crons.ts) | `crons.cron("0 8 * * *", ...)` — diario a las 08:00 UTC. |
 | [`src/app/(app)/settings/page.tsx`](../src/app/%28app%29/settings/page.tsx) | UI: toggle + grid de checkboxes con las antelaciones (0/2/7/14) + email destino visible. |
@@ -147,7 +163,7 @@ El campo `personAvatarUrl` se propaga desde `person.avatarUrl` en `convex/notifi
 
 ### Línea de «Mi lista» (10-oct-2026)
 
-Si el destinatario guardó en la ficha de esa persona la lista que ella le compartió, la tarjeta añade debajo de la cuenta atrás «{nombre} tiene N cosas en su lista que nadie ha marcado todavía» (en singular con N = 1), enlazada a `/seres-queridos/{personId}#lista`, en `#FBF7EE` y subrayada a 12 px. Solo la cifra, nunca títulos: el correo pasa por Resend (decisión 18 de [`encargo-lista.md`](encargo-lista.md)). La cuenta la hace `lists.countUnclaimedForReader` dentro de `findEventsNeedingEmail`, solo para los eventos que van a enviarse, y viaja en `listUnclaimed`, opcional y ausente si es 0. El HTML lo pinta `listLineHtml`, con sus tests en `convex/emails.test.ts`. Como el aviso solo llega a quien es dueño de la ficha, quien la tiene compartida como invitado no ve esta línea, igual que no recibe el aviso.
+Si el destinatario guardó en la ficha de esa persona la lista que ella le compartió, la tarjeta añade debajo de la cuenta atrás «{nombre} tiene N cosas en su lista que nadie ha marcado todavía» (en singular con N = 1), enlazada a `/seres-queridos/{personId}#lista`, en `#FBF7EE` y subrayada a 12 px. Solo la cifra, nunca títulos: el correo pasa por Resend (decisión 18 de [`encargo-lista.md`](encargo-lista.md)). La cuenta la hace `lists.countUnclaimedForReader` dentro de `findEventsNeedingEmail`, solo para los eventos que van a enviarse, y viaja en `listUnclaimed`, opcional y ausente si es 0. El HTML lo pinta `listLineHtml`, con sus tests en `convex/emails.test.ts`. Desde el 16-oct-2026 el invitado de una ficha también recibe el aviso (ver «Fichas compartidas»), y su línea cuenta solo las listas que ese invitado guardó en esa ficha.
 
 **Segunda línea (12-oct-2026):** si quien recibe el correo tiene cosas de esa lista marcadas con «Lo regalo yo», debajo va «Tienes N cosas de su lista marcadas para regalarle» (en singular con N = 1), con el mismo enlace. La cifra la da `lists.countMarkedByReader` y viaja en `listMine`, también opcional y ausente si es 0. `listLineHtml` pinta las dos líneas por separado y devuelve vacío si ninguna llega. Las dos cifras cuentan también las listas que alguien lleva para otra persona sin cuenta, si quien recibe el correo las guardó en esa ficha. **Quien lleva la lista también las recibe** (12-oct-2026): si asoció una lista a cargo a una ficha suya (`managedLists.personId`), su recordatorio de esa ficha suma `lists.countUnclaimedForManager` (cosas sin ninguna marca) y `lists.countMarkedByManager` (las que marcó ella misma) a las cifras de lector. Quien lleva la lista no sale en `listShares`, por eso se cuenta aparte. Las marcas de los lectores no cuentan como suyas.
 
@@ -255,9 +271,9 @@ Configuración en Clerk Dashboard → **Sessions → Claims** (token de sesión,
 ## Cadencia y modelo de envíos
 
 - **Una ejecución diaria** del cron a las **08:00 UTC** (10:00 verano / 09:00 invierno en España peninsular). Hora elegida para que el correo llegue en horario de mañana sin invadir madrugadas.
-- **Un email por usuario** que tenga eventos disparando ese día. Si un usuario tiene 3 cumples a 7 días vista, recibe 1 correo con los 3, no 3 correos.
+- **Un email por usuario** que tenga eventos disparando ese día, contando las fichas que le han compartido. Si un usuario tiene 3 cumples a 7 días vista, recibe 1 correo con los 3, no 3 correos.
 - **Sin reintentos automáticos** (ver "Flujo end-to-end").
-- **Recordatorios escalonados (multi-trigger)**: el usuario puede marcar varias antelaciones (0/2/7/14) en `/settings`. Cada antelación marcada genera un email independiente cuando se alcanza. La dedupe es por `(importantDateId, occurrenceYear, leadDays)`, así que los avisos a 14 y a 7 días para la misma ocurrencia coexisten sin bloquearse.
+- **Recordatorios escalonados (multi-trigger)**: el usuario puede marcar varias antelaciones (0/2/7/14) en `/settings`. Cada antelación marcada genera un email independiente cuando se alcanza. La dedupe es por destinatario y `(importantDateId, occurrenceYear, leadDays)`, así que los avisos a 14 y a 7 días para la misma ocurrencia coexisten sin bloquearse.
 
 ---
 
@@ -268,7 +284,8 @@ Resumen — el detalle vive en [`docs/security.md`](security.md).
 - Funciones de envío y query de eventos son **`internal*`** — nunca expuestas en `api.*`. Solo el cron las puede invocar.
 - El email destino se lee del JWT de Clerk en `setMine`. **Nunca** se acepta como argumento del cliente; eso permitiría a un usuario malicioso enviar correos a cuentas ajenas con plantilla de PickPal.
 - `emailNotifications` lleva `clerkUserId` en todas sus filas. Cualquier query futura sobre la tabla debe filtrar por usuario (`by_user`) — no exponer índices que crucen usuarios.
-- El cron corre 1 vez/día y la dedup `(importantDateId, occurrenceYear)` impide duplicados, así que no necesita rate limit. Si en algún momento se añade un endpoint manual "enviar email de prueba", aplicar `checkAndIncrement` con bucket `email_test` (sugerido: 5/día).
+- De qué fichas avisa a cada destinatario lo decide `personHasAccess` (vía `peopleWithAccess`), no el `clerkUserId` de la ficha: dueña o invitado, nadie más.
+- El cron corre 1 vez/día y la dedupe por destinatario y `(importantDateId, occurrenceYear, leadDays)` impide duplicados, así que no necesita rate limit. Si en algún momento se añade un endpoint manual "enviar email de prueba", aplicar `checkAndIncrement` con bucket `email_test` (sugerido: 5/día).
 - `RESEND_API_KEY` es secret server-only; vive en el entorno de Convex, **no** en `NEXT_PUBLIC_*`.
 
 ---
@@ -277,7 +294,7 @@ Resumen — el detalle vive en [`docs/security.md`](security.md).
 
 - El email del usuario se almacena en `userSettings.email` por dos razones: (1) evitar que el cron tenga que llamar a la API de Clerk en cada ejecución, (2) tener un valor estable aunque cambie el JWT.
 - Si el usuario desactiva el toggle, el campo `email` **se conserva** (no se borra en `setMine`). Esto permite reactivar sin volver a forzar Save desde un cliente con JWT fresco. Si en el futuro hay tema de RGPD que exija borrarlo, hay que añadir lógica explícita.
-- El cuerpo del email contiene nombres de personas y etiquetas de eventos del usuario — son datos del propio usuario y van a su email, no se filtran a terceros. La única excepción es la línea de «Mi lista»: una cifra sobre la lista de otro usuario, que la ha compartido con el destinatario. Por eso es solo una cifra. Resend almacena los emails enviados durante un tiempo en su panel; revisar [política de Resend](https://resend.com/legal/privacy-policy) si la app crece.
+- El cuerpo del email contiene nombres de personas y etiquetas de eventos del usuario — son datos del propio usuario y van a su email, no se filtran a terceros. En una ficha compartida los apuntaron la dueña o los invitados, y quien recibe el correo ya los ve en la app: el correo no le enseña nada que no vea allí. La única excepción es la línea de «Mi lista»: una cifra sobre la lista de otro usuario, que la ha compartido con el destinatario. Por eso es solo una cifra. Resend almacena los emails enviados durante un tiempo en su panel; revisar [política de Resend](https://resend.com/legal/privacy-policy) si la app crece.
 
 ---
 
@@ -342,7 +359,7 @@ Devuelve la lista que el orquestador tomaría como entrada, **sin enviar** nada.
 
 ### Forzar un reenvío
 
-Si por alguna razón hay que reenviar un aviso ya marcado como enviado, hay que borrar la fila correspondiente de `emailNotifications` desde el dashboard de Convex (Tables → emailNotifications → eliminar fila por `(importantDateId, occurrenceYear)`) y luego relanzar `emails:runDailyEmailNotifications`.
+Si por alguna razón hay que reenviar un aviso ya marcado como enviado, hay que borrar la fila correspondiente de `emailNotifications` desde el dashboard de Convex (Tables → emailNotifications → eliminar la fila de ese destinatario por `(clerkUserId, importantDateId, occurrenceYear, leadDays)`; cada destinatario tiene la suya, y borrar las de otros también se las reenviaría) y luego relanzar `emails:runDailyEmailNotifications`.
 
 ---
 

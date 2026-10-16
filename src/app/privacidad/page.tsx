@@ -157,9 +157,9 @@ export default function PrivacyPage() {
             </li>
             <li>
               <span className="text-foreground">Resend</span> — envía los
-              avisos de tus fechas si activas las notificaciones, y el correo
-              que te avisa de que alguien te ha compartido su lista. Para los
-              primeros recibe tu email, el nombre del ser querido, el evento y
+              avisos de tus fechas y de las fichas que te han compartido, si
+              activas las notificaciones, y el correo que te avisa de que
+              alguien te ha compartido su lista. Para los primeros recibe tu email, el nombre del ser querido, el evento y
               su fecha y, si esa persona te ha compartido su lista, cuántas
               cosas de ella no ha marcado nadie todavía y cuántas has marcado
               tú para regalarle (las cifras, nunca cuáles son). Para el segundo, tu email y el nombre y el email de quien
@@ -261,7 +261,9 @@ export default function PrivacyPage() {
             regalos e ideas guardadas — estas dos últimas quedan con la
             autoría de quien las añadió. Las tandas de ideas que genera la IA
             <strong> no</strong> se comparten: cada persona genera y ve las
-            suyas.
+            suyas. Si tiene activados los avisos por correo, también le llegan
+            los de las fechas de esa ficha, con la antelación que haya elegido
+            en sus Ajustes.
           </p>
           <p className="text-sm text-foreground">
             Solo quien creó la ficha puede compartirla o borrarla para todos.
@@ -503,7 +505,7 @@ export default function PrivacyPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 14 de octubre de 2026.
+          Última actualización: 16 de octubre de 2026.
         </p>
       </main>
 

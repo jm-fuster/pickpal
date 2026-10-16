@@ -7,6 +7,7 @@ import {
   countUnclaimedForManager,
   countUnclaimedForReader,
 } from "./lists";
+import { peopleWithAccess } from "./personShares";
 
 /**
  * Días enteros entre hoy (UTC, hora 0) y la fecha objetivo (UTC, hora 0).
@@ -122,10 +123,11 @@ export const findEventsNeedingEmail = internalQuery({
       const raw = s.emailNotifyDaysBefore as number | number[];
       const leadDays = typeof raw === "number" ? [raw] : raw;
       if (leadDays.length === 0) continue;
-      const people = await ctx.db
-        .query("people")
-        .withIndex("by_user", (q) => q.eq("clerkUserId", s.clerkUserId))
-        .collect();
+      // Sus fichas y las que le han compartido: quien tiene acceso a una ficha
+      // recibe los avisos de sus fechas con sus propios ajustes, en el mismo
+      // correo del día que los de las suyas (docs/email-notifications.md,
+      // «Fichas compartidas»).
+      const people = await peopleWithAccess(ctx, s.clerkUserId);
 
       const events: EventToNotify[] = [];
       for (const person of people) {
@@ -138,17 +140,20 @@ export const findEventsNeedingEmail = internalQuery({
           if (next === null) continue;
           if (!leadDays.includes(next.daysUntil)) continue;
 
-          // Dedupe por (dateId, year, leadDays). Un aviso a 14 días no debe
-          // bloquear el de 7 días para la misma ocurrencia.
+          // Dedupe por destinatario y (dateId, year, leadDays). El aviso que
+          // recibió la dueña no tapa el del invitado, y uno a 14 días no
+          // bloquea el de 7 para la misma ocurrencia. `first` y no `unique`:
+          // una fila repetida no debe tumbar el cron de todos.
           const already = await ctx.db
             .query("emailNotifications")
-            .withIndex("by_date_year_lead", (q) =>
+            .withIndex("by_user_date_year_lead", (q) =>
               q
+                .eq("clerkUserId", s.clerkUserId)
                 .eq("importantDateId", date._id)
                 .eq("occurrenceYear", next.occurrenceYear)
                 .eq("leadDays", next.daysUntil),
             )
-            .unique();
+            .first();
           if (already) continue;
 
           // Solo las cifras, y solo de las listas que este usuario asoció a la
