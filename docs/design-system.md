@@ -44,7 +44,8 @@ Acepta `className` para controlar tamaño. Incluye `aria-hidden` — el contexto
 | Sidebar desktop | `size-7` | `src/app/(app)/layout.tsx` |
 | Header móvil | `size-6` | `src/app/(app)/layout.tsx` |
 | Auth layout (sign-in / sign-up) | `size-7` | `src/app/(auth)/layout.tsx` |
-| Landing page header | `size-7` | `src/app/page.tsx` |
+| Landing · cabecera | `size-7` | `src/components/landing/LandingHeader.tsx` |
+| Landing · pie | `size-5` | `src/components/landing/LandingFooter.tsx` |
 | Favicon e iconos de app | — | ver [Iconos de app y favicon](#iconos-de-app-y-favicon) |
 
 ### Iconos de app y favicon
@@ -1378,7 +1379,7 @@ Geist y Fraunces se cargan en [`src/app/layout.tsx`](../src/app/layout.tsx), se 
 - **Pesos válidos en Fraunces**: 400, 500, 600, 700. Para titulares de página preferir `font-medium` (500) o `font-semibold` (600). `font-bold` (700) solo en hero de la landing.
 - **Letter spacing en headings**: `-0.01em` aplicado en base layer (= `letter-spacing/tight`). No añadir `tracking-tight` encima: sería el mismo valor. La excepción sancionada es `tracking-tighter` en titulares display de 60px o más — hoy solo el `h1` del hero de la landing.
 - **Body**: tamaños `text-sm` o `text-base`, `leading-relaxed` cuando hay párrafo de varias líneas.
-- **Eyebrows / labels**: sans, `text-xs uppercase tracking-[0.2em] text-muted-foreground`. Ejemplo en el hero de la landing.
+- **Eyebrows / labels**: sans, `text-xs uppercase tracking-[0.18em] text-muted-foreground`. Ejemplo: los títulos de bloque de `AboutPersonCard` («Gustos»). Decía `0.2em` y un ejemplo en el hero de la landing; ningún eyebrow del código usa `0.2em` y la landing ya no tiene eyebrows (corregido el 16-oct-2026).
 - **Eyebrows dentro de `<h2>`**: añadir `font-sans` explícito (`className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"`). Sin él, el base layer aplica Fraunces serif a todo `h2` y los headers de sección quedan en serif, visualmente distintos a los mismos labels en `<p>` dentro de formularios.
 
 ### Cuándo NO usar serif
@@ -1431,12 +1432,12 @@ Visible a partir de `lg` (1024px). Implementado en `src/app/(app)/layout.tsx`.
 ### Cards (shadcn `Card`)
 
 - Default: `rounded` heredado del token, `border border-border/60` para que la línea sea sutil, `shadow-sm`.
-- Padding: `p-4` en cards densas (PersonCard), `p-5`–`p-6` en cards informativas (UpcomingDateCard, GiftRecommendationCard, feature cards).
+- Padding: `p-4` en cards densas (PersonCard), `p-5`–`p-6` en cards informativas (UpcomingDateCard, GiftRecommendationCard, `IdeaExampleCard` de la landing).
 - **Hover · cards completamente clicables** (toda la card es Link): `transition-all hover:bg-muted/40 hover:shadow-md hover:-translate-y-0.5`. Sutilmente "el papel se levanta". Ejemplo: `PersonCard`.
 - **PersonCard**: layout vertical. Avatar `size-16` centrado arriba, nombre centrado, badge de relación (`variant="secondary"`) posicionado `absolute top-3 right-3`, sección de intereses con eyebrow label, y CTA "Ver perfil" (`buttonVariants outline sm w-full`) en el pie. Grid responsive: `sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5`.
 - **Filtro de relación en `/seres-queridos`**: encima del grid, fila con `<Label>` eyebrow ("Filtrar") + `<Select>` shadcn. Opciones: "Todas las relaciones" (valor sentinel `"all"`) + las de `RELATIONSHIPS`. El `Select` controlado normaliza `null → "all"` en `onValueChange`. Filtrado client-side en memoria (lista pequeña, no merece pasar por Convex). Cuando el filtro vacía la lista, mostrar empty state propio con el mismo estilo dashed que el original (no reutilizar el de "una libreta en blanco" — distinto motivo).
 - **Hover · cards con acción interna** (la card no es link, pero contiene botón): `transition-shadow hover:shadow-md`. Sin translate ni cambio de fondo. Ejemplo: `GiftRecommendationCard`.
-- **Cards estáticas** (sin acción): solo `shadow-sm`, sin hover. Ejemplo: step cards de la landing.
+- **Cards estáticas** (sin acción): solo `shadow-sm`, sin hover. Ejemplo: `IdeaExampleCard` y `CalendarLeaf` de la landing.
 - **Card de urgencia** (UpcomingDateCard cuando `daysUntil <= 7`): `border-primary/60 shadow-sm bg-primary/5`. El tinte rosado del primary llama la atención sin chillar.
 - **UpcomingDateCard — layout responsive**: avatar `size-12` envuelto en `<Link>` a la ficha del ser querido (`hover:opacity-80` + focus-ring) — entrada redundante con el nombre, pero los usuarios pulsan la foto por instinto. El bloque central apila tres líneas (nombre `font-medium truncate`, etiqueta·relación `text-xs muted truncate`, presupuesto `text-xs muted truncate` si existe) — apilar en lugar de poner nombre y meta en la misma baseline evita que el nombre se trunque a nada cuando el botón come ancho. El botón "Ideas de regalo" muestra solo "Regalar" en mobile (`<span className="sm:hidden">`) y el texto completo a partir de `sm`; siempre lleva `aria-label="Ideas de regalo"`. En desktop con `xl:` aparece la variante `<button>` con `onClick` (panel embebido).
 - **Presupuesto en agenda**: `budgetLabel()` en `UpcomingDateCard` divide los valores entre 100 antes de mostrarlos — los presupuestos se almacenan en céntimos en Convex (1000 = 10 €). Cualquier otro componente que muestre presupuestos debe hacer lo mismo.
@@ -1495,40 +1496,94 @@ Ver lógica completa en [`docs/ia-regalos.md`](ia-regalos.md#multi-tienda) y la 
 
 ### Landing page (`src/app/page.tsx`)
 
-Página de marketing, server component. Estructura:
+Rehecha el 15-oct-2026 (ver «La landing cuenta un cumpleaños: el de Marta», al final). La página sigue los cinco pasos de un cumpleaños por la app real: apuntas lo que sabes de Marta, PickPal te avisa 14 días antes, pides ideas del tipo que buscas, el día se lo das y pasa a su historial, y al año siguiente la tanda nueva tiene ese historial delante.
 
-- **Header**: logo + "PickPal" a la izquierda, `UserButton` de Clerk a la derecha (solo si autenticado).
-- **Hero**: H1 serif escalado (`text-4xl → lg:text-8xl`) + subtítulo + CTAs. Sin eyebrow — se eliminó "Para las personas que te importan".
-  - Autenticado: un botón "Ir a la agenda" → `/agenda`.
-  - No autenticado: "Empezar gratis" (primary) + "Iniciar sesión" (outline).
-- **Steps**: grid `grid-cols-1 sm:grid-cols-3`, tres `Card` estáticas (sin hover). Cada card tiene:
-  - **Pictograma de marca** arriba: componente SVG de [`src/components/landing/StepIllustrations.tsx`](../src/components/landing/StepIllustrations.tsx), centrado en un contenedor `flex h-24 items-center justify-center`, tamaño `h-20 w-auto`. Flotan directamente sobre la card, sin banda de tinte detrás — los círculos crema del propio pictograma hacen de fondo.
-  - Badge de número: `size-6 rounded-full bg-secondary text-secondary-foreground text-2xs font-semibold`.
-  - Título `text-xl font-medium` (serif heredado), en fila con el badge (flex row, `gap-3`).
-  - Cuerpo `text-sm leading-relaxed text-muted-foreground`.
-- **Footer**: una línea centrada `text-xs text-muted-foreground`.
+Server component y estática (`○ /` en `next build`): no lee cabeceras, cookies, sesión, `searchParams` ni la hora, y no exporta `dynamic`. Quien tiene sesión no llega a verla, porque `src/proxy.ts` lo manda a `/agenda` antes. Las piezas viven en `src/components/landing/`. Sus estilos propios están en `src/app/landing.css`, que solo importa `page.tsx` y cuelga entero de `[data-landing]`: Next no descarga una hoja global al navegar, y así no puede tocar la app si sigue cargada. Lo único que no se puede colgar de un selector son las `@property` y los `@keyframes`, que son globales; por eso todos llevan el prefijo `landing` (`--landing-at`, `--landing-i`, `--landing-dur`, `landing-rise`…).
+
+**Estructura**, de arriba abajo:
+
+| Bloque | Archivos | Qué hay |
+|---|---|---|
+| Cabecera | `LandingHeader.tsx` | «Saltar al contenido» (primer foco), logo + «PickPal» y `<nav aria-label="Cuenta">` con «Iniciar sesión» (`ghost`) y «Empezar gratis» (desde el punto `sm`), los dos en el tamaño por defecto (`h-8`, `text-sm`) para que no se vean dos alturas juntas. Ni fija ni animada. |
+| Hero | `Hero.tsx`, `mocks/OccasionMock.tsx` | H1, subtítulo, dos CTA y la réplica de la próxima ocasión de Marta («En 7 días») sobre el disco de marca. |
+| Cómo funciona | `Story.tsx`, `CalendarLeaf.tsx`, `IdeasSwitcher.tsx`, `IdeaExampleCard.tsx`, `mocks/ProfileMock.tsx`, `mocks/RemindersMock.tsx`, `mocks/GivenMock.tsx` | `#como-funciona`. Un `<ol>` de cuatro capítulos: apuntas (faltan 21 días), la campana, el correo y las ideas (14), se lo das (hoy) y al año siguiente (21 otra vez). |
+| Mi lista | `ListSection.tsx`, `mocks/ListMock.tsx` | La lista de Marta en dos paneles: «Así la ve Marta» (quieta) y «Así la ves tú» (marcas «Lo regalo yo»). |
+| Lo que PickPal no hace | `TrustSection.tsx` | Dos grupos de cuatro, «Con tus datos» y «Con las ideas y los avisos». Cada afirmación lleva debajo su prueba; sin iconos, viñetas ni filetes. |
+| Preguntas | `Faq.tsx` | Seis `<details name="faq">` (abrir una cierra la anterior, sin JS), cada `summary` con su `h3`. La lista de tiendas sale de `ALL_STORES` y `STORE_LABELS`; el «once» va escrito y lo vigila `landing.test.tsx`. La respuesta separa «Producto físico» (tiendas) del resto, «Sorpréndeme» incluido (Google), como `GiftRecommendationCard`. |
+| Cierre | `Closing.tsx` | Pictograma, h2 «¿Quién cumple años el mes que viene?», CTA y «Solo necesitas un email.». |
+| Pie | `LandingFooter.tsx` | Logo + «PickPal» y `<nav aria-label="Legal">` con Privacidad y Términos. |
+
+Árbol de titulares: un solo `h1`; un `h2` por sección (cinco); cinco `h3` en los capítulos (el 2 tiene dos), dos en «Lo que PickPal no hace» y seis en Preguntas.
+
+**Hero.**
+- H1 en Fraunces `font-semibold`, `text-4xl → sm:text-5xl → lg:text-6xl → xl:text-7xl`, `leading-[1.05]`. Es el elemento LCP y nunca anima. Reserva su alto en líneas (`min-h-[3lh]`, `min-[440px]:min-h-[2lh]`, `xl:min-h-[3lh]`) y por debajo de 440 px se estrecha a `max-w-[10em]`: así la fuente de reserva (Noto Serif en Android, más ancha) y Fraunces parten el titular en las mismas líneas y el cambio de fuente no mueve nada. Queda en 3 líneas por debajo de 440 px, en 2 hasta `xl` y en 3 en `xl`. Medido con este titular: si cambia, se vuelve a medir.
+- **CTA de landing**: `h-11 px-5 text-base`, a todo el ancho por debajo de 400 px. Es la constante `CTA` de `Hero.tsx`, que usa también el cierre. Solo en la landing; si se repite fuera, pasa a ser un `size="xl"` del botón. «Ver cómo funciona» es un `<a>` y no `Link`: el router de Next desplaza al ancla pero deja el foco donde estaba, y el foco tiene que llegar a la sección (que lleva `tabIndex={-1}`).
+- La columna de la réplica lleva `data-scene="load"`: su escena corre por CSS al cargar, también sin JS. Detrás va el **disco de marca** (`HeroDisc`): un círculo plano `fill-accent` que sangra por el borde, nunca un degradado, con un destello ámbar en el canto, fuera de la réplica. En oscuro lleva `dark:opacity-70`, porque `--accent` es más claro que la tarjeta y la hacía leer hundida.
+
+**Capítulos.** Cada `li` lleva una **hoja de calendario** desde `lg` o una **franja** por debajo:
+- `CalendarLeaf` (solo landing): `max-w-[13rem] rounded-2xl border border-border/60 bg-card shadow-sm`, banda terracota (`bg-secondary text-secondary-foreground`, 4,92:1) con «Cumpleaños de Marta», porque terracota es persona, y la cifra en `font-heading text-5xl`, nunca mayor, para no competir con el H1. Va `sticky top-10` dentro de su columna de 3/12, que se estira al alto del capítulo: la hoja acompaña a su capítulo y se va con él cuando entra el siguiente. Solo CSS.
+- `ChapterChip`: `sticky top-0` a todo el ancho, con un punto terracota y el mismo dato en texto («Faltan 14 días»).
+- Las dos son `aria-hidden`. El lector oye lo que dice la franja al principio del primer `h3` del capítulo (`<span className="sr-only">Faltan 21 días. </span>`; en el capítulo 3, «Hoy es su cumpleaños.»). En el 4 dice «Faltan 21 días.» y no «Al año siguiente.», que el título ya repite.
+- **Ningún ancestro puede llevar `overflow-hidden`**, y tampoco `overflow-x-hidden`, que convierte al elemento en contenedor de scroll y rompe los dos sticky. Para recortar en horizontal, `overflow-x-clip`, como el hero.
+
+**Selector de tipo de regalo** (capítulo 2, `IdeasSwitcher`). Es contenido real e interactivo, no una réplica: un `fieldset` con `legend` «Tipo de regalo» y cuatro radios nativos con las etiquetas y descripciones de `GIFT_TYPES`, y cuatro `<ul data-set>` que `landing.css` muestra con `:has()`. Funciona sin JS; sin `:has()` se queda en «Producto físico». El estilo de selección es el del panel real (`bg-muted`, borde `border-border`), no un borde primario, **más un check** arriba a la derecha (`Check`, color de texto): el fondo y el borde solos se quedan en 1,16–1,36:1 frente al panel y desaparecen en colores forzados. El foco va en **contorno sólido** (`has-[:focus-visible]:outline-2 outline-offset-2 outline-ring`), no en el anillo `ring-ring/50`, que en oscuro da 1,83:1 y no existe en colores forzados; así foco y selección se ven distintos. Es un desvío asumido de `GiftsPanel`, que sigue con el problema (ver Pendientes). Las tarjetas (`IdeaExampleCard`) copian `GiftRecommendationCard` sin pulgares, foto ni hover; no llevan titulares y los chips de tienda son solo texto. **Sin `line-clamp`** en título y descripción, a diferencia de la app: son texto de verdad y a 768 y 1024 px se cortaban a media línea. Mantienen sus `min-h-*` y el pie lleva `mt-auto`, así que precio y tiendas quedan alineados en la fila aunque una descripción ocupe cuatro líneas. Por debajo de `md` se enseñan dos tarjetas y no tres, para no dejar una huérfana en la rejilla de dos columnas.
+
+**Réplicas de la app** (`*Mock`). Copias de pantallas reales, renderizadas en el servidor con los datos de Marta (`sample.ts`) y piezas que copian las clases de la app (`mocks/parts.tsx`). Siguen claro y oscuro solas, no pesan y no se quedan viejas por sí mismas. El precio es que se desincronizan si cambia el componente que copian, y por eso hay lista de sincronización (abajo). Reglas:
+- **Marco**: `MockFrame` pinta `role="img"` con un `aria-label` en castellano que cuenta lo que se ve, y dentro un `div` `inert` y `aria-hidden`. Para el lector es una imagen con su descripción; nada de dentro se enfoca ni se anuncia por separado.
+- **Dentro**: ningún `h1`–`h6`, nada enfocable (ni `a`, `button`, `input`, `tabindex`), ninguna imagen remota (avatares de iniciales) y chips de tienda solo en texto, sin logos. Lo comprueba `src/components/landing/landing.test.tsx`.
+- **Nunca un módulo `"use client"`**: `ui/avatar` lo es, así que la réplica usa `InitialsAvatar`, que copia sus clases. `Card` es plano; botones y badges van por `buttonVariants` y `badgeVariants` sobre un `span`.
+- **Nunca una fecha absoluta junto a una cuenta atrás**: donde la app enseña las dos («En 7 días · 24 sep»), la réplica quita la fecha. Así no caduca.
+- **Desvíos permitidos**, y ninguno más: la tesela compacta (`CompactTile`, sin badge ni chips, título en `text-[13px]` hasta tres líneas: en el móvil y a 1024 px la tesela mide unos 70–80 px por dentro y en dos se cortaban todos), la cabecera compacta del hero (avatar `size-10`, nombre `text-xl`), maquetas por *container query* donde la app usa el ancho de la ventana, y superficies flotantes en `shadow-sm` (el «Guardado» y el menú van con `shadow-md` en la app).
+- **El correo de la réplica va en tokens**: estructura y textos literales de `convex/emails.ts`, colores del sistema. Los hex del correo real no pasan AA (blanco sobre `#F1704B` da 2,93:1).
+- Los iconos lucide de dentro son UI copiada de la app, no ilustración.
+
+**Sincronización de réplicas.** Un cambio en cualquiera de estos archivos tiene que actualizar su réplica de la landing:
+- `NextOccasionCard.tsx` e `ideaParts.tsx` → `OccasionCard` y `CompactTile` (`mocks/parts.tsx`), `OccasionMock`, `GivenMock`
+- `PersonHeader.tsx` → cabeceras de `OccasionMock` y `ProfileMock`
+- `AboutPersonCard.tsx` → `ProfileMock`
+- `GiftHistoryCard.tsx` y `ActionMenu.tsx` → `GivenMock`
+- `settings/page.tsx` (bloque de correo) y `convex/emails.ts` → `RemindersMock`
+- `GiftsPanel.tsx` (tipos de regalo) y `GiftRecommendationCard.tsx` → `IdeasSwitcher`, `IdeaExampleCard`
+- `OwnerListView.tsx`, `AboutNote.tsx`, `AddRowButton.tsx` → `ListOwnerMock`
+- `PersonListSection.tsx` (`SharedListSection`) y `MoreIdeasCard.tsx` → `ListReaderMock`
+- `giftCatalog.ts`, `giftImages.ts`, `stores.ts` → `sample.ts` y todas las que pintan ideas
+- `src/lib/nextOccasion.ts` (`occasionWhen`, `formatBudget`, `URGENT_DAYS`) y `src/lib/price.ts` (`formatApproxPrice`, `fitsBudget`) → `sample.ts` (`OCCASION.budget`, precios de teselas y de la lista, `LIST.fitLine`)
+- `src/lib/missingSentence.ts` y la ficha (`seres-queridos/[personId]/page.tsx`, la píldora «Guardado») → `ProfileMock`
+- `src/lib/options.ts` (`REACTIONS`) → `sample.ts` (`HISTORY`), `GivenMock` y el párrafo del capítulo 3 de `Story.tsx`
 
 **Pictogramas de marca (`StepIllustrations.tsx`):**
 
-Ilustraciones planas en el mismo lenguaje que el logo-mark: figuras geométricas rellenas (sin stroke), círculos crema de fondo y el dúo verde bosque + terracota. Reglas:
+Ilustraciones planas en el mismo lenguaje que el logo-mark: figuras geométricas rellenas (sin stroke), un disco crema de fondo y el dúo verde bosque + terracota. Reglas:
 
-- **Colores solo por token**: `fill-accent` (círculos crema de fondo), `fill-primary` (forma principal), `fill-secondary` (acento terracota), `fill-chart-3` (destello ámbar puntual). Nunca hex fijos — así se adaptan a claro/oscuro solos.
-- **Entrada animada**: el contenedor del pictograma lleva `animate-in fade-in zoom-in-95 duration-500 fill-mode-both` con `animationDelay: index * 120ms` — las tres viñetas "aparecen" en cascada al cargar la landing. Zoom sutil (no slide) porque son objetos que *se posan*, no filas de lista. CSS puro (`tw-animate-css`), la página sigue siendo server component y `prefers-reduced-motion` se respeta por defecto.
-- **Formas**: círculos, rects redondeados y paths simples. Las figuras humanas son cabeza (círculo) + hombros (rect con `rx` = mitad del ancho), recortadas al círculo de fondo con `clipPath` — mismo esquema que las dos figuras del logo.
-- Siempre `aria-hidden` (decorativas). `viewBox="0 0 140 72"` compartido.
+- **Colores solo por token**: `fill-accent` (disco crema de fondo), `fill-primary` (forma principal), `fill-secondary` (acento terracota), `fill-chart-3` (destello ámbar puntual). Nunca hex fijos: así se adaptan a claro/oscuro solos. `fill-accent` también vale como **tinta dentro de una forma verde** (las líneas de la hoja, la etiqueta de la libreta).
+- **Solo sobre `--background`, nunca sobre `--card`**: en oscuro, el disco crema sobre una tarjeta se queda en 1,19:1 y desaparece. La landing anterior los ponía dentro de cards; ya no.
+- **Marcan la sección**: `h-16 w-auto` encima del `h2` (en el cierre, `h-20` y centrado). No hay eyebrows en la landing.
+- **Ámbar como mucho una vez** por composición.
+- **Entrada**: se posan al entrar en pantalla (`reveal("settle")`, ver Animaciones), no en cada carga. El envoltorio del revelado lleva `w-fit`: a todo el ancho, la escala sale del centro del envoltorio y el pictograma, alineado a la izquierda, resbalaba hasta 20 px de lado. El del cierre no, porque su centrado depende del envoltorio a todo el ancho.
+- **Formas**: círculos, rects redondeados y paths simples. Las figuras humanas son cabeza (círculo) + hombros (rect con `rx` = mitad del ancho), recortadas al círculo de fondo con `clipPath`, mismo esquema que las dos figuras del logo. El id del recorte sale de `useId()` (vale en server components), así que un pictograma puede salir dos veces sin que choquen.
+- El destello de cuatro puntas sale de `sparklePath(cx, cy, s)`, exportado, para que todos los destellos tengan la misma forma.
+- Siempre `aria-hidden` (decorativos). `viewBox="0 0 140 72"` compartido; el disco del hero va aparte (`0 0 100 100`) y lleva `data-decor`, que lo oculta en `forced-colors`.
 
-| # | Pictograma | Título |
+| Pictograma | Dibujo | Dónde |
 |---|---|---|
-| 1 | Trío de figuras — la central terracota, delante y más grande; las laterales verdes | Añade a tus seres queridos |
-| 2 | Campana verde sobre círculo crema + badge terracota de aviso | Dile cuándo avisarte |
-| 3 | Caja de regalo verde con lazo terracota + destellos ámbar/terracota | Genera ideas perfectas |
+| `CalendarIllustration` (nuevo) | Hoja de calendario verde con banda terracota, anillas, la casilla de hoy en crema y un destello ámbar | Cómo funciona |
+| `ListIllustration` (nuevo) | Hoja verde con tres líneas crema y un marcapáginas terracota | Mi lista |
+| `NotebookIllustration` (nuevo) | Libreta verde con etiqueta crema y goma terracota | Lo que PickPal no hace |
+| `LovedOnesIllustration` | Trío de figuras: la central terracota, delante y más grande; las laterales verdes | Cierre |
+| `HeroDisc` (nuevo) | Disco crema plano y un destello ámbar en el canto | Hero, detrás de la réplica |
+| `RemindersIllustration` | Campana verde sobre círculo crema + badge terracota de aviso | Sin uso desde el 15-oct-2026; se conserva |
+| `GiftIdeasIllustration` | Caja de regalo verde con lazo terracota + destellos ámbar/terracota | Sin uso desde el 15-oct-2026; se conserva |
 
 **Decisiones:**
-- Las step cards no tienen hover — son informativas, no interactivas.
-- **Pictogramas propios, no iconos lucide ni sets externos**: se probó una composición de iconos lucide con tintes planos (commit `d7eae86`) y se sustituyó — los iconos de stroke leen como UI, no como ilustración. Los pictogramas rellenos en la paleta de marca extienden el lenguaje del logo (figuras planas verde+terracota) y mantienen el registro de papelería cálida. unDraw y similares siguen descartados (estética SaaS genérica). Esta es la **excepción deliberada a la regla "no SVG inline"** de Iconografía: aplica solo a ilustración de marca (landing, futuros empty states de marketing), nunca a iconos funcionales de la app, que siguen siendo lucide.
+- **El H1 no cambia**: «El regalo perfecto para quien más te importa.» se queda por la decisión del 18-sep-2026 (promesa de marca; ver Pendientes). Apunta al pain principal, no al recordatorio de fechas, que es lo que ya hace el calendario del teléfono. Las dos alternativas que se barajaron en el rediseño, «Que su cumpleaños no te pille sin idea.» y «Llega a su cumpleaños sabiendo qué regalarle.», quedan en un comentario junto a `HERO_TITLE` (`Hero.tsx`).
+- **Las palabras no se mueven; solo las réplicas y los pictogramas.** Cada movimiento de una réplica es un cambio de estado real del producto: la cuenta atrás, el tinte urgente, el «Guardado», el interruptor que se enciende, el regalo que pasa al historial, la marca que Marta no ve. Contrato completo en Animaciones.
+- **Sin eyebrows**: la sección la marca el pictograma. Las mayúsculas espaciadas solo aparecen dentro de las réplicas, porque las copian de la app.
+- **Ningún `h2` supera al H1**: `text-3xl lg:text-4xl font-medium`; el del cierre llega a `lg:text-5xl`.
+- **Sombras**: `shadow-sm` en reposo y nada por encima de `shadow-md`. Sin degradados.
+- **Nada de prueba social inventada**: ni testimonios, ni cifras, ni valoraciones, ni prensa. Tampoco logos de tienda ni marcas reales de producto; las tiendas salen por su nombre.
+- **Pictogramas propios, no iconos lucide ni sets externos**: se probó una composición de iconos lucide con tintes planos (commit `d7eae86`) y se sustituyó, porque los iconos de stroke leen como UI, no como ilustración. Los pictogramas rellenos en la paleta de marca extienden el lenguaje del logo y mantienen el registro de papelería cálida. unDraw y similares siguen descartados (estética SaaS genérica). Es la **excepción deliberada a la regla "no SVG inline"** de Iconografía: aplica solo a ilustración de marca, nunca a iconos funcionales de la app, que siguen siendo lucide.
 - El mapeo semántico de colores se mantiene: terracota = personas/afecto, verde = producto/acción, ámbar = destello puntual.
-- Sin emojis en las cards: número + pictograma comunican el paso y mantienen el registro adulto.
-- El H1 apunta al pain principal ("regalo perfecto"), no al recordatorio de fechas, que es lo que ya hace el calendario del teléfono.
+- Sin emojis en ningún sitio de la landing.
 
 ### Páginas — padding y layout
 
@@ -1904,9 +1959,47 @@ Probado en el Playground del Figma (sección `Playground · Person profile · Co
   - **Riesgo:** la animación se replay si el componente se desmonta/remonta. Verificar que ningún ancestro tiene un `key` que cambie con datos de Convex. El toggle interno (`useState` de `showForm`) mantiene el elemento montado mientras esté abierto; sin riesgo en los formularios actuales.
 - **Selección de cards con cambio visual** (UpcomingDateCard cuando `isSelected`): `transition-[border-color,box-shadow] duration-150` para que el ring/border aparezca con fade en lugar de saltar. No usar `transition-all` con `hover:-translate-y` en cards con acción interna (regla 164).
 - **Hovers en chips/badges clicables** (un `Badge` que no sea `<a>` — p. ej. los tags de interés, que son `<Badge render={<button>}>`; ver Accesibilidad): añadir explícitamente `hover:bg-secondary/80 transition-colors` (o equivalente). Las variantes shadcn de Badge tienen el hover bajo selector `[a]:hover:...`, que solo aplica a `<a>` — un `<span>`/`<button>` con cursor-pointer no recibe hover por defecto.
-- **No animar**: aparición de un único elemento espontáneo (es ruido), elementos que reaparecen tras refresh, headers, navegación, transiciones de página. **Excepción**: los pictogramas de la landing animan su entrada en cada carga — es una página de marketing donde la primera impresión es el objetivo, no una herramienta de uso repetido. No extender esto a páginas de la app.
+- **No animar**: aparición de un único elemento espontáneo (es ruido), elementos que reaparecen tras refresh, headers, navegación, transiciones de página. **Excepción**: las escenas de la landing (pictogramas, réplicas de la app y tarjetas del selector de ideas) animan al cargar o al entrar en pantalla. Es una página de marketing donde la primera impresión es el objetivo, no una herramienta de uso repetido, y sigue el contrato de abajo. **No se extiende a las páginas de la app.**
 - **`fill-mode-both`** es importante en stagger: sin él, las cards parpadean al inicio porque la animación no tiene estado inicial.
-- **`prefers-reduced-motion`**: Tailwind y `tw-animate-css` lo respetan por defecto. No añadir overrides manuales.
+- **`prefers-reduced-motion`**: ni Tailwind ni `tw-animate-css` lo respetan por su cuenta. `tw-animate-css` 1.4.0 no trae ninguna regla de movimiento reducido, y Tailwind 4 solo da las variantes `motion-safe:` y `motion-reduce:`. Lo que se anime tiene que pedirlo: `motion-safe:` delante de la utilidad, o la regla dentro de `@media (prefers-reduced-motion: no-preference)`. Esta línea decía que lo respetaban por defecto, y era falso (corregido el 15-oct-2026). **Hoy ninguna animación de la app lo cumple**: el escalonado de ideas de `GiftRecommendationCard`, `GenerationProgress`, los `animate-pulse` de skeletons y de `LoadingFallback`, y los `animate-in` de los formularios inline. Es tarea aparte, en Pendientes.
+
+#### Tokens de movimiento (`globals.css`, 15-oct-2026)
+
+| Token | Valor | Para qué |
+|---|---|---|
+| `--ease-paper` | `cubic-bezier(0.22, 1, 0.36, 1)` | Entradas: bloques que suben, menús |
+| `--ease-settle` | `linear(…)`, con un rebote de ~1,5 % | Objetos que se posan |
+| `--ease-swap` | `cubic-bezier(0.4, 0, 0.2, 1)` | Cambios de estado, capas, hovers |
+| `--dur-micro` | 150ms | Hover, foco, selección |
+| `--dur-swap` | 200ms | Cambios de etiqueta, interruptores |
+| `--dur-settle` | 500ms | Objetos |
+| `--dur-rise` | 600ms | Bloques |
+| `--stagger-list` | 60ms | Listas generadas (la regla de la app) |
+| `--stagger-block` | 120ms | Bloques y pictogramas (la regla de la landing) |
+
+Ponen nombre a los números que este documento ya usaba (150, 200 y 500 ms; escalonados de 60 y 120 ms) y añaden 600 ms para los bloques que suben. Una sola fuente para el movimiento de la landing, que hoy es la única que los consume. En Tailwind se escriben `duration-(--dur-micro)` y `ease-(--ease-swap)`. La app puede adoptarlos cuando se toque cada animación; no hace falta migrarlas de golpe.
+
+#### Contrato de movimiento de la landing (15-oct-2026)
+
+- **Las palabras no se mueven.** Ni titulares, ni párrafos, ni CTA. El H1 es el LCP y pinta en el primer fotograma. Solo se mueven las réplicas y los pictogramas, y cada movimiento de una réplica es un cambio de estado real del producto. La única excepción es la respuesta de una pregunta, que se despliega cuando quien lee la abre (ver abajo).
+- **El DOM por defecto es el fotograma final.** El CSS solo anima *desde* estados anteriores (`animation-fill-mode: backwards`). Sin JS, con movimiento reducido o al imprimir se ve el estado final y no hay nada oculto. Los estados efímeros, lo que solo existe a mitad de escena («En 21 días», el menú abierto, el botón antes de pulsarse), llevan `opacity-0` y un compás `blink`, `pass` o `press-out`: en el fotograma final no están, y es lo correcto.
+- **Cada escena se reproduce una vez**, en unos 3,5 s o menos. Nada en bucle y sin botones de repetir (WCAG 2.2.2).
+- **Todo detrás de `prefers-reduced-motion: no-preference`.** El movimiento de `landing.css` va dentro de `@media screen and (prefers-reduced-motion: no-preference)`; las utilidades de Tailwind de la landing llevan `motion-safe:`; `RevealRoot` no se arma con movimiento reducido y, si el ajuste cambia a mitad de visita, lo asienta todo. Los hovers solo cambian color.
+- **Cómo funciona:**
+  - `src/app/landing.css` tiene los keyframes `landing-*` y las reglas, todo bajo `[data-landing]`.
+  - `beat(nombre, at, dur?)` (`src/components/landing/motion.ts`) pone `data-beat`, `--landing-at` y `--landing-dur`: un compás de escena (`rise`, `settle`, `pop`, `swap-in`, `fade`, `grow`, `slide`, `blink`, `pass`, `press-out`) que empieza a los `at` ms.
+  - `reveal(tipo, i)` pone `data-reveal` y `--landing-i`: el bloque sube (`rise`, 600 ms, `--ease-paper`) o se posa (`settle`, 500 ms, `--ease-settle`) al entrar en pantalla, escalonado `i × 120 ms`.
+  - La escena del hero arranca al cargar (`data-scene="load"`, solo CSS, también sin JS). Las demás, cuando `RevealRoot` marca su bloque con `data-revealed="in"`. Lo que ya está en pantalla al armar se queda en su fotograma final, sin animar. **Se mide en la primera tanda del `IntersectionObserver`, no al hidratar**: al volver con Atrás, el navegador restaura el scroll después de hidratar, y medir antes dejaba en blanco cuatro bloques que ya se veían y luego los animaba. Hasta esa primera tanda no se arma nada, así que el fotograma de más no se ve.
+  - **Una réplica revelada espera a estar entera en pantalla** para tocar sus compases (`data-play`, que pone un segundo observer de `RevealRoot`): el bloque sube al cruzar el 85 % de la ventana, pero en el móvil sus compases de abajo (las filas de tallas, el «Guardado», el historial) sonaban por debajo del borde. Mientras espera se ve su fotograma de salida (`animation-play-state: paused` con *fill* `backwards`). Si la réplica es más alta que la pantalla, le basta llenar el 90 % de ella; si el visitante ya la pasó, se suelta igual.
+  - `RevealRoot` es la única isla de cliente propia de la landing (unos 0,6 KB con brotli): dos `IntersectionObserver` y nada más. Antes de hidratar no oculta nada, porque el CSS solo esconde bajo `[data-reveal-armed]`, y nunca esconde lo que tiene el foco (`:not(:focus-within)`).
+  - Las tarjetas del selector de ideas se posan cada vez que su tanda aparece, a 60 ms entre ellas: el paso de `display: none` a `grid` reinicia la animación, sin JS. La primera tanda corre al cargar con su bloque aún oculto, así que al revelarse el bloque cambian a `landing-settle-in` (la misma animación con otro nombre), y el cambio de nombre la reinicia.
+  - La respuesta de una pregunta se despliega al abrirse (`landing-unfold`: opacidad y 4 px desde arriba, `--dur-swap`). Es el único texto que se mueve, y solo porque lo abre quien lee. Va en `landing.css` sobre `details[open] > div` y no con `animate-in` de `tw-animate-css`: en Chromium el cuerpo de un `<details>` cerrado vive en `::details-content` oculto, y la animación corría una vez, invisible, al cargar.
+- **Reglas al montar una escena:**
+  - Nunca `data-reveal` y `data-beat` en el mismo elemento. `data-reveal` va en un envoltorio sin utilidades propias de transformación ni de opacidad.
+  - No anidar un bloque `data-reveal` con compases dentro de otro: la regla de los compases mira a cualquier ancestro revelado, y los de dentro sonarían aunque su bloque debiera quedarse en el fotograma final.
+  - Nada de `delay-*` ni `duration-*` en un elemento que anima `landing.css`.
+  - Las etiquetas y badges que se intercambian van apilados en una misma celda (`StackCell`), para que nada se recoloque.
+  - En grupos SVG, `transform-fill origin-center`: sin eso, el escalado parte de la esquina del lienzo.
 
 ### Iconografía
 
@@ -2085,7 +2178,7 @@ Persona gramatical: **tú** (singular, cercano). Nunca "nosotros" corporativo.
 
 El "tú" incluye las pantallas de Clerk: su localización `esES` habla de usted ("Ingrese su dirección", "Regístrese"), así que `src/app/layout.tsx` la extiende con las dos claves que se ven en el acceso. Si aparece otra cadena de usted en Clerk, se añade ahí, no se acepta. La casilla legal del registro también se sobrescribe en ese archivo, aunque por otro motivo: «Acepto los Términos… y he leído la Política de Privacidad», porque la política se lee, no se acepta (`docs/legal.md` §3).
 
-Tampoco adjetivos de folleto ni remates: la landing decía "Genera ideas perfectas" y "Sin sorpresas." en un producto que promete nueve ideas con razón y vende sorpresas; hoy dice "Genera nueve ideas" y termina donde termina el dato. Los dos guiones largos que había en el copy pasaron a coma y dos puntos (pasada de escritura natural, 18-sep-2026; el espejo en Figma, en Screens & prototype, cambió a la vez).
+Tampoco adjetivos de folleto ni remates: la landing decía "Genera ideas perfectas" y "Sin sorpresas." en un producto que promete nueve ideas con razón y vende sorpresas; pasó a decir "Genera nueve ideas" y a terminar donde termina el dato (las tarjetas de pasos desaparecieron con el rediseño del 15-oct-2026). Los dos guiones largos que había en el copy pasaron a coma y dos puntos (pasada de escritura natural, 18-sep-2026; el espejo en Figma, en Screens & prototype, cambió a la vez).
 
 ---
 
@@ -2173,7 +2266,12 @@ Lista de cosas que sé que faltan o que no han recibido pasada todavía. Se irá
 - [ ] **WCAG 2.5.3 en el CTA de la tarjeta de fecha**: en móvil el botón se lee «Regalar» y su `aria-label` dice «Ideas de regalo», así que el texto visible no está contenido en el nombre accesible. Arreglo en código: que el nombre accesible empiece por la palabra visible, o quitar el `aria-label` cuando el span visible está presente. Es el único sitio del producto donde la etiqueta cambia por breakpoint.
 - [ ] **Footer global**: minimal por ahora. Decidir si crece o se queda así.
 - [ ] **Skeletons consistentes**: todos en `rounded-2xl` y `border-dashed`, pero verificar dimensiones uniformes.
-- [ ] **Mobile < 380px**: sin probar. Hero de landing podría descuadrar.
+- [x] ~~Mobile < 380px~~ → probada la landing nueva a 360 × 640 el 16-oct-2026, con el build de producción: sin scroll horizontal y ningún elemento sale por la derecha; el H1 ocupa 3 líneas, justo su alto reservado; la línea «En 7 días» de la réplica del hero empieza a 592 px, dentro de la primera pantalla. Recorrida entera (réplicas, selector de ideas, lista, preguntas), sin nada que se salga por la derecha. Lo que sí se cortaba eran los títulos de las teselas de la réplica del hero (a dos líneas en 69–83 px de ancho): desde el 16-oct-2026 llegan a tres.
+- [ ] **La app no comprueba `prefers-reduced-motion`**: el escalonado de ideas de `GiftRecommendationCard`, `GenerationProgress`, los `animate-pulse` de skeletons y de `LoadingFallback` y los `animate-in` de los formularios inline animan igual con el movimiento reducido activado. Arreglo: `motion-safe:` delante de cada utilidad. Salió al corregir Animaciones el 15-oct-2026.
+- [ ] **JS de cliente en `/`** (medido con `next build` el 16-oct-2026): lucide 0 B, porque solo su `Icon` base lleva `"use client"` en la 1.53 y ya viaja en el chunk compartido por `ui/sonner`; los iconos se serializan deduplicados en el RSC, así que pintarlos en línea agrandaría el payload, y queda descartado. `next/link` y `buttonVariants` ya estaban en `/` antes del rediseño; `RevealRoot`, unos +0,4 KB br (el único chunk propio de `/` pasa de 6,8 a 6,9 KB br). **Queda abierto**: `buttonVariants` arrastra el `Button` de base-ui (unos 3,5 KB br que se descargan y nunca se ejecutan en `/`). Arreglo: sacar el `cva` a `src/components/ui/button-variants.ts`, reexportarlo desde `ui/button.tsx` y apuntar ahí los cuatro importadores de la landing (`Hero`, `LandingHeader`, `Closing`, `mocks/parts`). Toca `ui/`, fuera de la landing.
+- [ ] **El selector de tipo de regalo de `GiftsPanel` no se distingue marcado**: `bg-muted` y `border-border` dan 1,16–1,36:1 frente al fondo y desaparecen en colores forzados (WCAG 1.4.11). La landing ya lleva un check y un contorno de foco sólido (Componentes · Landing page); portar los dos a `GiftsPanel.tsx` y quitar el desvío.
+- [ ] **El anillo de foco por defecto no llega a 3:1 en oscuro**: `outline-ring/50` del `@layer base` y los `ring-ring/50` dan 1,83:1 sobre `--background` en oscuro (3,13:1 en claro). Los botones se salvan por su `focus-visible:border-ring`; los enlaces de texto, no. La landing ya usa contorno sólido `outline-ring` en sus enlaces, preguntas y casillas; decidir si se sube `--ring` de oscuro o la base pasa a `outline-ring`.
+- [ ] **El aviso de sonner se anuncia en inglés**: `<Toaster />` (layout raíz) pinta una región «Notifications alt+T» en todas las páginas, también en la landing (`lang="es"`). Arreglo de una línea en `src/components/ui/sonner.tsx`: `containerAriaLabel="Notificaciones"`.
 - [x] ~~Tono de los toasts de error~~ → fallbacks genéricos actualizados: "No se pudo guardar / añadir / eliminar…" en lugar de "Error". Los mensajes del servidor se siguen mostrando cuando están disponibles.
 - [ ] **Estado de loading global / transiciones de página**: actualmente cada página gestiona el suyo. ¿Vale la pena una skeleton global o no?
 - [x] ~~ThemeToggle en sidebar~~ → retirado. El toggle vive solo en `/settings`. El tema por defecto es **`light`** (`src/app/layout.tsx:52`, `defaultTheme="light"`): el oscuro es opt-in. Esta línea decía `dark` y era falso; corregido el 26-ago-2026 al verificarlo contra el código.
@@ -2485,6 +2583,30 @@ Verificado después por captura: las dos variantes del set y la maqueta compuest
 **Divergencia asumida**: el icono de enlace externo del botón Default mide 16 y no los 14 del código (`size-3.5`), porque Figma no deja cambiar el tamaño de una instancia anidada en el hueco de icono.
 
 **Hallazgo del producto, no del archivo**: con el logo, el nombre y el icono, «El Corte Inglés» no cabe en una columna de menos de 168 px, y ni siquiera «Amazon» cabe en las tarjetas estrechas del panel de la Agenda (columna de 119). El código ya lo recorta con `truncate` y el archivo ahora lo enseña igual: casi todas las tarjetas de las pantallas dicen «El Corte In…» o menos.
+
+---
+
+## La landing cuenta un cumpleaños: el de Marta (15-oct-2026)
+
+**Qué cambia.** La landing explicaba el producto en tres tarjetas de pasos («Añade a tus seres queridos», «Dile cuándo avisarte», «Genera nueve ideas»). Ahora sigue un cumpleaños, el de Marta, por la app real: apuntas lo que sabes de ella, PickPal te avisa 14 días antes, pides ideas del tipo que buscas, el día se lo das y pasa a su historial, y al año siguiente la tanda nueva tiene ese historial delante. Una hoja de calendario acompaña cada capítulo y cuenta 21 → 14 → Hoy → 21. Detrás vienen «Mi lista», «Lo que PickPal no hace», seis preguntas y un cierre. Estructura, réplicas y pictogramas en Componentes · Landing page; movimiento en Animaciones.
+
+**Lo que el rediseño añade al sistema:**
+
+1. **Tokens de movimiento** en `globals.css` (`--ease-paper/settle/swap`, `--dur-micro/swap/settle/rise`, `--stagger-list/block`): una sola fuente para el movimiento de la landing, con los números que el documento ya usaba.
+2. **Contrato de movimiento de la landing**: las palabras no se mueven, el DOM por defecto es el fotograma final, cada escena se reproduce una vez en unos 3,5 s o menos y todo va detrás de `prefers-reduced-motion: no-preference`. La excepción de Animaciones pasa de «los pictogramas» a «las escenas de la landing», y expresamente no a las páginas de la app. Por qué: el registro tranquilo de libreta, WCAG 2.2.2, el LCP y que nada parpadee antes de hidratar.
+3. **Se corrige una afirmación falsa** de Animaciones: Tailwind y `tw-animate-css` no respetan `prefers-reduced-motion` por defecto. Las animaciones de la app que no lo comprueban quedan en Pendientes como tarea aparte.
+4. **Patrón «réplica de la landing»**: copias de pantallas reales, renderizadas en el servidor desde `sample.ts`, con `role="img"`, `aria-label` en castellano y el interior `inert`; sin titulares, nada enfocable, sin imágenes remotas, chips de tienda solo en texto y nunca una fecha absoluta junto a una cuenta atrás. Tres desvíos permitidos (tesela compacta, *container queries*, superficies flotantes en `shadow-sm`) y una lista de sincronización con cada componente copiado. Lo vigila `src/components/landing/landing.test.tsx`.
+5. **El correo de la réplica va en tokens**: estructura y textos literales, colores del sistema, porque los hex del correo real no pasan AA (blanco sobre `#F1704B`, 2,93:1). El correo real sigue igual; arreglarlo es otra tarea.
+6. **Tres pictogramas nuevos** (`CalendarIllustration`, `ListIllustration`, `NotebookIllustration`), `sparklePath` exportado y los recortes con id de `useId()`. Regla nueva: `fill-accent` puede ser tinta dentro de una forma verde. Y los pictogramas van solo sobre `--background`, nunca sobre `--card`: en oscuro el disco crema sobre una tarjeta da 1,19:1.
+7. **El pictograma marca la sección** (`h-16` encima del `h2`). No hay eyebrows en la landing; las mayúsculas espaciadas solo viven dentro de las réplicas.
+8. **Hoja de calendario** (`CalendarLeaf`), componente solo de landing: banda terracota (`bg-secondary text-secondary-foreground`, 4,92:1), porque terracota es persona, y la cifra limitada a `text-5xl` para no superar al H1.
+9. **Disco de marca del hero**: círculo plano `fill-accent` que sangra por el borde, nunca un degradado, con un destello ámbar en el canto.
+10. **Tamaño de CTA de landing**: `h-11 px-5 text-base`, solo aquí. Si se repite fuera, pasa a `size="xl"`.
+11. **El H1 no cambia.** La propuesta del rediseño era «Que su cumpleaños no te pille sin idea.», y la otra alternativa, «Llega a su cumpleaños sabiendo qué regalarle.». Se mantiene «El regalo perfecto para quien más te importa.» por la decisión del 18-sep-2026 (promesa de marca, ver Pendientes); las dos alternativas quedan en un comentario junto a `HERO_TITLE`. Con este titular, el H1 reserva su alto en líneas y se estrecha por debajo de 440 px para que la fuente de reserva de Android no lo mueva (Componentes · Landing page).
+
+**Textos corregidos contra el código** al montarla: «Lo regalé» no existe en la interfaz (la acción es «Ya se lo he regalado»); una lista compartida no entra sola en la ficha, la guardas tú; los enlaces de las ideas no son siempre búsquedas en tienda (el botón de una marca puede abrir su portada); y sin el interruptor de recordatorios también llegan dos correos, la invitación a una lista y el aviso de cambio de política, así que «Lo que PickPal no hace» habla de recordatorios y no de avisos. La idea de ejemplo «Mañana de vivero…» pasó a «Paseo por un vivero…»: la landing no escribe «mañana» en ningún sentido, para que nada se lea como una cuenta atrás. En la revisión del 16-oct-2026: solo «Producto físico» busca en tus tiendas (el resto de tipos, «Sorpréndeme» incluido, lleva un botón a Google), y así lo dicen el capítulo 2 y la pregunta de las tiendas; «Lo que PickPal no hace» ya no dice que solo guarda lo que apuntas (también guarda las tandas de ideas, los contadores del límite diario y el registro de correos) sino para qué lo usa; y compartir la ficha de Marta comparte sus gustos, fechas, historial e ideas guardadas, no las tandas de cada uno ni la lista que te compartió ella.
+
+**Pendiente tras la aprobación:** regenerar `src/app/opengraph-image.png` y su `.alt.txt`, que siguen con el subtítulo anterior y dicen «Código abierto» cuando la licencia ya no lo es; volver a pasar `scripts/screenshots.mjs`; y reflejar la landing en el Playground del Figma antes que en ningún otro sitio.
 
 ---
 

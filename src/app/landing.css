@@ -1,0 +1,81 @@
+/* Landing («/»). Todo cuelga de [data-landing]. El DOM por defecto es el
+   fotograma final: aquí solo se anima DESDE estados anteriores (fill-mode
+   backwards) y solo con prefers-reduced-motion: no-preference.
+   Las @property y los @keyframes no se pueden colgar de un selector: son
+   globales y siguen registrados al navegar a la app, así que llevan el
+   prefijo `landing` para no chocar con nada de ella. */
+
+@property --landing-at  { syntax: "<time>";    inherits: false; initial-value: 0ms; }
+@property --landing-i   { syntax: "<integer>"; inherits: false; initial-value: 0; }
+@property --landing-dur { syntax: "*";         inherits: false; }
+
+[data-landing] ::selection { background-color: color-mix(in oklab, var(--chart-3) 40%, transparent); }
+
+/* Selector de tipo de regalo: funciona sin JS. Sin :has() se queda en «Producto físico». */
+[data-landing] [data-set]:not([data-set="fisica"]) { display: none; }
+@supports selector(:has(*)) {
+  [data-landing] [data-switcher]:has(input:not([value="fisica"]):checked) [data-set="fisica"] { display: none; }
+  [data-landing] [data-switcher]:has(input[value="experiencia"]:checked) [data-set="experiencia"],
+  [data-landing] [data-switcher]:has(input[value="tiempo-juntos"]:checked) [data-set="tiempo-juntos"],
+  [data-landing] [data-switcher]:has(input[value="sorprendeme"]:checked) [data-set="sorprendeme"] { display: grid; }
+}
+
+@keyframes landing-rise      { from { opacity: 0; translate: 0 0.75rem; } }
+@keyframes landing-settle    { from { opacity: 0; scale: 0.94; } }
+/* La misma que landing-settle con otro nombre: cambiar de nombre reinicia la animación (§3). */
+@keyframes landing-settle-in { from { opacity: 0; scale: 0.94; } }
+@keyframes landing-pop       { from { opacity: 0; scale: 0.6; } }
+@keyframes landing-swap-in   { from { opacity: 0; translate: 0 0.375rem; } }
+@keyframes landing-unfold    { from { opacity: 0; translate: 0 -0.25rem; } }
+@keyframes landing-fade      { from { opacity: 0; } }
+@keyframes landing-grow      { from { scale: 0.84; } }
+@keyframes landing-slide     { from { translate: 0 0; } }
+/* Estados efímeros: el elemento lleva `opacity-0` por defecto y solo se ve dentro de su animación. */
+@keyframes landing-blink     { 0%, 80% { opacity: 1; translate: 0 0; } 100% { opacity: 0; translate: 0 -0.375rem; } }
+@keyframes landing-pass      { 0% { opacity: 0; translate: 0 0.375rem; } 20%, 80% { opacity: 1; translate: 0 0; } 100% { opacity: 0; translate: 0 -0.375rem; } }
+@keyframes landing-press-out { 0%, 25% { opacity: 1; scale: 1; } 40% { scale: 0.96; } 60% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: 1; } }
+
+@media screen and (prefers-reduced-motion: no-preference) {
+  /* 1 · Revelado al entrar en pantalla. Solo se oculta cuando RevealRoot ya armó. */
+  [data-landing] [data-reveal-armed] [data-reveal]:not([data-revealed]):not(:focus-within) { opacity: 0; translate: 0 0.75rem; }
+  [data-landing] [data-reveal-armed] [data-reveal="settle"]:not([data-revealed]):not(:focus-within) { translate: none; scale: 0.94; }
+  [data-landing] [data-reveal][data-revealed="in"] {
+    animation: landing-rise var(--dur-rise) var(--ease-paper) calc(var(--landing-i) * var(--stagger-block)) backwards;
+  }
+  [data-landing] [data-reveal="settle"][data-revealed="in"] {
+    animation-name: landing-settle; animation-duration: var(--dur-settle); animation-timing-function: var(--ease-settle);
+  }
+
+  /* 2 · Compases de escena: el hero arranca al cargar; el resto, al revelarse. */
+  [data-landing] :is([data-scene="load"], [data-revealed="in"]) [data-beat] {
+    animation-duration: var(--landing-dur, var(--dur-swap)); animation-timing-function: var(--ease-swap);
+    animation-delay: var(--landing-at); animation-fill-mode: backwards;
+  }
+  [data-landing] :is([data-scene="load"], [data-revealed="in"]) [data-beat="rise"]   { animation-name: landing-rise; animation-duration: var(--landing-dur, var(--dur-rise)); animation-timing-function: var(--ease-paper); }
+  [data-landing] :is([data-scene="load"], [data-revealed="in"]) [data-beat="settle"] { animation-name: landing-settle; animation-duration: var(--landing-dur, var(--dur-settle)); animation-timing-function: var(--ease-settle); }
+  [data-landing] :is([data-scene="load"], [data-revealed="in"]) [data-beat="pop"]    { animation-name: landing-pop; animation-duration: var(--landing-dur, var(--dur-settle)); animation-timing-function: var(--ease-settle); }
+  [data-landing] :is([data-scene="load"], [data-revealed="in"]) [data-beat="swap-in"]   { animation-name: landing-swap-in; }
+  [data-landing] :is([data-scene="load"], [data-revealed="in"]) [data-beat="fade"]      { animation-name: landing-fade; }
+  [data-landing] :is([data-scene="load"], [data-revealed="in"]) [data-beat="grow"]      { animation-name: landing-grow; }
+  [data-landing] :is([data-scene="load"], [data-revealed="in"]) [data-beat="slide"]     { animation-name: landing-slide; }
+  [data-landing] :is([data-scene="load"], [data-revealed="in"]) [data-beat="blink"]     { animation-name: landing-blink; }
+  [data-landing] :is([data-scene="load"], [data-revealed="in"]) [data-beat="pass"]      { animation-name: landing-pass; }
+  [data-landing] :is([data-scene="load"], [data-revealed="in"]) [data-beat="press-out"] { animation-name: landing-press-out; }
+  /* Una réplica ya revelada espera en su fotograma de salida hasta estar entera
+     en pantalla (RevealRoot le pone data-play): si no, en el móvil sus compases
+     de abajo sonarían por debajo del borde. */
+  [data-landing] [data-mock][data-revealed="in"]:not([data-play]) [data-beat] { animation-play-state: paused; }
+
+  /* 3 · Tarjetas del selector: se posan al mostrarse (display none→grid reinicia la animación).
+     La primera tanda ya corrió al cargar, con su bloque oculto: al revelarse el
+     bloque, cambian de nombre de animación y vuelven a empezar. */
+  [data-landing] [data-set] > li {
+    animation: landing-settle var(--dur-settle) var(--ease-settle) calc(var(--landing-i) * var(--stagger-list)) backwards;
+  }
+  [data-landing] [data-revealed="in"] [data-set] > li { animation-name: landing-settle-in; }
+
+  /* 4 · Preguntas: la respuesta se despliega cada vez que se abre (la abre quien lee). */
+  [data-landing] details[open] > div { animation: landing-unfold var(--dur-swap) var(--ease-swap); }
+}
+
+@media (forced-colors: active) { [data-landing] [data-decor] { display: none; } }

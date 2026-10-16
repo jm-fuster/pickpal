@@ -57,7 +57,7 @@ const fraunces = Fraunces({
 
 const SITE_URL = "https://pickpal.jorgemolinafuster.com";
 const DESCRIPTION =
-  "Recuerda fechas importantes y recibe ideas de regalo personalizadas con IA.";
+  "Apunta lo que sabes de cada persona y sus fechas. PickPal te avisa cuando se acercan y te propone ideas de regalo a partir de lo que apuntaste.";
 
 export const metadata: Metadata = {
   // Sin metadataBase, Next resuelve la URL de opengraph-image.png contra

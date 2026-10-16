@@ -154,6 +154,20 @@
   --chart-5: oklch(0.4 0.04 50);
 }
 
+/* Movimiento. Hoy solo los usa la landing (src/app/landing.css); viven aquí
+   porque son tokens del sistema (docs/design-system.md · Animaciones). */
+:root {
+  --ease-paper: cubic-bezier(0.22, 1, 0.36, 1); /* entradas: bloques que suben, menús */
+  --ease-settle: linear(0, 0.25 9%, 0.66 22%, 0.92 38%, 1.015 55%, 1.004 75%, 1); /* objetos que se posan, ~1,5 % de rebote */
+  --ease-swap: cubic-bezier(0.4, 0, 0.2, 1); /* cambios de estado, capas, hovers */
+  --dur-micro: 150ms;  /* hover, foco, selección */
+  --dur-swap: 200ms;   /* cambios de etiqueta, interruptores */
+  --dur-settle: 500ms; /* objetos */
+  --dur-rise: 600ms;   /* bloques */
+  --stagger-list: 60ms;   /* listas generadas (regla de la app) */
+  --stagger-block: 120ms; /* bloques y pictogramas (regla de la landing) */
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
