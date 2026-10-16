@@ -53,9 +53,11 @@ if (!CHROME) {
 }
 
 // name, route, theme, full page, settle ms
+// The landing is shot as its first screen, not the full page: the blocks
+// below the fold only reveal on scroll, and 4 s lets the hero scene end.
 const PUBLIC_SHOTS = [
-  ["landing-light", "/", "light", true, 1400],
-  ["landing-dark", "/", "dark", true, 1400],
+  ["landing-light", "/", "light", false, 4000],
+  ["landing-dark", "/", "dark", false, 4000],
 ];
 
 // {person} is replaced with the id of the first person in the account.

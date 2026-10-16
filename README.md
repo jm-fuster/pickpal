@@ -27,7 +27,7 @@ and let a model think with you when the date comes around.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/landing-dark.png">
-  <img src="docs/screenshots/landing-light.png" alt="PickPal's landing page: the headline 'El regalo perfecto para quien más te importa' above three numbered steps" width="900">
+  <img src="docs/screenshots/landing-light.png" alt="PickPal's landing page: the headline 'El regalo perfecto para quien más te importa' beside an example profile for Marta, whose birthday is in 7 days, with three gift ideas already in mind" width="900">
 </picture>
 
 <picture>
