@@ -10,6 +10,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
+      // Nombre de la región de avisos; sonner le añade el atajo («… alt+T»).
+      containerAriaLabel="Notificaciones"
       className="toaster group"
       icons={{
         success: (

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Gift } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { RELATIONSHIPS } from "@/lib/options";
 import type { Doc } from "../../../convex/_generated/dataModel";

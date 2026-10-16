@@ -552,7 +552,7 @@ export default function SettingsPage() {
         className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-md transition-all duration-300 ${
           savedRecently
             ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-2 pointer-events-none"
+            : "opacity-0 motion-safe:translate-y-2 pointer-events-none"
         }`}
       >
         {savedRecently ? (

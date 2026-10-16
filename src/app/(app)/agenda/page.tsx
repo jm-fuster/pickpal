@@ -11,7 +11,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { DateGroupedList } from "@/components/dashboard/DateGroupedList";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { IncomingListsCard } from "@/components/lista/IncomingListsCard";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { computeDaysUntil, monthsWindowDays } from "@/lib/dates";
 
@@ -80,7 +80,7 @@ export default function DashboardPage() {
             <div
               key={i}
               aria-hidden
-              className="h-20 rounded-2xl border border-dashed border-border/60 animate-pulse"
+              className="h-20 rounded-2xl border border-dashed border-border/60 motion-safe:animate-pulse"
             />
           ))}
         </div>

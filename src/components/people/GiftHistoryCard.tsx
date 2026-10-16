@@ -51,7 +51,7 @@ export function GiftHistoryCard({ personId, entries }: { personId: Id<"people">;
               className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               {expanded ? "Ocultar" : entries.length === 1 ? "Ver el regalo" : `Ver los ${entries.length}`}
-              <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} aria-hidden />
+              <ChevronDown className={cn("size-3.5 motion-safe:transition-transform", expanded && "rotate-180")} aria-hidden />
             </button>
           )}
         </div>

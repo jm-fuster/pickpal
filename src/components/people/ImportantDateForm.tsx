@@ -118,7 +118,7 @@ export function ImportantDateForm({
 
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="space-y-3 rounded-xl border border-dashed border-border/70 bg-background/40 p-4 animate-in fade-in slide-in-from-top-1 duration-200"
+        className="space-y-3 rounded-xl border border-dashed border-border/70 bg-background/40 p-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
       >
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           Añadir evento
@@ -376,7 +376,7 @@ export function EditImportantDateInline({
 
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="space-y-3 rounded-lg border border-primary/40 bg-background/80 p-3 text-sm animate-in fade-in slide-in-from-top-1 duration-200"
+        className="space-y-3 rounded-lg border border-primary/40 bg-background/80 p-3 text-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
       >
       {/* Etiqueta */}
       <div className="space-y-2">

@@ -79,7 +79,7 @@ function AddEventForm({
 
   return (
     <div
-      className="space-y-3 rounded-lg bg-background/60 p-3 animate-in fade-in slide-in-from-top-1 duration-200"
+      className="space-y-3 rounded-lg bg-background/60 p-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
       onKeyDown={(e) => {
         // AddEventForm es un <div> dentro del <form> de PersonForm (no se pueden
         // anidar <form> en HTML). Sin esto, pulsar Enter en cualquier input

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ExternalLink, Tags, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { matchFavoriteBrands } from "@/lib/brands";
 import { BrandStoreLink } from "@/components/gifts/BrandStoreLink";
@@ -101,7 +101,7 @@ export function GiftRecommendationCard({
 
   return (
     <Card
-      className="flex flex-col h-full border-border/60 shadow-sm transition-shadow hover:shadow-md animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both"
+      className="flex flex-col h-full border-border/60 shadow-sm transition-shadow hover:shadow-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 motion-safe:fill-mode-both"
       style={{ animationDelay: `${index * 60}ms` }}
     >
       {/* Layout fijo desde arriba: título (2 líneas) + descripción (4 líneas)

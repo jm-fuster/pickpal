@@ -373,7 +373,7 @@ export function OwnerListView({
         <div className="space-y-3" role="status">
           <span className="sr-only">Cargando la lista…</span>
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} aria-hidden className="h-16 rounded-2xl border border-dashed border-border/60 animate-pulse" />
+            <div key={i} aria-hidden className="h-16 rounded-2xl border border-dashed border-border/60 motion-safe:animate-pulse" />
           ))}
         </div>
       ) : visible.length === 0 && !adding ? (

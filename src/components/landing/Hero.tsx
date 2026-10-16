@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { HeroDisc } from "@/components/landing/StepIllustrations";
 import { OccasionMock } from "@/components/landing/mocks/OccasionMock";
 import { cn } from "@/lib/utils";

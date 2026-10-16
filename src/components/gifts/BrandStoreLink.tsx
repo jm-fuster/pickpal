@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ExternalLink, Tags } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import {
   findBrandStore,

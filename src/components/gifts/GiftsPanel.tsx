@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  Check,
   Sparkles,
   RefreshCw,
   ShoppingBag,
@@ -227,7 +228,8 @@ export function GiftsPanel({
       setOccasionInvalid(true);
       toast.error("Elige primero una ocasión");
       const el = document.getElementById("gift-occasion-trigger");
-      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      el?.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
       el?.focus();
       return;
     }
@@ -469,14 +471,20 @@ export function GiftsPanel({
                     setIdeas(null);
                     setSavedTitles(new Set());
                   }}
+                  // El fondo y el borde del marcado se quedan en 1,16–1,36:1
+                  // frente al panel y desaparecen con colores forzados: el
+                  // check (color de texto) es lo que lo distingue. El foco lo
+                  // pone la capa base (contorno sólido). Igual en la landing
+                  // (IdeasSwitcher).
                   className={[
-                    "flex flex-col items-start gap-1 rounded-xl px-3 py-3 text-left text-sm transition-colors",
+                    "relative flex flex-col items-start gap-1 rounded-xl px-3 py-3 text-left text-sm transition-colors",
                     selected
                       ? "bg-muted border border-border text-foreground"
                       : "border border-border/50 text-muted-foreground hover:border-border hover:text-foreground",
                   ].join(" ")}
                 >
                   <Icon className="size-4" aria-hidden />
+                  {selected && <Check className="absolute top-3 right-3 size-4" aria-hidden />}
                   <span className="font-medium leading-tight">{t.label}</span>
                   <span className="text-xs text-muted-foreground leading-tight">
                     {t.description}
@@ -530,7 +538,7 @@ export function GiftsPanel({
             {Array.from({ length: 9 }).map((_, i) => (
               <div
                 key={i}
-                className="h-80 rounded-2xl border border-dashed border-border/60 bg-muted/40 animate-pulse"
+                className="h-80 rounded-2xl border border-dashed border-border/60 bg-muted/40 motion-safe:animate-pulse"
               />
             ))}
           </div>
@@ -673,7 +681,7 @@ export function GiftsPanel({
           "transition-all duration-200",
           showHeaderRegen
             ? "opacity-100 translate-y-0"
-            : "opacity-0 -translate-y-1 pointer-events-none",
+            : "opacity-0 motion-safe:-translate-y-1 pointer-events-none",
         ].join(" ")}
       >
         <Link

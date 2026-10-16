@@ -70,7 +70,7 @@ export function NotificationBell() {
               <li key={date._id}>
                 <Link
                   href={`/seres-queridos/${person._id}/gifts?occasion=${encodeURIComponent(date.label)}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/50 transition-colors focus-visible:-outline-offset-2"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{person.name}</p>

@@ -10,7 +10,7 @@ import { PersonCard } from "@/components/people/PersonCard";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { IncomingListsCard } from "@/components/lista/IncomingListsCard";
 import { MyGiftsCard } from "@/components/lista/MyGiftsCard";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import {
   Select,
   SelectContent,
@@ -69,7 +69,7 @@ export default function PeoplePage() {
             <div
               key={i}
               aria-hidden
-              className="h-56 rounded-2xl border border-dashed border-border/60 animate-pulse"
+              className="h-56 rounded-2xl border border-dashed border-border/60 motion-safe:animate-pulse"
             />
           ))}
         </div>

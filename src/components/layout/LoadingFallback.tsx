@@ -6,7 +6,7 @@ export function LoadingFallback({ label = "Cargando…" }: { label?: string }) {
           {[0, 1, 2].map((i) => (
             <span
               key={i}
-              className="size-2 rounded-full bg-subtle-foreground/50 animate-pulse"
+              className="size-2 rounded-full bg-subtle-foreground/50 motion-safe:animate-pulse"
               style={{ animationDelay: `${i * 150}ms` }}
             />
           ))}

@@ -27,7 +27,7 @@ export function PersonCard({
   const isShared = currentUserId != null && person.clerkUserId !== currentUserId;
   return (
     <Link href={`/seres-queridos/${person._id}`} className="block h-full">
-      <Card className="relative h-full border-border/60 transition-all hover:bg-muted/40 hover:shadow-md hover:-translate-y-0.5">
+      <Card className="relative h-full border-border/60 transition-all hover:bg-muted/40 hover:shadow-md motion-safe:hover:-translate-y-0.5">
         <div className="absolute top-3 right-3 z-10 flex flex-wrap justify-end gap-1">
           {isShared && (
             <Badge variant="outline" className="text-xs">Compartida</Badge>

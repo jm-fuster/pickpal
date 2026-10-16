@@ -2,7 +2,7 @@ import type { HTMLAttributes, ReactNode } from "react";
 import type { VariantProps } from "class-variance-authority";
 import { BookHeart, Ellipsis, Gift, NotebookPen, type LucideIcon } from "lucide-react";
 import { badgeVariants } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { BeatProps } from "@/components/landing/motion";
 import type { TileSpec } from "@/components/landing/sample";
 import { resolveGiftImage } from "@/lib/giftImages";

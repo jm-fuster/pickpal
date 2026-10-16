@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { CTA } from "@/components/landing/Hero";
 import { reveal } from "@/components/landing/motion";
 import { LovedOnesIllustration } from "@/components/landing/StepIllustrations";

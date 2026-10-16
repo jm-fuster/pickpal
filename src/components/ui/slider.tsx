@@ -50,12 +50,16 @@ function SliderIndicator({ className, ...props }: SliderPrimitive.Indicator.Prop
   )
 }
 
+// El foco no cae en el thumb (un div) sino en el <input type="range"> oculto
+// que lleva dentro, así que `focus-visible:` en el thumb no se activaba nunca.
+// Va con has-[:focus-visible] y en contorno sólido, como la capa base: el halo
+// ring/50 daba 1,84:1 en oscuro. El halo se queda para el arrastre.
 function SliderThumb({ className, ...props }: SliderPrimitive.Thumb.Props) {
   return (
     <SliderPrimitive.Thumb
       data-slot="slider-thumb"
       className={cn(
-        "block size-4 shrink-0 rounded-full bg-primary shadow-sm outline-none ring-ring/50 transition-[width,height] focus-visible:ring-3 data-dragging:size-5 data-dragging:ring-3",
+        "block size-4 shrink-0 rounded-full bg-primary shadow-sm ring-ring/50 transition-[width,height] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring data-dragging:size-5 data-dragging:ring-3",
         className,
       )}
       {...props}

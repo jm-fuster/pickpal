@@ -127,7 +127,7 @@ export function ListReaders({ listId, forName }: { listId?: Id<"managedLists">; 
         </p>
 
         {readers === undefined ? (
-          <div aria-hidden className="h-10 rounded-lg border border-dashed border-border/60 animate-pulse" />
+          <div aria-hidden className="h-10 rounded-lg border border-dashed border-border/60 motion-safe:animate-pulse" />
         ) : readers.length === 0 ? (
           <p className="text-sm text-muted-foreground">Todavía no la ve nadie.</p>
         ) : (

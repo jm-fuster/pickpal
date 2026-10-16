@@ -30,6 +30,11 @@ export const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
 
 const ITEM_H = 48;
 
+// El ajuste de la rueda se desliza, salvo con el movimiento reducido activado.
+function scrollBehavior(): ScrollBehavior {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+}
+
 export function formatDate(day: number, month: number, year?: number) {
   const m = MONTHS[month - 1]?.toLowerCase() ?? "";
   return year ? `${day} de ${m} de ${year}` : `${day} de ${m}`;
@@ -90,7 +95,7 @@ function ScrollColumn({
     const el = ref.current;
     if (!el) return;
     const i = currentIndex();
-    el.scrollTo({ top: i * ITEM_H, behavior: "smooth" });
+    el.scrollTo({ top: i * ITEM_H, behavior: scrollBehavior() });
     commit(i);
   }
 
@@ -138,7 +143,7 @@ function ScrollColumn({
     }
     e.preventDefault();
     next = Math.max(0, Math.min(items.length - 1, next));
-    ref.current?.scrollTo({ top: next * ITEM_H, behavior: "smooth" });
+    ref.current?.scrollTo({ top: next * ITEM_H, behavior: scrollBehavior() });
     commit(next);
   }
 

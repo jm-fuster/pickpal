@@ -60,7 +60,7 @@ export function MyGiftsCard() {
           </span>
           <span className="text-xs text-muted-foreground">· {gifts.length}</span>
           <ChevronDown
-            className={cn("ml-auto size-4 text-muted-foreground transition-transform", open && "rotate-180")}
+            className={cn("ml-auto size-4 text-muted-foreground motion-safe:transition-transform", open && "rotate-180")}
             aria-hidden
           />
         </button>

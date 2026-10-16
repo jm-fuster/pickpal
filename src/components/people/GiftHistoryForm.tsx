@@ -71,7 +71,7 @@ export function GiftHistoryForm({ personId }: { personId: Id<"people"> }) {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-3 rounded-xl border border-dashed border-border/70 bg-background/40 p-4 animate-in fade-in slide-in-from-top-1 duration-200"
+      className="space-y-3 rounded-xl border border-dashed border-border/70 bg-background/40 p-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
     >
       <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
         Añadir regalo pasado
@@ -226,7 +226,7 @@ export function EditGiftHistoryInline({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-3 rounded-xl border border-dashed border-border/70 bg-background/40 p-4 animate-in fade-in slide-in-from-top-1 duration-200"
+      className="space-y-3 rounded-xl border border-dashed border-border/70 bg-background/40 p-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
     >
       <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
         Editar regalo

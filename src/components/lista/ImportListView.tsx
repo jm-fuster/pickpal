@@ -227,7 +227,7 @@ export function ImportListView({ listId, forName }: { listId?: Id<"managedLists"
       </div>
 
       {items === undefined ? (
-        <div role="status" className="h-40 rounded-2xl border border-dashed border-border/60 animate-pulse">
+        <div role="status" className="h-40 rounded-2xl border border-dashed border-border/60 motion-safe:animate-pulse">
           <span className="sr-only">Cargando tu lista…</span>
         </div>
       ) : capacity === 0 && !preview ? (
