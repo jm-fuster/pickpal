@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useAuth, useClerk } from "@clerk/nextjs";
+import { useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useConvex, useMutation, useQuery } from "convex/react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
-import { ArrowUpRight, Check, Download, Moon, Sun } from "lucide-react";
+import { ArrowUpRight, Check, Download, LogOut, Moon, Sun } from "lucide-react";
 import { toast } from "sonner";
 import { userErrorMessage } from "@/lib/errors";
 import { api } from "../../../../convex/_generated/api";
@@ -55,6 +55,8 @@ const EMAIL_LEAD_OPTIONS: { value: number; label: string }[] = [
 export default function SettingsPage() {
   const { isLoaded, isSignedIn } = useAuth();
   const { signOut } = useClerk();
+  const { user } = useUser();
+  const email = user?.primaryEmailAddress?.emailAddress;
   const router = useRouter();
   const ready = isLoaded && isSignedIn;
   const settings = useQuery(api.settings.getMine, ready ? {} : "skip");
@@ -71,6 +73,7 @@ export default function SettingsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   // Tras la primera carga, ignoramos cambios externos en `settings` para no
   // pisar actualizaciones optimistas que aún están viajando al servidor.
   const initializedRef = useRef(false);
@@ -219,6 +222,16 @@ export default function SettingsPage() {
       // sesión ya invalidada
     }
     router.push("/");
+  };
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut({ redirectUrl: "/" });
+    } catch {
+      toast.error("No se pudo cerrar la sesión");
+      setSigningOut(false);
+    }
   };
 
   const handleStoreToggle = (store: StoreId) => {
@@ -450,6 +463,21 @@ export default function SettingsPage() {
         <Button variant="outline" onClick={handleExport} disabled={exporting}>
           <Download className="size-4" aria-hidden />
           {exporting ? "Preparando…" : "Descargar JSON"}
+        </Button>
+      </section>
+
+      <section className="space-y-3 rounded-xl border p-5">
+        <div className="space-y-1">
+          <Label>Sesión</Label>
+          <p className="text-xs text-muted-foreground">
+            {email ? <>Has entrado como {email}. </> : null}
+            Cierra la sesión en este dispositivo; tus datos se quedan como
+            están.
+          </p>
+        </div>
+        <Button variant="outline" onClick={handleSignOut} disabled={signingOut}>
+          <LogOut className="size-4" aria-hidden />
+          {signingOut ? "Cerrando sesión…" : "Cerrar sesión"}
         </Button>
       </section>
 
