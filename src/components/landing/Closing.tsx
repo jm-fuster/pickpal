@@ -5,8 +5,8 @@ import { reveal } from "@/components/landing/motion";
 import { LovedOnesIllustration } from "@/components/landing/StepIllustrations";
 import { cn } from "@/lib/utils";
 
-// El cierre pide lo mínimo para empezar (una persona y una fecha). El h2 se
-// queda por debajo del H1 en cada punto de corte.
+// El cierre pide lo mínimo para empezar (una persona y una fecha) y contesta
+// a la pregunta del H1. El h2 se queda por debajo del H1 en cada punto de corte.
 export function Closing() {
   return (
     <section aria-labelledby="cierre-titulo" className="border-t border-border/60">
@@ -18,10 +18,10 @@ export function Closing() {
           id="cierre-titulo"
           className="mt-6 text-3xl leading-tight font-medium text-balance sm:text-4xl lg:text-5xl"
         >
-          ¿Quién cumple años el mes que viene?
+          Empieza por quien cumpla antes.
         </h2>
         <p className="mx-auto mt-4 max-w-md text-base text-muted-foreground">
-          Empieza por esa persona y su fecha. Lo demás lo vas apuntando cuando te enteras.
+          Con su nombre y su fecha basta. Lo demás lo vas apuntando cuando te enteras.
         </p>
         <div className="mt-8">
           <Link href="/sign-up" className={cn(buttonVariants({ size: "lg" }), CTA)}>

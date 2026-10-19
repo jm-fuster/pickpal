@@ -1,9 +1,12 @@
 import type { ComponentProps, ReactNode } from "react";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { CalendarLeaf, ChapterChip } from "@/components/landing/CalendarLeaf";
+import { CTA } from "@/components/landing/Hero";
 import { IdeasSwitcher } from "@/components/landing/IdeasSwitcher";
 import { reveal } from "@/components/landing/motion";
-import { CalendarIllustration } from "@/components/landing/StepIllustrations";
 import { GivenMock } from "@/components/landing/mocks/GivenMock";
+import { NextYearMock } from "@/components/landing/mocks/NextYearMock";
 import { ProfileMock } from "@/components/landing/mocks/ProfileMock";
 import { RemindersMock } from "@/components/landing/mocks/RemindersMock";
 import { cn } from "@/lib/utils";
@@ -65,13 +68,11 @@ export function Story() {
     >
       {/* Arriba casi sin relleno: el pb del hero ya separa. */}
       <div className="mx-auto max-w-6xl px-4 pt-4 pb-16 sm:px-6 lg:px-8 lg:pt-8 lg:pb-24">
-        {/* Alineado con la columna del texto de los capítulos. */}
+        {/* Alineado con la columna del texto de los capítulos. Sin pictograma:
+            las hojas de calendario ya son el dibujo de la sección. */}
         <div className="lg:grid lg:grid-cols-12 lg:gap-8">
           <div className="max-w-2xl lg:col-span-9 lg:col-start-4">
-            <div className="w-fit" {...reveal("settle")}>
-              <CalendarIllustration className="h-16 w-auto" />
-            </div>
-            <h2 id="historia-titulo" className="mt-4 text-3xl leading-tight font-medium text-balance lg:text-4xl">
+            <h2 id="historia-titulo" className="text-3xl leading-tight font-medium text-balance lg:text-4xl">
               Cómo funciona, con el cumpleaños de Marta
             </h2>
           </div>
@@ -102,7 +103,7 @@ export function Story() {
             <IdeasSwitcher />
           </Chapter>
 
-          <Chapter chip="Hoy es su cumpleaños" leaf={{ value: "Hoy" }}>
+          <Chapter chip="Hoy es su cumpleaños" leaf={{ value: "Hoy", sparkle: true }}>
             <Title when="Hoy es su cumpleaños.">Se lo das y apuntas cómo fue</Title>
             <Para>Eliges «Ya se lo he regalado» y el regalo pasa a su historial con lo que le pareció.</Para>
             <GivenMock />
@@ -116,8 +117,21 @@ export function Story() {
               Las ideas nuevas tienen en cuenta sus diez últimos regalos y cómo le sentaron. Si tu hermano usa PickPal
               y le compartes su ficha, también cuenta lo que le regala él.
             </Para>
+            <NextYearMock />
           </Chapter>
         </ol>
+
+        {/* El segundo «Empezar gratis», al acabar la historia: en el móvil la
+            cabecera no lo lleva y no es fija, y del hero al cierre había unas
+            once pantallas sin un botón. Alineado con la columna del texto. */}
+        <div className="mt-14 lg:grid lg:grid-cols-12 lg:gap-8">
+          <div className="flex flex-col gap-3 min-[400px]:flex-row min-[400px]:items-center min-[400px]:gap-5 lg:col-span-9 lg:col-start-4">
+            <Link href="/sign-up" className={cn(buttonVariants({ size: "lg" }), CTA)}>
+              Empezar gratis
+            </Link>
+            <p className="text-center text-sm text-muted-foreground min-[400px]:text-left">Solo necesitas un email.</p>
+          </div>
+        </div>
       </div>
     </section>
   );

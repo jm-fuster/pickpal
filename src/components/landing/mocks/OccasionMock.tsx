@@ -1,4 +1,4 @@
-import { MockFrame } from "@/components/landing/MockFrame";
+import { ExampleTag, MockFrame } from "@/components/landing/MockFrame";
 import { beat } from "@/components/landing/motion";
 import { CompactTile, OccasionCard, PersonAvatar, StackCell } from "@/components/landing/mocks/parts";
 import { OCCASION, PERSON, TILES } from "@/components/landing/sample";
@@ -15,7 +15,9 @@ const LABEL =
  */
 export function OccasionMock({ className }: { className?: string }) {
   return (
-    <MockFrame label={LABEL} className={className}>
+    // La etiqueta va en la fila de la cabecera y no encima: así no empuja la
+    // réplica hacia abajo (a 360×640, «En 7 días» tiene que asomar sin scroll).
+    <MockFrame label={LABEL} tag={false} className={className}>
       <div {...beat("rise", 150)}>
         <div className="mb-4 flex items-center gap-3">
           <PersonAvatar src={PERSON.avatar} className="size-10 ring-1 ring-border" />
@@ -23,6 +25,7 @@ export function OccasionMock({ className }: { className?: string }) {
             <p className="font-heading text-xl leading-tight font-medium">{PERSON.name}</p>
             <p className="text-sm text-muted-foreground">{PERSON.relationship}</p>
           </div>
+          <ExampleTag className="ml-auto" />
         </div>
         <OccasionCard
           title={OCCASION.label}

@@ -29,7 +29,10 @@ export function IdeasSwitcher() {
           </span>
         </p>
         <fieldset className="m-0 min-w-0 border-0 p-0">
-          <legend className="mb-2 text-xs font-medium text-muted-foreground">Tipo de regalo</legend>
+          {/* «Prueba» y no «Tipo de regalo», como en el panel real: es lo
+              único de la página que responde, y entre réplicas que no lo
+              hacen tiene que decirlo. */}
+          <legend className="mb-2 text-sm font-medium">Prueba con otro tipo de regalo</legend>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {GIFT_TYPES.map((t) => {
               const Icon = ICONS[t.icon];

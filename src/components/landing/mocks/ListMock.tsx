@@ -44,6 +44,7 @@ function OwnerRow({ item }: { item: ListEntry }) {
 export function ListOwnerMock(props: MockProps) {
   return (
     <MockFrame
+      tag="Así la ve Marta"
       label="Así ve Marta su propia lista: una regadera de cobre pequeña, una báscula para café con temporizador y un delantal de lona, con su precio aproximado y sin saber quién regala qué."
       {...props}
     >
@@ -155,6 +156,7 @@ function ReaderRow({ item }: { item: ListEntry }) {
 export function ListReaderMock(props: MockProps) {
   return (
     <MockFrame
+      tag="Así la ves tú"
       label="Así la ves tú: marcas «Lo regalo yo» en la regadera y pasa a «Lo regalas tú»; la báscula ya la regala otra persona, y dos de sus cosas encajan en lo que pensabas gastar."
       {...props}
     >

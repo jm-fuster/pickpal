@@ -198,7 +198,11 @@ export function OccasionCard({
             </p>
             <p className="text-sm text-muted-foreground">{meta}</p>
           </div>
-          <FakeButton className="w-full @md:w-auto">
+          {/* Desvío asumido: en la app es el botón primario. Aquí va en
+              outline para que el único verde lleno de la página sea el
+              «Empezar gratis» de verdad: en el móvil quedaban dos barras
+              verdes iguales, una debajo de otra, y solo una funcionaba. */}
+          <FakeButton variant="outline" className="w-full @md:w-auto">
             <Gift className="size-4" />
             Buscar ideas
           </FakeButton>

@@ -57,6 +57,14 @@ export const IDEAS: Record<GiftType, ExampleIdea[]> = {
   sorprendeme: [MOLINILLO, TORNO, CENA],
 };
 
+/**
+ * Una idea de la tanda del año siguiente, con el historial delante. El prompt
+ * le manda a la IA explicar en una frase por qué encaja y le pasa los regalos
+ * con su reacción «para no repetir y afinar» (src/app/api/recommendations), así
+ * que una frase como esta es de las que salen; no siempre cita el historial.
+ */
+export const NEXT_YEAR_IDEA: ExampleIdea = { title: "Cafetera de filtro de cerámica", description: "La maceta de barro le encantó y la vela no: más cerámica, y esta vez para su rincón del café.", tags: ["Cerámica", "Café de especialidad"], min: 30, max: 45, imageKey: "cafe-te", type: "fisica", stores: ["amazon", "elcorteingles"] };
+
 export const HISTORY = {
   given: { title: "Maceta de barro esmaltado", meta: "Cumpleaños · Le encantó" },
   earlier: { title: "Vela aromática", meta: "Navidad · No gustó" },

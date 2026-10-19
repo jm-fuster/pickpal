@@ -5,11 +5,13 @@ import { HeroDisc } from "@/components/landing/StepIllustrations";
 import { OccasionMock } from "@/components/landing/mocks/OccasionMock";
 import { cn } from "@/lib/utils";
 
-// Promesa de marca: Jorge decidió quedarse con ella el 18-sep-2026
-// (docs/design-system.md · Pendientes). Las dos alternativas que se barajaron:
-// «Que su cumpleaños no te pille sin idea.» y «Llega a su cumpleaños sabiendo
-// qué regalarle.».
-export const HERO_TITLE = "El regalo perfecto para quien más te importa.";
+// La pregunta que antes cerraba la página (19-oct-2026, revisión de patrones
+// de IA). El titular anterior, «El regalo perfecto para quien más te
+// importa.», era la promesa de marca del 18-sep-2026, pero lo podía firmar
+// cualquier tienda de regalos y «perfecto» chocaba con el «son orientativas»
+// del resto. Las otras dos que se barajaron: «Que su cumpleaños no te pille
+// sin idea.» y «Llega a su cumpleaños sabiendo qué regalarle.».
+export const HERO_TITLE = "¿Quién cumple años el mes que viene?";
 
 // Tamaño de CTA solo de la landing (docs/design-system.md · Landing). Lo usa
 // también el cierre.
@@ -29,15 +31,19 @@ export function Hero() {
         <div className="lg:col-span-7">
           {/* El alto se reserva en líneas (`lh`) para que el paso de la fuente
               de reserva a Fraunces no mueva lo de debajo. En Android la reserva
-              es Noto Serif, más ancha: parte el titular en 3 líneas hasta unos
-              420 px de ancho, cuando Fraunces ya lo deja en 2 desde 398. Por eso,
-              por debajo de 440 se estrecha a 10em y va en 3 con cualquiera de
-              las dos; de 440 a xl, en 2; en xl, en 3 otra vez (a 60 px «El regalo
-              perfecto para» no cabe en la columna). Medido con este titular: si
-              cambia, se vuelve a medir. */}
+              es Noto Serif, un 3 % más ancha: «¿Quién cumple años» mide 9,7em
+              en Fraunces y 10em en Noto. Cada tamaño está elegido para que esa
+              primera línea quepa con las dos y el titular vaya siempre en dos,
+              «¿Quién cumple años / el mes que viene?»: 2rem (32 px) hasta 400 px
+              y después la escala de globals.css, 4xl (34), 5xl (40), 6xl (48)
+              en lg, donde la columna mide 543 px a 1024, y 7xl (60) en xl, con
+              618. Por debajo de 360 no cabe con ninguna: se estrecha a 9.5em y
+              va en tres con las dos. El 14em impide que en tableta quepa en
+              una sola línea. Medido con este titular: si cambia, se vuelve a
+              medir. */}
           <h1
             id="hero-title"
-            className="max-w-[10em] min-h-[3lh] text-balance text-4xl leading-[1.05] font-semibold min-[440px]:max-w-[14em] min-[440px]:min-h-[2lh] sm:text-5xl lg:text-6xl xl:min-h-[3lh] xl:text-7xl xl:tracking-tighter"
+            className="max-w-[9.5em] min-h-[3lh] text-balance text-[2rem] leading-[1.05] font-semibold min-[360px]:max-w-[14em] min-[360px]:min-h-[2lh] min-[400px]:text-4xl sm:text-5xl lg:text-6xl xl:text-7xl xl:tracking-tight"
           >
             {HERO_TITLE}
           </h1>

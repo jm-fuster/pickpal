@@ -1,4 +1,3 @@
-import { ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { TagChip } from "@/components/landing/mocks/parts";
 import type { ExampleIdea } from "@/components/landing/sample";
@@ -10,7 +9,8 @@ import { cn } from "@/lib/utils";
 // GiftRecommendationCard sin pulgares, sin foto y sin hover. No es una réplica
 // inerte: es texto de verdad que se lee y se anuncia. Sin h3 (la real lo
 // lleva): nueve tarjetas colgarían del árbol de títulos de la página. Las
-// tiendas van en texto, sin logos y sin enlace: desde aquí no se busca nada.
+// tiendas van en texto, sin logos, sin enlace y sin la flecha ↗ de la app:
+// desde aquí no se busca nada, y la flecha prometía abrir una tienda.
 
 // El formato de la propia tarjeta, sin espacio («35–55€»), no el de ideaPrice.
 const formatRange = (min: number, max: number) => (min === max ? `${min}€` : `${min}–${max}€`);
@@ -23,7 +23,6 @@ function StoreChip({ label, className }: { label: string; className?: string }) 
   return (
     <span className={cn(CHIP, className)}>
       <span className="truncate">{label}</span>
-      <ExternalLink className="size-3.5 shrink-0" aria-hidden />
     </span>
   );
 }

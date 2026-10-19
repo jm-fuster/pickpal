@@ -1,4 +1,6 @@
+import { beat } from "@/components/landing/motion";
 import { OCCASION, PERSON } from "@/components/landing/sample";
+import { sparklePath } from "@/components/landing/StepIllustrations";
 
 // La hoja de calendario que acompaña a cada capítulo de «Cómo funciona»: un
 // objeto de papelería, no una pieza de la app, así que solo vive en la
@@ -13,16 +15,24 @@ export function CalendarLeaf({
   value,
   showCount = false,
   note,
+  sparkle = false,
 }: {
   value: string;
   /** Con cuenta: «Faltan · 21 · días». Sin ella, solo el valor («Hoy»). */
   showCount?: boolean;
   note?: string;
+  /** El destello ámbar del hero, solo en la hoja de «Hoy»: es el día. Salta al revelarse la hoja. */
+  sparkle?: boolean;
 }) {
   return (
     <div className="w-full max-w-[13rem] overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
       <p className="bg-secondary px-4 py-2.5 text-xs font-medium text-secondary-foreground">{BAND}</p>
-      <div className="px-4 py-6 text-center">
+      <div className="relative px-4 py-6 text-center">
+        {sparkle && (
+          <svg viewBox="0 0 24 24" className="absolute top-3 right-3 size-5 fill-chart-3" {...beat("pop", 350)}>
+            <path d={sparklePath(12, 12, 11)} />
+          </svg>
+        )}
         {showCount ? (
           <>
             <p className="text-xs text-muted-foreground">Faltan</p>

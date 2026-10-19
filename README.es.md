@@ -9,7 +9,7 @@
 
 # PickPal
 
-**El regalo perfecto para quien más te importa.**
+**¿Quién cumple años el mes que viene?**
 
 Guarda lo que sabes de cada persona, activa los avisos
 y deja que la IA piense contigo cuando llegue el momento.
@@ -27,7 +27,7 @@ y deja que la IA piense contigo cuando llegue el momento.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/landing-dark.png">
-  <img src="docs/screenshots/landing-light.png" alt="La portada de PickPal: el titular «El regalo perfecto para quien más te importa» junto a la ficha de ejemplo de Marta, con su cumpleaños en 7 días y tres ideas pensadas" width="900">
+  <img src="docs/screenshots/landing-light.png" alt="La portada de PickPal: el titular «¿Quién cumple años el mes que viene?» junto a la ficha de ejemplo de Marta, con su cumpleaños en 7 días y tres ideas pensadas" width="900">
 </picture>
 
 <picture>

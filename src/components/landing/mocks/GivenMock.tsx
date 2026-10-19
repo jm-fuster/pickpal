@@ -1,7 +1,7 @@
-import { ChevronDown, Ellipsis, Gift, Trash2 } from "lucide-react";
+import { ChevronDown, Ellipsis, Gift } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { MockFrame } from "@/components/landing/MockFrame";
-import { beat, reveal } from "@/components/landing/motion";
+import { beat, reveal, type BeatProps } from "@/components/landing/motion";
 import { CompactTile, Eyebrow, FakeIconButton, OccasionCard, StackCell } from "@/components/landing/mocks/parts";
 import { HISTORY, OCCASION, TILES } from "@/components/landing/sample";
 import { cn } from "@/lib/utils";
@@ -26,7 +26,8 @@ function MenuSeparator() {
 /**
  * El menú de la idea guardada (useIdeaMenu en ideaParts.tsx), de paso: se abre,
  * se ilumina «Ya se lo he regalado» y se cierra. Sin las otras ocasiones de
- * Marta, que llevarían fecha al lado del «Hoy».
+ * Marta, que llevarían fecha al lado del «Hoy», y sin «Quitar idea»: el día de
+ * su cumpleaños, una papelera en rojo era lo más visible de la escena.
  */
 function GiveMenu() {
   return (
@@ -49,13 +50,6 @@ function GiveMenu() {
           <span className="min-w-0 flex-1 truncate">Sin ocasión</span>
         </div>
       </div>
-      <div className="flex flex-col gap-0.5">
-        <MenuSeparator />
-        <div className={cn(ITEM, "gap-2 text-destructive")}>
-          <Trash2 className="size-4 shrink-0" />
-          <span className="min-w-0 flex-1 truncate">Quitar idea</span>
-        </div>
-      </div>
     </div>
   );
 }
@@ -69,6 +63,36 @@ function HistoryRow({ title, meta }: { title: string; meta: string }) {
       </div>
       <FakeIconButton icon={Ellipsis} />
     </div>
+  );
+}
+
+/**
+ * GiftHistoryCard abierta, con los dos regalos de Marta. `givenBeat` es la
+ * entrada de la maceta, que en el capítulo 3 llega al historial; en el 4 ya
+ * está y la tarjeta sale quieta.
+ */
+export function HistoryCard({ givenBeat, className }: { givenBeat?: BeatProps; className?: string }) {
+  return (
+    <Card className={cn("shadow-sm", className)}>
+      <CardContent className="space-y-3 p-5">
+        <div className="flex items-center justify-between gap-2">
+          <Eyebrow>Historial de regalos</Eyebrow>
+          <span className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground">
+            Ocultar
+            <ChevronDown className="size-3.5 rotate-180" />
+          </span>
+        </div>
+        {/* Sin año en la línea de cada regalo (la real puede llevarlo): ninguna fecha absoluta en la escena. */}
+        <ul className="divide-y divide-border/60">
+          <li className="py-2.5 first:pt-0" {...givenBeat}>
+            <HistoryRow title={HISTORY.given.title} meta={HISTORY.given.meta} />
+          </li>
+          <li className="py-2.5 first:pt-0">
+            <HistoryRow title={HISTORY.earlier.title} meta={HISTORY.earlier.meta} />
+          </li>
+        </ul>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -100,26 +124,7 @@ export function GivenMock({ className }: { className?: string }) {
           </div>
         </OccasionCard>
 
-        <Card className="shadow-sm">
-          <CardContent className="space-y-3 p-5">
-            <div className="flex items-center justify-between gap-2">
-              <Eyebrow>Historial de regalos</Eyebrow>
-              <span className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground">
-                Ocultar
-                <ChevronDown className="size-3.5 rotate-180" />
-              </span>
-            </div>
-            {/* Sin año en la línea de cada regalo (la real puede llevarlo): ninguna fecha absoluta en la escena. */}
-            <ul className="divide-y divide-border/60">
-              <li className="py-2.5 first:pt-0" {...beat("rise", 1600)}>
-                <HistoryRow title={HISTORY.given.title} meta={HISTORY.given.meta} />
-              </li>
-              <li className="py-2.5 first:pt-0">
-                <HistoryRow title={HISTORY.earlier.title} meta={HISTORY.earlier.meta} />
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
+        <HistoryCard givenBeat={beat("rise", 1600)} />
       </div>
     </MockFrame>
   );

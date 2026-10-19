@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { ALL_STORES } from "@/lib/stores";
 import { GivenMock } from "./mocks/GivenMock";
 import { ListOwnerMock, ListReaderMock } from "./mocks/ListMock";
+import { NextYearMock } from "./mocks/NextYearMock";
 import { OccasionMock } from "./mocks/OccasionMock";
 import { ProfileMock } from "./mocks/ProfileMock";
 import { RemindersMock } from "./mocks/RemindersMock";
@@ -19,6 +20,7 @@ const MOCKS: [string, ReactElement][] = [
   ["ProfileMock", <ProfileMock key="profile" />],
   ["RemindersMock", <RemindersMock key="reminders" />],
   ["GivenMock", <GivenMock key="given" />],
+  ["NextYearMock", <NextYearMock key="next-year" />],
   ["ListOwnerMock", <ListOwnerMock key="owner" />],
   ["ListReaderMock", <ListReaderMock key="reader" />],
 ];

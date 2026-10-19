@@ -23,8 +23,8 @@ const QUESTIONS: { q: string; a: ReactNode }[] = [
     q: "¿De dónde salen las ideas?",
     a: (
       <>
-        Las escribe una IA con la ficha de la persona, el presupuesto de la fecha y los diez últimos regalos de su
-        historial. Son orientativas. La{" "}
+        Se piden para una fecha concreta y las escribe una IA con la ficha de la persona, el presupuesto de esa fecha
+        y los diez últimos regalos de su historial. Son orientativas. La{" "}
         <Link
           href="/privacidad"
           className="rounded-sm underline underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -53,19 +53,21 @@ const QUESTIONS: { q: string; a: ReactNode }[] = [
 ];
 
 // <details> nativo: abre y cierra sin JS, y el mismo `name` hace que abrir
-// una pregunta cierre la anterior.
+// una pregunta cierre la anterior. Va en la columna del texto de «Cómo
+// funciona» y de «Lo que PickPal no hace», con el titular encima y no al lado:
+// dos secciones seguidas con el titular en un tercio y el contenido en dos
+// tercios era la maqueta de plantilla. Es la sección de consulta, así que su
+// h2 es el más pequeño.
 export function Faq() {
   return (
     <section aria-labelledby="preguntas-titulo">
       <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 lg:grid lg:grid-cols-12 lg:gap-8 lg:px-8 lg:pb-24">
-        <div className="lg:col-span-4">
-          <h2 id="preguntas-titulo" className="text-3xl leading-tight font-medium text-balance lg:text-4xl">
+        <div className="lg:col-span-8 lg:col-start-4">
+          <h2 id="preguntas-titulo" className="text-2xl leading-tight font-medium text-balance lg:text-3xl">
             Preguntas
           </h2>
-        </div>
 
-        <div className="mt-8 lg:col-span-8 lg:mt-0">
-          <div className="divide-y divide-border/60 border-y border-border/60">
+          <div className="mt-6 divide-y divide-border/60 border-y border-border/60">
             {QUESTIONS.map(({ q, a }) => (
               <details key={q} name="faq" className="group">
                 <summary className="-mx-2 flex cursor-pointer list-none items-center justify-between gap-4 rounded-md px-2 py-4 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
