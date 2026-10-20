@@ -67,7 +67,7 @@ quota and nothing about the person leaves the device to power them. Editing is
 inline autosave; `/seres-queridos/[personId]/edit` exists only as a redirect back
 to the detail page.
 
-<img src="docs/screenshots/person-light.png" alt="A person page: interests as chips, favourite brands, free notes, sizes and allergies, saved ideas and gift history" width="900">
+<img src="docs/screenshots/person-light.png" alt="A person page: her next birthday with an idea already noted, the gift history, her dates, her interests and notes, and her sizes and allergies" width="900">
 
 **Dates and history.** Each date carries a label, a day and month, an optional
 year, a flag for annual or one-off, and an optional budget on a 0–500 € slider.

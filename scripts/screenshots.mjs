@@ -60,14 +60,17 @@ const PUBLIC_SHOTS = [
   ["landing-dark", "/", "dark", false, 4000],
 ];
 
-// {person} is replaced with the id of the first person in the account.
+// {person} is replaced with the id of the first person in the account, and
+// {occasion} with --occasion (Cumpleaños by default).
 const APP_SHOTS = [
   ["agenda-light", "/agenda", "light", false, 2600],
   ["agenda-dark", "/agenda", "dark", false, 2600],
   ["people-light", "/seres-queridos", "light", false, 2400],
   ["person-light", "/seres-queridos/{person}", "light", true, 2400],
-  ["gifts-light", "/seres-queridos/{person}/gifts", "light", true, 3200],
-  ["gifts-dark", "/seres-queridos/{person}/gifts", "dark", true, 3200],
+  // With the occasion in the URL, as in the generation step below: without it
+  // the panel opens on «Elige un evento» and shows no batch.
+  ["gifts-light", "/seres-queridos/{person}/gifts?occasion={occasion}", "light", true, 3200],
+  ["gifts-dark", "/seres-queridos/{person}/gifts?occasion={occasion}", "dark", true, 3200],
   ["settings-light", "/settings", "light", true, 2200],
 ];
 
@@ -224,8 +227,15 @@ async function firstPersonId() {
     }
     return "";
   })()`;
-  const res = await cdp.send("Runtime.evaluate", { expression, returnByValue: true });
-  return res.result.value || "";
+  // Right after signing in, a fresh profile still shows «Cargando seres
+  // queridos…» for a while: Clerk has to hand Convex its token before the
+  // list arrives. Poll for up to 20 s instead of reading it once.
+  for (let i = 0; i < 40; i++) {
+    const res = await cdp.send("Runtime.evaluate", { expression, returnByValue: true });
+    if (res.result.value) return res.result.value;
+    await sleep(500);
+  }
+  return "";
 }
 
 let shots = PUBLIC_SHOTS;
@@ -342,7 +352,7 @@ if (AUTH) {
   }
   shots = APP_SHOTS.map(([name, route, theme, full, settle]) => [
     name,
-    route.replace("{person}", personId),
+    route.replace("{person}", personId).replace("{occasion}", encodeURIComponent(OCCASION)),
     theme,
     full,
     settle,

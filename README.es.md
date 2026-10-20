@@ -64,7 +64,7 @@ dispositivo no sale nada de esa persona para alimentarlas. Se edita campo a camp
 autoguardado;
 `/seres-queridos/[personId]/edit` existe solo como redirección a la ficha.
 
-<img src="docs/screenshots/person-light.png" alt="La ficha de una persona: intereses en etiquetas, marcas favoritas, notas libres, tallas y alergias, ideas guardadas e historial de regalos" width="900">
+<img src="docs/screenshots/person-light.png" alt="La ficha de una persona: su próximo cumpleaños con una idea ya apuntada, el historial de regalos, sus fechas, sus gustos y notas, y sus tallas y alergias" width="900">
 
 **Fechas e historial.** Cada fecha lleva etiqueta, día y mes, año opcional, una marca de
 anual o puntual, y un presupuesto opcional en un deslizador de 0 a 500 €. El historial
