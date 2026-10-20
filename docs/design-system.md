@@ -23,10 +23,22 @@ El logo-mark de PickPal son dos figuras entrelazadas que forman las letras "PP".
 
 | Path | Color | Token equivalente |
 |---|---|---|
-| Figura izquierda (p) + cabeza izquierda | `currentColor` | hereda `--foreground` del contexto |
-| Figura derecha (P) + cabeza derecha | `#F1704B` | ~`--secondary` (terracota) |
+| Figura izquierda (p) + cabeza izquierda | `currentColor` | hereda `--foreground` del contexto (`color/icon` en Figma) |
+| Figura derecha (P) + cabeza derecha | `#F1704B` | `brand/logo` → `color/Terracotta/vivid` en Figma. **No es `--secondary`**: tiene otro tono y un 40 % más de croma (ver «La terracota: uno era un paso y el otro no») |
 
-Los paths del verde oscuro usan `fill="currentColor"` en el componente React, no un color fijo. Esto permite que el logo se adapte automáticamente: sobre fondo oscuro (dark mode) hereda el color crema del texto; sobre fondo claro hereda el marrón cálido del texto. El coral se queda fijo porque es el acento de marca.
+Los paths de la figura oscura usan `fill="currentColor"` en el componente React, no un color fijo. Esto permite que el logo se adapte automáticamente: sobre fondo oscuro (dark mode) hereda el color crema del texto; sobre fondo claro hereda el marrón cálido del texto. El coral se queda fijo porque es el acento de marca. Los archivos estáticos (`public/logo-mark.svg`, `src/app/icon.svg`, el `.ico` y los PNG) no pueden heredar y llevan el verde `#2F3B29`, el del dibujo original; los del correo, crema `#FBF7EE`.
+
+### Construcción
+
+Lo que hay que conservar si se vuelve a tocar el dibujo (ajuste del 20-oct-2026, ver el registro). Unidades del `viewBox` de 32:
+
+- **Un solo hueco: 0,83.** Entre cabeza y cuerpo, en las ranuras entre figuras y entre cada barra y su mástil.
+- **Cruces**: arriba, el arco coral pasa por encima de la figura oscura y la corta; abajo, la figura oscura pasa por encima del trazo, la barra y la cola coral, y las corta. Los dos cortes siguen el borde de la pieza de encima a un hueco.
+- **La cola coral continúa su trazo**: su borde izquierdo está en x 11,91, el mismo que el trazo coral de encima de la barra oscura.
+- **Los dos pies son el mismo dibujo**, desplazado 10,21. Mástiles de 4,52, con los bordes verticales.
+- **Las barras acaban a un hueco de su mástil.** La coral pasa por debajo de la curva oscura y asoma justo antes de la cola.
+- **Cabezas**: círculos de radio 3,065, centrados en x 10,78 y 21,21, la parte más alta de cada cuerpo.
+- **Márgenes**: 1,70 a cada lado; de arriba (cabezas) a abajo (pies) ocupa los 32.
 
 ### Componente
 
@@ -46,6 +58,7 @@ Acepta `className` para controlar tamaño. Incluye `aria-hidden` — el contexto
 | Auth layout (sign-in / sign-up) | `size-7` | `src/app/(auth)/layout.tsx` |
 | Landing · cabecera | `size-7` | `src/components/landing/LandingHeader.tsx` |
 | Landing · pie | `size-5` | `src/components/landing/LandingFooter.tsx` |
+| Cabecera de los correos | 36 px (PNG de 72, crema) | `public/logo-mark-email.png`, desde `convex/emails.ts` |
 | Favicon e iconos de app | — | ver [Iconos de app y favicon](#iconos-de-app-y-favicon) |
 
 ### Iconos de app y favicon
@@ -63,11 +76,8 @@ Cada superficie recorta el icono de forma distinta, así que cada archivo lleva 
 - **Maskable (Android)**: Android recorta con su propia máscara (círculo, squircle…) y solo garantiza visible el círculo central del 80 %. El logo, casi cuadrado, cabe entero en ese círculo al 56 % (0,8 / √2). Nunca marcar como `maskable` un PNG sin margen: es lo que dejaba el icono cortado.
 - **iOS**: no admite transparencia (la rellena de negro) ni SVG. Solo redondea las esquinas, por eso basta con menos margen que en Android. No volver a poner `src/app/apple-icon.svg`: Next lo publicaría como un segundo apple-touch-icon.
 - **Modo oscuro del favicon**: `icon.svg` lleva un `@media (prefers-color-scheme: dark)` que cambia el verde `#2F3B29` a crema `#FBF7EE`; el coral no cambia. Safari y el `.ico` ignoran la regla y muestran siempre el verde.
-- **Regenerar**: todos salen de `icon-512.png` (PNG) o de `icon.svg` (`.ico`) con `sharp`, que ya está en `node_modules`. Tras cambiarlos, desinstalar y volver a añadir la app para ver el icono nuevo; iOS y Android lo guardan en caché.
-
-### Pendiente de logo
-
-- **Email**: los clientes de correo no soportan SVG. Necesita un PNG alojado en URL pública para poder meterlo en el header de `convex/emails.ts`. Diferido hasta tener deploy o CDN.
+- **Regenerar**: todos salen del SVG con `sharp`, que ya está en `node_modules`. Logo de 124 px centrado en `apple-touch-icon.png`, a sangre en `icon-192/512`, de 288 px centrado en `icon-maskable-512.png` y de 72 px en `logo-mark-email.png`. El `.ico` lleva tres PNG (16, 32 y 48) renderizados desde `icon.svg`. Tras cambiarlos, desinstalar y volver a añadir la app para ver el icono nuevo; iOS y Android lo guardan en caché.
+- **Correo**: los clientes de correo no soportan SVG, así que la cabecera de `convex/emails.ts` pinta `public/logo-mark-email.png` desde `APP_BASE_URL`. `logo-mark-email.svg` es su fuente.
 
 ---
 
@@ -2295,6 +2305,8 @@ Lista de cosas que sé que faltan o que no han recibido pasada todavía. Se irá
 - [ ] **Mover la barra lateral de `lg` a `xl`**: hoy aparece a 1024 pero el panel de regalos pide 1280, así que la franja 1024–1279 tiene barra lateral sin el layout maestro-detalle para el que existe, y el contenido se queda en 784 px. Propuesta dibujada en los cuatro marcos de tableta del Figma. Son tres intercambios de clase: `app/(app)/layout.tsx:29` `hidden lg:flex` → `hidden xl:flex`, `layout.tsx:61` `lg:hidden` → `xl:hidden`, y `components/gifts/GiftsPanel.tsx:633` `lg:hidden` → `xl:hidden`. Comprobar después el `p-4 sm:p-6 lg:p-8` de las páginas, que a 1024 seguiría en 32 y está bien, y que la hoja de navegación se lee a 1024 de ancho (hoy sólo está probada a 390).
 - [ ] **La fila activa del menú móvil desaparece en oscuro**: `color/fill/brand-subtle` (#0c2912) sobre `color/bg/surface-raised` (#211914) da **1,11:1**, así que el estado activo se sostiene casi solo en el color del texto (6,19:1, que sí cumple AA). `aria-current` da la pista programática, pero el indicador visual no tiene contraste propio. O el `brand-subtle` de oscuro sube un paso, o la fila activa gana un borde. Salió al montar el gemelo en oscuro de la hoja de navegación.
 - [ ] **WCAG 2.5.3 en el CTA de la tarjeta de fecha**: en móvil el botón se lee «Regalar» y su `aria-label` dice «Ideas de regalo», así que el texto visible no está contenido en el nombre accesible. Arreglo en código: que el nombre accesible empiece por la palabra visible, o quitar el `aria-label` cuando el span visible está presente. Es el único sitio del producto donde la etiqueta cambia por breakpoint.
+- [ ] **Dos tintas oscuras para el logo**: la app y el Figma pintan la figura oscura con el color del texto (`#302621`, `color/icon`) y los archivos estáticos (`logo-mark.svg`, `icon.svg`, `.ico`, PNG de la app) con el verde `#2F3B29` del dibujo original. A tamaño de icono no se distinguen. Decidir si los estáticos pasan a `#302621` o se quedan en verde a propósito. Salió en la revisión del logo del 20-oct-2026.
+- [ ] **El nombre junto al logo no tiene una forma fija**: en código va en Geist `font-semibold text-lg` (barra lateral y cabecera móvil), `font-semibold` a 16 px (acceso), `font-medium tracking-tight text-lg` (landing y páginas legales) y `text-xs` apagado (pie). En el Figma hay seis combinaciones, Fraunces SemiBold de la portada incluida. Propuesta: un `<Logo>` (símbolo + nombre) con peso, tracking y separación fijos. Falta elegir la letra: Geist SemiBold, la más usada, o Fraunces, la de los titulares.
 - [ ] **Footer global**: minimal por ahora. Decidir si crece o se queda así. La revisión de la landing del 19-oct-2026 echó en falta un contacto o una forma de dar opinión, siendo una beta.
 - [ ] **Lo que dejó abierto la revisión de la landing (19-oct-2026)**: el capítulo 2 nombra «la campana» y ninguna réplica la enseña; sin `:has()`, la casilla del selector cambia pero las tarjetas se quedan en «Producto físico» (parece roto, no una caída elegante); `name="faq"` impide tener dos respuestas abiertas para compararlas; en oscuro, el disco del hero con `dark:opacity-70` se lee gris turbio; y en el móvil las teselas del hero van de tres en tres con títulos de tres líneas. Fraunces + Geist sobre crema, que el detector marca como combinación de moda, es del sistema y no se toca por la landing.
 - [ ] **Skeletons consistentes**: todos en `rounded-2xl` y `border-dashed`, pero verificar dimensiones uniformes.
@@ -2658,6 +2670,19 @@ Verificado después por captura: las dos variantes del set y la maqueta compuest
 **Tras la aprobación, el mismo día.** La imagen OG (`src/app/opengraph-image.png`, 2400 × 1260) se rehízo con la misma receta que el 16-oct, capturada de la propia página: el H1 nuevo en dos líneas, la línea corta de siempre y la réplica del hero en su fotograma final. La anterior era de antes del avatar y aún llevaba «MA» y el botón verde. El `.alt.txt` y los dos README cambian con ella: el lema de los README pasa a ser la pregunta, y las capturas `landing-light` y `landing-dark` se repitieron con `scripts/screenshots.mjs` contra el build de producción.
 
 **Lo que queda abierto de la revisión** está en Pendientes. **En el Figma**, el mismo día por la noche, primero en el Playground y, aprobado, en `Screens & prototype`. El archivo había perdido la pasada del 16-oct y se rehízo entera desde `ce57088` (ver «La landing de `Screens & prototype` cuenta el cumpleaños de Marta»).
+
+## El logo se ajusta: la cola coral sigue a su trazo (20-oct-2026)
+
+**Por qué.** Jorge notó que la cola de la segunda P no estaba alineada y pidió revisar qué más se podía mejorar. Medido sobre el SVG: la cola coral empezaba en x 13,83, 1,92 a la derecha del borde del trazo coral que baja por dentro de la figura oscura (x 11,91). El trazo se metía por debajo de la barra oscura y la cola salía en otro sitio. Al medir salieron cinco cosas más: el pie coral era otra curva que el oscuro; la barra coral casi tocaba la curva oscura (0,38, cuando todas las demás ranuras miden 0,83); la ranura entre la barra oscura y su mástil medía 0,89; las cabezas no eran círculos y estaban 0,12 y 0,18 fuera del centro de su cuerpo; y los bordes de los mástiles no eran del todo verticales.
+
+**Qué cambia.** El mismo dibujo, y solo se redibuja lo que estaba mal. Los arcos, el cruce de arriba y la curva en S son los trazos originales, sin tocar.
+1. La cola coral es el pie oscuro desplazado 10,21: su borde izquierdo continúa el trazo coral, y los dos pies son iguales.
+2. La barra coral pasa por debajo de la curva oscura y asoma a un hueco de la cola, como la barra oscura con su mástil. Desaparece el pellizco de 0,38.
+3. Un hueco único de 0,83, y cabezas circulares del mismo radio centradas sobre su cuerpo. Las reglas están en «Logo y marca · Construcción».
+
+**Se probó y se descartó** una versión para 24 px o menos con los huecos más anchos (1,4). Solo separaba un poco más las cabezas a 16–20 px, y a 16 px el entrelazado se pierde igual. No compensa mantener dos dibujos. **Se deja como está** el grosor del trazo, que va de 4,2 a 4,5 porque es parte del dibujo, y el coral sobre crema (2,73:1): es `Terracotta/vivid`, una decisión de marca, y los logotipos están fuera de la norma de contraste.
+
+**Dónde.** Se probó primero en el Playground (`Playground · Logo refinement`, claro y oscuro, con una guía en x 11,91). Aprobado, el mismo día pasó a `LogoMark.tsx`, `logo-mark.svg`, `logo-mark-email.svg/.png`, `icon.svg`, `favicon.ico` y los cuatro PNG de la app, con los mismos colores y márgenes que antes (ver «Iconos de app y favicon»). Los SVG pierden el `clipPath` que traía la exportación de Figma: el dibujo ya no se sale del cuadro, y el `id` fijo `pickpal-clip` se repetía en cada logo de la página. En el Figma se cambiaron los dos vectores del componente `Logo Mark` (32:699), y sus 210 instancias se actualizan solas. Versión del archivo «Before logo refinement», guardada antes del cambio. Quedan abiertas en Pendientes las dos tintas oscuras y la forma del nombre junto al logo.
 
 ---
 
