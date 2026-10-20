@@ -2710,7 +2710,7 @@ Verificado después por captura: las dos variantes del set y la maqueta compuest
 **El componente `Logo` en el Figma, también el mismo día.** Hasta entonces los lockups eran marcos locales (`Brand lockup`, `Brand`). Ahora son un component set `Logo` en `05 · Content`, con la anatomía de las demás secciones:
 - **La sección**: `Header` con descripción, «When not to use it» y «Tokens it consumes»; rejilla `Size=Default · Sm` con sus `vlabel/`, fijada a Light; y `Dark check` con los dos tamaños en Dark.
 - **Enlaces**: `documentationLinks` apunta al `Header`. Entra en el inventario de la página («6 components · 15 variants»), en el índice de Start here (`CONTENT (6)`) y en la fila `Default · Sm` del vocabulario cerrado.
-- **Cifras de Start here**: pasan a 29 component sets y 31 componentes. La copia de la descripción de Community (§ «Pasada de portfolio») ya dice «29 component sets» y «104 product frames»; las otras tres cifras (349 variables, 73 iconos, 25 estilos de texto) se comprobaron contra el archivo el mismo día. La publicada sigue diciendo lo de antes hasta que Jorge la pegue al republicar. Antes de hacerlo hay que quitar el `Playground`.
+- **Cifras de Start here**: pasan a 29 component sets y 31 componentes. La copia de la descripción de Community (§ «Pasada de portfolio») ya dice «29 component sets» y «104 product frames»; las otras tres cifras (349 variables, 73 iconos, 25 estilos de texto) se comprobaron contra el archivo el mismo día. La publicada sigue diciendo lo de antes hasta que Jorge la pegue al republicar. El `Playground`, que no debía publicarse, ya salió del archivo (ver «El Playground sale del archivo»).
 - **`Logo Mark`**: su descripción y su «When not to use it» remiten ahora a `Logo`, y el mínimo pasa de 24 a 20 px, el tamaño de `Logo Sm`. Las notas de iconos de la app dejan de decir `src/app/` y «green».
 
 **Las 84 cabeceras y pies de `Screens & prototype` son ahora instancias de `Logo`**, en la misma posición y con el color de antes. Ninguno llevaba interacciones de prototipo.
@@ -2722,6 +2722,12 @@ Verificado después por captura: las dos variantes del set y la maqueta compuest
 Salió al comprobar el logo nuevo en el navegador: el HTML de la app, en desarrollo y en producción, solo llevaba `<link rel="apple-touch-icon">`. No había ningún `<link rel="icon">`, así que los navegadores pedían `/favicon.ico` por su cuenta. La causa está en Next (`lib/metadata/resolve-metadata.js` en la 16.4): los iconos por archivo solo se añaden si el metadata no declara `icons`. El layout declaraba `icons.apple` desde `d877992` (9-may-2026), y eso tapó `src/app/icon.svg` desde entonces. La variante oscura del favicon (`5fbf0c5`, 27-sep) no llegó a verse nunca.
 
 **Arreglo:** `icon.svg` pasa a `public/` y `metadata.icons` declara los tres iconos: el `.ico` con `sizes="32x32"`, el SVG y el `apple-touch-icon`. Ninguna URL pública cambia. Comprobado en desarrollo: el HTML de `/`, `/privacidad` y `/sign-in` lleva los tres enlaces, y el navegador pide `icon.svg`. La regla queda en «Iconos de app y favicon».
+
+## El Playground sale del archivo (20-oct-2026)
+
+La página `Playground` y su separador `-----` se borraron del Figma antes de republicar en Community. Era el banco de pruebas de los cambios de interfaz desde el 13-oct, y sus once secciones ya estaban pasadas a código y a `Screens & prototype`: copias de pantallas a 1440, 1024 y 390, estados de «Mi lista», tarjeta de lista recibida, «Otras tiendas», las dos versiones de la ficha, la landing de Marta, el foco de los botones y el ajuste del logo. No guardaba ningún componente principal, así que ninguna instancia de fuera se rompió; con ella se fueron sus cuatro flujos de prototipo propios. Ningún texto del archivo la nombraba.
+
+**Para recuperarla**: versión del historial «Before removing Playground». **Para la próxima prueba de interfaz**: se crea otra vez una página `Playground` al final, tras un separador, y se borra antes de cada publicación en Community. Las menciones al Playground en este documento son históricas.
 
 ---
 
