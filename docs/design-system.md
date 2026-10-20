@@ -40,24 +40,38 @@ Lo que hay que conservar si se vuelve a tocar el dibujo (ajuste del 20-oct-2026,
 - **Cabezas**: círculos de radio 3,065, centrados en x 10,78 y 21,21, la parte más alta de cada cuerpo.
 - **Márgenes**: 1,70 a cada lado; de arriba (cabezas) a abajo (pies) ocupa los 32.
 
-### Componente
+### Componentes
+
+**`Logo`** es el logotipo: símbolo + «PickPal». Es la única forma de escribir el nombre junto al símbolo; nadie lo compone a mano con `LogoMark` y un texto.
 
 ```tsx
-import { LogoMark } from "@/components/ui/LogoMark";
-<LogoMark className="size-7" />
+import { Logo } from "@/components/ui/Logo";
+<Link href="/" className="flex"><Logo /></Link>
+<Logo size="sm" />
 ```
 
-Acepta `className` para controlar tamaño. Incluye `aria-hidden` — el contexto de texto adjunto ya nombra la marca.
+| Tamaño | Símbolo | Nombre | Separación |
+|---|---|---|---|
+| `default` | `size-7` (28 px) | `text-lg` (18 px) | `gap-2` (8 px) |
+| `sm` | `size-5` (20 px) | `text-sm` (14 px) | `gap-2` (8 px): en el Figma, `space/inline/xs`, y no hay token de 6 |
+
+- **Letra fija**: Geist SemiBold, sin tracking. Lleva `font-sans`, así que no hereda Fraunces aunque acabe dentro de un titular. Antes había cuatro combinaciones en el código (`font-medium tracking-tight` en la landing y las páginas legales, `font-semibold` a 16 px en el acceso…). Ver el registro del 20-oct-2026.
+- **Color heredado**: no fija ninguno. El nombre y la figura oscura toman el `color` del contenedor (`text-foreground` en la barra lateral, `text-muted-foreground` en el pie); el coral no cambia.
+- **Es un `<span>`**: el enlace lo pone quien lo usa. Ese `<Link>` lleva `flex` para que el contorno de foco rodee el logotipo entero y no solo la línea del texto.
+
+**`LogoMark`** es el símbolo solo. Acepta `className` para el tamaño e incluye `aria-hidden`, porque al lado siempre hay texto que nombra la marca. Hoy solo lo usan `Logo` y la réplica del correo de la landing (`RemindersMock`), que copia la cabecera del correo real: símbolo con el nombre y una línea debajo.
 
 ### Dónde aparece
 
 | Ubicación | Tamaño | Archivo |
 |---|---|---|
-| Sidebar desktop | `size-7` | `src/app/(app)/layout.tsx` |
-| Header móvil | `size-6` | `src/app/(app)/layout.tsx` |
-| Auth layout (sign-in / sign-up) | `size-7` | `src/app/(auth)/layout.tsx` |
-| Landing · cabecera | `size-7` | `src/components/landing/LandingHeader.tsx` |
-| Landing · pie | `size-5` | `src/components/landing/LandingFooter.tsx` |
+| Sidebar desktop | `Logo` | `src/app/(app)/layout.tsx` |
+| Header móvil | `Logo` (el símbolo pasa de 24 a 28 px el 20-oct-2026) | `src/app/(app)/layout.tsx` |
+| Auth layout (sign-in / sign-up) | `Logo` | `src/app/(auth)/layout.tsx` |
+| Páginas legales | `Logo` | `src/app/privacidad/page.tsx`, `src/app/terminos/page.tsx` |
+| Landing · cabecera | `Logo` | `src/components/landing/LandingHeader.tsx` |
+| Landing · pie | `Logo size="sm"` | `src/components/landing/LandingFooter.tsx` |
+| Landing · réplica del correo | `LogoMark size-7` | `src/components/landing/mocks/RemindersMock.tsx` |
 | Cabecera de los correos | 36 px (PNG de 72, crema) | `public/logo-mark-email.png`, desde `convex/emails.ts` |
 | Favicon e iconos de app | — | ver [Iconos de app y favicon](#iconos-de-app-y-favicon) |
 
@@ -1425,7 +1439,7 @@ Visible a partir de `lg` (1024px). Implementado en `src/app/(app)/layout.tsx`.
 - **Las 13 variables `--sidebar-*` se eliminaron el 25-ago-2026, de `globals.css` y de Figma a la vez.** Eran el set que arrastra shadcn y quedaron huérfanas al pasar el sidebar a panel claro: ningún componente las leía. Se borraron las 8 declaraciones de `:root`, las 8 de `.dark` y los 8 mapeos `--color-sidebar*` de `@theme inline`, más los 7 tokens semánticos de Figma (`color/bg/sidebar*`, `color/text/on-sidebar*`, `color/border/*-sidebar`) y los 2 de marca que solo ellos consumían (`brand/primary-deep` y `brand/primary-muted`). La maqueta «Vista en contexto» de `Foundations - Color` no se borró: se repuntó a los tokens que el sidebar usa de verdad (`color/bg`, `color/text`, `color/text/secondary`, y `color/fill/component` para el enlace activo), así que la documentación describe ahora el sidebar que existe. Si algún día vuelve un sidebar oscuro, se crean tokens nuevos con el rol correcto en vez de resucitar el vocabulario de shadcn.
 - El componente `SidebarLink` usa `usePathname()` y compara con `startsWith` para resaltar rutas anidadas.
 - El `<aside>` usa `h-screen sticky top-0` para que el pie quede siempre visible sin que el contenido principal lo desplace.
-- **Header del sidebar**: `<LogoMark size-7>` + texto "PickPal" (link) a la izquierda + `SafeNotificationBell` a la derecha. `flex items-center justify-between`.
+- **Header del sidebar**: `<Logo>` dentro de un enlace a `/agenda`, a la izquierda, + `SafeNotificationBell` a la derecha. `flex items-center justify-between`.
 - **Pie del sidebar**: `SidebarUserInfo` — `UserButton` de Clerk + email del usuario truncado (`text-xs text-muted-foreground`).
 - **Cerrar sesión**: además del menú del `UserButton`, `/settings` tiene una sección «Sesión» (desde el 16-oct-2026), justo antes de «Eliminar cuenta»: `Label` «Sesión», hint «Has entrado como {correo}. Cierra la sesión en este dispositivo; tus datos se quedan como están.» y `Button variant="outline"` con `LogOut` («Cerrando sesión…» y deshabilitado mientras dura; vuelve a `/`). Va fuera de la zona roja a propósito: salir no borra nada, y si solo se veía «Eliminar mi cuenta» parecía la única forma de irse. En Screens & prototype está en los dos marcos de Ajustes de escritorio (`Section / Sesión`, claro y oscuro) desde el mismo día, con el `Button` `Outline` **sin icono**: el archivo no tiene `icon/log-out`, y añadirlo es tocar la librería publicada.
 - **Tema**: `defaultTheme="light"` sin `enableSystem`. El toggle está en `/settings`. No hay ThemeToggle en sidebar ni en el header. Los usuarios existentes conservan su preferencia guardada en `localStorage`.
@@ -2308,7 +2322,7 @@ Lista de cosas que sé que faltan o que no han recibido pasada todavía. Se irá
 - [ ] **La fila activa del menú móvil desaparece en oscuro**: `color/fill/brand-subtle` (#0c2912) sobre `color/bg/surface-raised` (#211914) da **1,11:1**, así que el estado activo se sostiene casi solo en el color del texto (6,19:1, que sí cumple AA). `aria-current` da la pista programática, pero el indicador visual no tiene contraste propio. O el `brand-subtle` de oscuro sube un paso, o la fila activa gana un borde. Salió al montar el gemelo en oscuro de la hoja de navegación.
 - [ ] **WCAG 2.5.3 en el CTA de la tarjeta de fecha**: en móvil el botón se lee «Regalar» y su `aria-label` dice «Ideas de regalo», así que el texto visible no está contenido en el nombre accesible. Arreglo en código: que el nombre accesible empiece por la palabra visible, o quitar el `aria-label` cuando el span visible está presente. Es el único sitio del producto donde la etiqueta cambia por breakpoint.
 - [x] ~~**Dos tintas oscuras para el logo**~~ → resuelto el 20-oct-2026: los archivos estáticos (`logo-mark.svg`, `icon.svg`, `.ico`, PNG de la app) pasan del verde `#2F3B29` del dibujo original al `#302621` que ya pintaban la app y el Figma. Ver «Logo y marca · Colores del logo».
-- [ ] **El nombre junto al logo no tiene una forma fija**: en código va en Geist `font-semibold text-lg` (barra lateral y cabecera móvil), `font-semibold` a 16 px (acceso), `font-medium tracking-tight text-lg` (landing y páginas legales) y `text-xs` apagado (pie). En el Figma hay seis combinaciones, Fraunces SemiBold de la portada incluida. Propuesta: un `<Logo>` (símbolo + nombre) con peso, tracking y separación fijos. Falta elegir la letra: Geist SemiBold, la más usada, o Fraunces, la de los titulares.
+- [x] ~~**El nombre junto al logo no tiene una forma fija**~~ → resuelto el 20-oct-2026 con el componente `Logo` (Geist SemiBold), usado en los seis sitios del código y alineado en `Screens & prototype`. Ver «Logo y marca · Componentes».
 - [ ] **Footer global**: minimal por ahora. Decidir si crece o se queda así. La revisión de la landing del 19-oct-2026 echó en falta un contacto o una forma de dar opinión, siendo una beta.
 - [ ] **Lo que dejó abierto la revisión de la landing (19-oct-2026)**: el capítulo 2 nombra «la campana» y ninguna réplica la enseña; sin `:has()`, la casilla del selector cambia pero las tarjetas se quedan en «Producto físico» (parece roto, no una caída elegante); `name="faq"` impide tener dos respuestas abiertas para compararlas; en oscuro, el disco del hero con `dark:opacity-70` se lee gris turbio; y en el móvil las teselas del hero van de tres en tres con títulos de tres líneas. Fraunces + Geist sobre crema, que el detector marca como combinación de moda, es del sistema y no se toca por la landing.
 - [ ] **Skeletons consistentes**: todos en `rounded-2xl` y `border-dashed`, pero verificar dimensiones uniformes.
@@ -2687,6 +2701,10 @@ Verificado después por captura: las dos variantes del set y la maqueta compuest
 **Dónde.** Se probó primero en el Playground (`Playground · Logo refinement`, claro y oscuro, con una guía en x 11,91). Aprobado, el mismo día pasó a `LogoMark.tsx`, `logo-mark.svg`, `logo-mark-email.svg/.png`, `icon.svg`, `favicon.ico` y los cuatro PNG de la app, con los mismos colores y márgenes que antes (ver «Iconos de app y favicon»). Los SVG pierden el `clipPath` que traía la exportación de Figma: el dibujo ya no se sale del cuadro, y el `id` fijo `pickpal-clip` se repetía en cada logo de la página. En el Figma se cambiaron los dos vectores del componente `Logo Mark` (32:699), y sus 210 instancias se actualizan solas. Versión del archivo «Before logo refinement», guardada antes del cambio. Queda abierta en Pendientes la forma del nombre junto al logo.
 
 **Una sola tinta, el mismo día.** La revisión vio que la figura oscura tenía dos colores: el del texto (`#302621`) en la app y en el Figma, y el verde `#2F3B29` del dibujo original en los archivos estáticos. A tamaño de icono no se distinguen, pero eran dos fuentes de verdad. Jorge eligió `#302621`, y los estáticos (`logo-mark.svg`, `icon.svg`, `favicon.ico` y los cuatro PNG de la app) se regeneraron con los mismos márgenes. El correo sigue en crema.
+
+**Un solo logotipo, también el mismo día.** El nombre junto al símbolo tenía cuatro combinaciones en el código y seis en el Figma. Jorge eligió Geist SemiBold, la más usada (la de la barra lateral: 157 de los textos «PickPal» del archivo), y nace `Logo` (`src/components/ui/Logo.tsx`): símbolo + «PickPal» con letra, separación y proporción fijas, en dos tamaños. Sustituye a las seis composiciones a mano: barra lateral, cabecera móvil, acceso, las dos páginas legales, y cabecera y pie de la landing. Lo que cambia a la vista: la landing y las páginas legales pasan de Medium con tracking `-tight` a SemiBold; el acceso, de 16 a 18 px; el pie, de 12 px Regular a 14 px SemiBold; y el símbolo de la cabecera móvil, de 24 a 28 px, sin que cambie la altura de la cabecera. La réplica del correo de la landing sigue con `LogoMark`, porque copia la cabecera del correo real.
+
+**En el Figma**, `Screens & prototype` se alineó con el código: 40 lockups (26 cabeceras de móvil y tableta con el símbolo a 28 px, 6 cabeceras de la landing, 6 pies y 2 pantallas de acceso). Todos llevan ahora Geist SemiBold con `typography/font-family/sans`, `typography/font-weight/semibold` y su `typography/font-size/*`. El pie lleva `space/inline/xs` de separación. Los lockups siguen siendo marcos locales (`Brand lockup`, `Brand`): no hay componente `Logo` en el archivo. La portada (Fraunces 52), el título del menú móvil y la réplica del correo no son el logotipo y no se tocan. Versión del archivo «Before Logo lockup in Screens».
 
 ## El favicon SVG no se enlazaba (20-oct-2026)
 

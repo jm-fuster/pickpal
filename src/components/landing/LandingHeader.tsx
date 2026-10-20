@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { LogoMark } from "@/components/ui/LogoMark";
+import { Logo } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
 
 // Ni sticky ni animada: en una página que se lee de arriba abajo, la cabecera
@@ -16,10 +16,7 @@ export function LandingHeader() {
         Saltar al contenido
       </a>
       <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <span className="flex items-center gap-2 text-lg font-medium tracking-tight">
-          <LogoMark className="size-7" />
-          PickPal
-        </span>
+        <Logo />
         <nav aria-label="Cuenta" className="flex items-center gap-2">
           <Link href="/sign-in" className={buttonVariants({ variant: "ghost" })}>
             Iniciar sesión

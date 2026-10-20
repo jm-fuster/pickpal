@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogoMark } from "@/components/ui/LogoMark";
+import { Logo } from "@/components/ui/Logo";
 import { BackLink } from "@/components/layout/BackLink";
 import { AnalyticsOptOut } from "@/components/analytics-opt-out";
 
@@ -13,12 +13,8 @@ export default function PrivacyPage() {
   return (
     <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between px-6 py-5">
-        <Link
-          href="/"
-          className="text-lg font-medium tracking-tight flex items-center gap-2"
-        >
-          <LogoMark className="size-7" />
-          PickPal
+        <Link href="/" className="flex">
+          <Logo />
         </Link>
       </header>
 
