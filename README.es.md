@@ -1,6 +1,6 @@
 <div align="center">
 
-<!-- logo-mark-email.svg es la variante crema del mismo símbolo; el verde
+<!-- logo-mark-email.svg es la variante crema del mismo símbolo; la marrón oscura
      desaparece sobre el fondo oscuro de GitHub, así que solo vale en claro. -->
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="public/logo-mark-email.svg">

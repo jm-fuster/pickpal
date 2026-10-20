@@ -1,6 +1,6 @@
 <div align="center">
 
-<!-- logo-mark-email.svg is the cream variant of the same mark; the green one
+<!-- logo-mark-email.svg is the cream variant of the same mark; the dark brown one
      is near-invisible on GitHub's dark canvas, so it only serves light mode. -->
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="public/logo-mark-email.svg">
