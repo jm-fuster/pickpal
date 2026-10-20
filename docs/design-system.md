@@ -393,7 +393,7 @@ El archivo se auditó con tres criterios del usuario —que no dependa del códi
 
 > My phone reminds me of a birthday on the day, when it is too late to give anything good, and I am worse at the second half: a gift that fits the person. PickPal is the notebook I built to fix that. It keeps the people you care about next to their dates and, when one gets close, drafts nine gift ideas from what you know about them, with a budget for that occasion and links to the stores you actually use.
 >
-> This file is the case, start to finish: the problem, the decisions made before designing, how a date becomes a gift, what a ten-person private beta changed, six paths not taken, and an accessibility pass with its measurements. Behind it sits the design system that made it hold up: 349 variables in four layers with Light and Dark as real modes, 28 component sets documented on six pages, one per family, 73 icons, 25 text styles and 62 product frames, every screen in Light and Dark, with two click-through flows in each theme.
+> This file is the case, start to finish: the problem, the decisions made before designing, how a date becomes a gift, what a ten-person private beta changed, six paths not taken, and an accessibility pass with its measurements. Behind it sits the design system that made it hold up: 349 variables in four layers with Light and Dark as real modes, 29 component sets documented on six pages, one per family, 73 icons, 25 text styles and 104 product frames, every screen in Light and Dark, with two click-through flows in each theme.
 >
 > Documentation in English. The product is Spanish and its copy stays that way, as it ships.
 
@@ -2710,7 +2710,7 @@ Verificado después por captura: las dos variantes del set y la maqueta compuest
 **El componente `Logo` en el Figma, también el mismo día.** Hasta entonces los lockups eran marcos locales (`Brand lockup`, `Brand`). Ahora son un component set `Logo` en `05 · Content`, con la anatomía de las demás secciones:
 - **La sección**: `Header` con descripción, «When not to use it» y «Tokens it consumes»; rejilla `Size=Default · Sm` con sus `vlabel/`, fijada a Light; y `Dark check` con los dos tamaños en Dark.
 - **Enlaces**: `documentationLinks` apunta al `Header`. Entra en el inventario de la página («6 components · 15 variants»), en el índice de Start here (`CONTENT (6)`) y en la fila `Default · Sm` del vocabulario cerrado.
-- **Cifras de Start here**: pasan a 29 component sets y 31 componentes. La descripción de Community (§ «Pasada de portfolio») sigue diciendo 28 hasta que se republique.
+- **Cifras de Start here**: pasan a 29 component sets y 31 componentes. La copia de la descripción de Community (§ «Pasada de portfolio») ya dice «29 component sets» y «104 product frames»; las otras tres cifras (349 variables, 73 iconos, 25 estilos de texto) se comprobaron contra el archivo el mismo día. La publicada sigue diciendo lo de antes hasta que Jorge la pegue al republicar. Antes de hacerlo hay que quitar el `Playground`.
 - **`Logo Mark`**: su descripción y su «When not to use it» remiten ahora a `Logo`, y el mínimo pasa de 24 a 20 px, el tamaño de `Logo Sm`. Las notas de iconos de la app dejan de decir `src/app/` y «green».
 
 **Las 84 cabeceras y pies de `Screens & prototype` son ahora instancias de `Logo`**, en la misma posición y con el color de antes. Ninguno llevaba interacciones de prototipo.
