@@ -26,7 +26,7 @@ El logo-mark de PickPal son dos figuras entrelazadas que forman las letras "PP".
 | Figura izquierda (p) + cabeza izquierda | `currentColor` | hereda `--foreground` del contexto (`color/icon` en Figma) |
 | Figura derecha (P) + cabeza derecha | `#F1704B` | `brand/logo` → `color/Terracotta/vivid` en Figma. **No es `--secondary`**: tiene otro tono y un 40 % más de croma (ver «La terracota: uno era un paso y el otro no») |
 
-Los paths de la figura oscura usan `fill="currentColor"` en el componente React, no un color fijo. Esto permite que el logo se adapte automáticamente: sobre fondo oscuro (dark mode) hereda el color crema del texto; sobre fondo claro hereda el marrón cálido del texto. El coral se queda fijo porque es el acento de marca. Los archivos estáticos (`public/logo-mark.svg`, `src/app/icon.svg`, el `.ico` y los PNG) no pueden heredar y llevan el verde `#2F3B29`, el del dibujo original; los del correo, crema `#FBF7EE`.
+Los paths de la figura oscura usan `fill="currentColor"` en el componente React, no un color fijo. Esto permite que el logo se adapte automáticamente: sobre fondo oscuro (dark mode) hereda el color crema del texto; sobre fondo claro hereda el marrón cálido del texto. El coral se queda fijo porque es el acento de marca. Los archivos estáticos (`public/logo-mark.svg`, `public/icon.svg`, el `.ico` y los PNG) no pueden heredar y llevan el verde `#2F3B29`, el del dibujo original; los del correo, crema `#FBF7EE`.
 
 ### Construcción
 
@@ -65,17 +65,19 @@ Acepta `className` para controlar tamaño. Incluye `aria-hidden` — el contexto
 
 Cada superficie recorta el icono de forma distinta, así que cada archivo lleva su propio margen. Ninguno debe llevar el logo a sangre.
 
+**Todos viven en `public/` y se declaran en `metadata.icons` de `src/app/layout.tsx`.** En cuanto el metadata trae `icons`, Next ignora los iconos por archivo (`src/app/icon.*`, `src/app/apple-icon.*`), así que no se pone ninguno ahí. El HTML lleva tres enlaces: el `.ico` con `sizes="32x32"`, el SVG con `type="image/svg+xml"` y el `apple-touch-icon`. El `32x32` del `.ico` es lo que hace que Chrome prefiera el SVG.
+
 | Archivo | Tamaño | Dónde se usa | Fondo | Logo ocupa |
 |---|---|---|---|---|
-| `src/app/icon.svg` | 32 (viewBox `-2 -2 36 36`) | Pestaña del navegador (Chrome, Edge, Firefox) | Transparente | ~89 % |
-| `public/favicon.ico` | 16 · 32 · 48 | Pestaña en Safari y navegadores sin SVG | Transparente | ~89 % |
-| `public/apple-touch-icon.png` | 180×180 | Pantalla de inicio iOS (`metadata.icons.apple`) | `#FBF7EE` opaco | ~70 % |
+| `public/icon.svg` | 32 (viewBox `-2 -2 36 36`) | Pestaña del navegador (Chrome, Edge, Firefox) | Transparente | ~89 % |
+| `public/favicon.ico` | 16 · 32 · 48 | Pestaña en los navegadores sin favicon SVG | Transparente | ~89 % |
+| `public/apple-touch-icon.png` | 180×180 | Pantalla de inicio iOS | `#FBF7EE` opaco | ~70 % |
 | `public/icon-192.png` · `icon-512.png` | 192 · 512 | Manifest, `purpose: "any"` | Transparente | 100 % |
 | `public/icon-maskable-512.png` | 512 | Manifest, `purpose: "maskable"` (Android) | `#FBF7EE` | 56 % |
 
 - **Maskable (Android)**: Android recorta con su propia máscara (círculo, squircle…) y solo garantiza visible el círculo central del 80 %. El logo, casi cuadrado, cabe entero en ese círculo al 56 % (0,8 / √2). Nunca marcar como `maskable` un PNG sin margen: es lo que dejaba el icono cortado.
-- **iOS**: no admite transparencia (la rellena de negro) ni SVG. Solo redondea las esquinas, por eso basta con menos margen que en Android. No volver a poner `src/app/apple-icon.svg`: Next lo publicaría como un segundo apple-touch-icon.
-- **Modo oscuro del favicon**: `icon.svg` lleva un `@media (prefers-color-scheme: dark)` que cambia el verde `#2F3B29` a crema `#FBF7EE`; el coral no cambia. Safari y el `.ico` ignoran la regla y muestran siempre el verde.
+- **iOS**: no admite transparencia (la rellena de negro) ni SVG. Solo redondea las esquinas, por eso basta con menos margen que en Android. Tampoco admite `apple-icon.svg`: fue lo que se quitó en `ac4004d`.
+- **Modo oscuro del favicon**: `icon.svg` lleva un `@media (prefers-color-scheme: dark)` que cambia el verde `#2F3B29` a crema `#FBF7EE`; el coral no cambia. El `.ico` no puede cambiar y se ve siempre en verde. No funcionó hasta el 20-oct-2026: el SVG estaba en `src/app/` y el `icons.apple` del layout lo tapaba (ver el registro).
 - **Regenerar**: todos salen del SVG con `sharp`, que ya está en `node_modules`. Logo de 124 px centrado en `apple-touch-icon.png`, a sangre en `icon-192/512`, de 288 px centrado en `icon-maskable-512.png` y de 72 px en `logo-mark-email.png`. El `.ico` lleva tres PNG (16, 32 y 48) renderizados desde `icon.svg`. Tras cambiarlos, desinstalar y volver a añadir la app para ver el icono nuevo; iOS y Android lo guardan en caché.
 - **Correo**: los clientes de correo no soportan SVG, así que la cabecera de `convex/emails.ts` pinta `public/logo-mark-email.png` desde `APP_BASE_URL`. `logo-mark-email.svg` es su fuente.
 
@@ -2683,6 +2685,12 @@ Verificado después por captura: las dos variantes del set y la maqueta compuest
 **Se probó y se descartó** una versión para 24 px o menos con los huecos más anchos (1,4). Solo separaba un poco más las cabezas a 16–20 px, y a 16 px el entrelazado se pierde igual. No compensa mantener dos dibujos. **Se deja como está** el grosor del trazo, que va de 4,2 a 4,5 porque es parte del dibujo, y el coral sobre crema (2,73:1): es `Terracotta/vivid`, una decisión de marca, y los logotipos están fuera de la norma de contraste.
 
 **Dónde.** Se probó primero en el Playground (`Playground · Logo refinement`, claro y oscuro, con una guía en x 11,91). Aprobado, el mismo día pasó a `LogoMark.tsx`, `logo-mark.svg`, `logo-mark-email.svg/.png`, `icon.svg`, `favicon.ico` y los cuatro PNG de la app, con los mismos colores y márgenes que antes (ver «Iconos de app y favicon»). Los SVG pierden el `clipPath` que traía la exportación de Figma: el dibujo ya no se sale del cuadro, y el `id` fijo `pickpal-clip` se repetía en cada logo de la página. En el Figma se cambiaron los dos vectores del componente `Logo Mark` (32:699), y sus 210 instancias se actualizan solas. Versión del archivo «Before logo refinement», guardada antes del cambio. Quedan abiertas en Pendientes las dos tintas oscuras y la forma del nombre junto al logo.
+
+## El favicon SVG no se enlazaba (20-oct-2026)
+
+Salió al comprobar el logo nuevo en el navegador: el HTML de la app, en desarrollo y en producción, solo llevaba `<link rel="apple-touch-icon">`. No había ningún `<link rel="icon">`, así que los navegadores pedían `/favicon.ico` por su cuenta. La causa está en Next (`lib/metadata/resolve-metadata.js` en la 16.4): los iconos por archivo solo se añaden si el metadata no declara `icons`. El layout declaraba `icons.apple` desde `d877992` (9-may-2026), y eso tapó `src/app/icon.svg` desde entonces. La variante oscura del favicon (`5fbf0c5`, 27-sep) no llegó a verse nunca.
+
+**Arreglo:** `icon.svg` pasa a `public/` y `metadata.icons` declara los tres iconos: el `.ico` con `sizes="32x32"`, el SVG y el `apple-touch-icon`. Ninguna URL pública cambia. Comprobado en desarrollo: el HTML de `/`, `/privacidad` y `/sign-in` lleva los tres enlaces, y el navegador pide `icon.svg`. La regla queda en «Iconos de app y favicon».
 
 ---
 

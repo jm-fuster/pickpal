@@ -74,7 +74,16 @@ export const metadata: Metadata = {
   // objeto entero por segmento). La cabecera X-Robots-Tag de next.config.ts
   // cubre además los ficheros que no son HTML.
   robots: { index: false, follow: false },
+  // Todos los iconos viven en public/ y se declaran aquí. En cuanto el metadata
+  // trae `icons`, Next ignora los iconos por archivo (app/icon.*, app/apple-icon.*):
+  // así se perdió icon.svg de mayo a octubre de 2026. El .ico va con
+  // sizes 32x32 para que Chrome prefiera el SVG, que cambia a crema en modo
+  // oscuro; los navegadores sin favicon SVG se quedan con el .ico.
   icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
