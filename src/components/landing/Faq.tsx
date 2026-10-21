@@ -16,6 +16,12 @@ const QUESTIONS: { q: string; a: ReactNode }[] = [
     a: "Nada. Es un proyecto personal. De momento puedes pedir ideas diez veces al día.",
   },
   {
+    // El acceso lo decide Clerk (modo lista de espera, en su panel), no este
+    // repo: si se abre el registro, esta respuesta deja de ser cierta.
+    q: "¿Puedo entrar ya?",
+    a: "Las cuentas nuevas pasan por una lista de espera: apúntate con tu email desde «Empezar gratis» y, cuando tengas acceso, te llegará un correo para crear la cuenta. Si ya tienes una, entra por «Iniciar sesión».",
+  },
+  {
     q: "¿Sirve para algo más que cumpleaños?",
     a: "Sí: aniversarios, santos, Navidad o la fecha que quieras, y cada una puede llevar su presupuesto.",
   },
