@@ -13,7 +13,7 @@ const STORE_LIST = new Intl.ListFormat("es", { type: "conjunction" }).format(
 const QUESTIONS: { q: string; a: ReactNode }[] = [
   {
     q: "¿Cuánto cuesta?",
-    a: "Nada. Es un proyecto personal, todavía en beta. De momento puedes pedir ideas diez veces al día.",
+    a: "Nada. Es un proyecto personal. De momento puedes pedir ideas diez veces al día.",
   },
   {
     q: "¿Sirve para algo más que cumpleaños?",
