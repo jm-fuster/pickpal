@@ -2775,6 +2775,8 @@ El registro de producción está en modo lista de espera, que se activa en el pa
 
 La pregunta «¿Puedo entrar ya?» de la landing describe este flujo. **Si se abre el registro**, hay que reescribirla y se puede quitar la página. La instancia de desarrollo de Clerk no está en modo lista de espera, así que en local `/sign-up` sale normal y «Acceso restringido» solo se ve en producción.
 
+**En el Figma (21-oct-2026):** la séptima pregunta, «¿Puedo entrar ya?», está en los seis marcos de la landing de `Screens & prototype` (escritorio 256:2582 y 288:8744, tableta 453:44885 y 453:45879, móvil 453:46873 y 453:47794), clonada de la fila de debajo en cada marco para que conserve su modo y su divisoria. Versión «Landing FAQ: «¿Puedo entrar ya?»». La página `/lista-de-espera` no está dibujada: es el componente de Clerk, como el acceso.
+
 ---
 
 ## Cómo mantener este documento
