@@ -1,12 +1,12 @@
 # Política de privacidad · PickPal
 
-**Publicado el 20-sep-2026, revisado el 27-sep-2026 y ampliado el 10-oct-2026 con «Mi lista» (§2.6).** El contenido vivo es [`/privacidad`](../src/app/privacidad/page.tsx); este documento es la versión larga de trabajo y tiene que moverse con ella. El NIF y la dirección postal se han retirado a propósito (ver §1). Las secciones marcadas con _Revisar_ requieren decisión consciente.
+**Publicado el 20-sep-2026, revisado el 27-sep-2026 ampliado el 10-oct-2026 con «Mi lista» (§2.6) y el 21-oct-2026 con la lista de espera (§2.7).** El contenido vivo es [`/privacidad`](../src/app/privacidad/page.tsx); este documento es la versión larga de trabajo y tiene que moverse con ella. El NIF y la dirección postal se han retirado a propósito (ver §1). Las secciones marcadas con _Revisar_ requieren decisión consciente.
 
 > **Revisión del 27-sep-2026.** La página publicada no nombraba al responsable ni daba las bases legales (§3) ni las transferencias (§5): solo estaban aquí, y el art. 13 pide que las vea el usuario. Ahora las tres cosas están en `/privacidad`. En la misma pasada se corrigieron el régimen de Gemini (§4.1: desde el EEE, Google aplica sus reglas de datos de pago, así que no entrena con los datos), la edad mínima (§10: 18, no 14) y el papel de PickPal frente a los datos de terceros (§7: responsable, no encargado).
 
 > **Bloqueo resuelto (20-sep-2026):** `pickpal@jorgemolinafuster.com` ya entrega, vía Cloudflare Email Routing sobre el apex `jorgemolinafuster.com` (3 MX de Cloudflare + `v=spf1 include:_spf.mx.cloudflare.net ~all`, reenvío a buzón personal). Comprobado con un envío real desde fuera del dominio. El subdominio `pickpal.jorgemolinafuster.com` sigue siendo un CNAME a Vercel y **no puede** recibir correo; no intentes ponerle MX.
 
-Última actualización: `16 de octubre de 2026`
+Última actualización: `21 de octubre de 2026`
 
 > Cuando se publique la app, este contenido debe servirse en `/privacy` (p. ej. `src/app/(legal)/privacy/page.tsx`) y enlazarse desde el footer y desde la pantalla de registro.
 
@@ -196,6 +196,17 @@ son **del propio usuario**, no de un tercero.
 - **Base legal:** ejecución de contrato — es una funcionalidad que el usuario
   activa explícitamente, igual que compartir fichas.
 
+### 2.7 Lista de espera
+
+El registro de producción está en el modo **lista de espera** de Clerk (comprobado el 21-oct-2026: `user_settings.sign_up.mode = "waitlist"` en el `/v1/environment` público de Clerk). Se cambia en el panel de Clerk, no en este repo. Quien no tiene cuenta se apunta en [`/lista-de-espera`](../src/app/(auth)/lista-de-espera/page.tsx), que solo monta `<Waitlist />`.
+
+- **Datos:** el email. Clerk guarda la entrada (`WaitlistEntry`: email, fechas de alta y de cambio, estado `pending`, `invited`, `completed` o `rejected`, y la invitación asociada). No hay webhooks de Clerk ni nada en Convex, así que la app no lo lee ni lo guarda.
+- **Correos:** los manda Clerk, no Resend. «Waitlist confirmation» al apuntarse e «Waitlist invitation» al aprobarlo, según las plantillas activas en el panel (Emails › Waitlist). `/privacidad` no nombra plantillas: dice que Clerk usa el email «solo para escribirte sobre tu plaza».
+- **Base legal:** medidas precontractuales a petición del interesado (art. 6.1.b): se apunta para poder abrir una cuenta.
+- **Conservación:** mientras exista la lista. La API de Clerk solo borra entradas `pending` (`DELETE /waitlist_entries/{id}`), y por eso `/privacidad` ofrece borrarla a quien quiera salir **antes de tener acceso**, y no después.
+- **Información (art. 13):** se recoge en `/lista-de-espera`, cuyo pie enlaza a `/privacidad` (layout de `(auth)`).
+- **Aviso a los usuarios (§11):** no se ha preparado. El cambio no toca los datos de ninguna cuenta: afecta a quien aún no tiene, y a esa persona solo se le puede informar en la propia página.
+
 ---
 
 ## 3. Finalidades y bases legales
@@ -203,6 +214,7 @@ son **del propio usuario**, no de un tercero.
 | Finalidad | Datos | Base legal (RGPD art. 6) |
 |---|---|---|
 | Permitir el uso de la app (cuenta, login) | Datos de Clerk | Ejecución de contrato (b) |
+| Lista de espera para abrir una cuenta | Email de quien se apunta (lo guarda Clerk) | Medidas precontractuales a petición del interesado (b). Ver §2.7 |
 | Almacenar la libreta personal del usuario | Datos del propio usuario | Ejecución de contrato (b) |
 | Almacenar y usar los datos de sus seres queridos (libreta, recomendaciones con IA, avisos, compartir) | Datos sobre terceros, fechas | Interés legítimo (f) — del usuario, en organizar fechas y regalos, y de PickPal, en prestarle el servicio. La (b) no les cubre: el tercero no es parte del contrato. Ver §7. |
 | Generar recomendaciones de regalo con IA | Ficha de la persona seleccionada | Ejecución de contrato (b) frente al usuario; (f) frente al tercero, como la fila anterior |
@@ -223,7 +235,7 @@ Compartimos datos con los siguientes proveedores que actúan como encargados:
 
 | Proveedor | Para qué | Ubicación | Garantías |
 |---|---|---|---|
-| [Clerk](https://clerk.com) | Autenticación y gestión de cuentas | EE. UU. | DPA incorporado a sus términos, sin firma aparte. Transfiere por el EU-US DPF (está adherida) y deja las SCCs de respaldo |
+| [Clerk](https://clerk.com) | Autenticación, gestión de cuentas y lista de espera (§2.7) | EE. UU. | DPA incorporado a sus términos, sin firma aparte. Transfiere por el EU-US DPF (está adherida) y deja las SCCs de respaldo |
 | [Convex](https://convex.dev) | Base de datos y backend | EE. UU. (el deployment de producción está en la región por defecto; el de desarrollo, en `eu-west-1`) | DPA incorporado a sus términos, con las SCCs incorporadas por referencia |
 | [Google (Gemini API)](https://ai.google.dev) | Generación de recomendaciones | EE. UU. | DPA de Google como encargado («Data Processing Addendum for Products Where Google is a Data Processor»), que Google aplica a quien usa la API desde el EEE (§4.1). Google LLC está adherida al EU-US DPF |
 | [Vercel](https://vercel.com) | Hosting de la web y analítica de uso *cookieless* (Vercel Web Analytics) | EE. UU. | Adherida al EU-US DPF, así que la transferencia está cubierta |
@@ -307,6 +319,7 @@ Los cinco encargados que reciben datos personales desde PickPal (Clerk, Convex, 
 | Dato | Plazo |
 |---|---|
 | Cuenta de usuario y datos asociados | Mientras la cuenta esté activa. Al eliminar la cuenta, el purgado es **inmediato y transaccional** (`api.account.deleteMyAccount` recorre las 17 tablas del esquema y después se borra el usuario en Clerk) — no hay periodo de gracia ni papelera. **Excepción:** una ficha que hubieras compartido con otro usuario no se borra si tiene invitados — la propiedad pasa al más antiguo, ver §2.5. **Segunda excepción:** las entradas de historial y las ideas guardadas que el usuario añadió a fichas ajenas se quedan en ellas, porque son parte de una ficha que sigue siendo de otros (`deleteMyAccount` solo borra las `savedIdeas` cuya persona ya no existe). No llevan nombre ni email, solo el `clerkUserId` de una cuenta que ya no existe en Clerk. `/privacidad`, `/terminos` y el texto de Ajustes lo dicen desde el 27-sep-2026; antes prometían borrar «todos tus datos». **«Mi lista» no tiene excepción** (§2.6): se borra entera, con sus accesos, sus marcas y las copias de elementos borrados, y no pasa a nadie. Lo único que sobrevive son las entradas que un lector apuntó en el historial de su propia ficha a partir de la lista. Las copias de seguridad de los proveedores se reciclan según sus propios plazos. |
+| Entrada de la lista de espera | En Clerk, mientras exista la lista. A quien pida salir antes de tener acceso se le borra (la API solo borra entradas pendientes, §2.7). |
 | Logs de seguridad (errores, rate limit) | Los contadores de rate limit viven en `rateLimitBuckets` / `recommendationUsage` con clave por día UTC y se borran con la cuenta. Los logs de ejecución los retiene el proveedor (Convex / Vercel) según su plan. |
 | Datos enviados a Gemini | No los conservamos tras la respuesta. Google los registra 55 días, solo para detectar abusos, y no entrena con ellos (§4.1). |
 

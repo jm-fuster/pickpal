@@ -51,6 +51,15 @@ export default function PrivacyPage() {
               básicos que gestiona Clerk para autenticarte.
             </li>
             <li>
+              <span className="text-foreground">
+                Si te apuntas a la lista de espera:
+              </span>{" "}
+              tu email. Lo guarda Clerk, con la fecha en que te apuntaste y si
+              ya tienes acceso, y solo lo usa para escribirte sobre tu plaza,
+              como la invitación para crear la cuenta. No llega a nuestra base
+              de datos.
+            </li>
+            <li>
               <span className="text-foreground">Tus seres queridos:</span> los
               datos que tú decides introducir sobre las personas a las que vas
               a regalar — nombre, relación, intereses, notas, tallas,
@@ -91,6 +100,11 @@ export default function PrivacyPage() {
               RGPD).
             </li>
             <li>
+              <span className="text-foreground">La lista de espera:</span> la
+              llevamos porque tú nos lo pides, como paso previo a abrirte una
+              cuenta (art. 6.1.b).
+            </li>
+            <li>
               <span className="text-foreground">
                 Los datos de tus seres queridos:
               </span>{" "}
@@ -122,8 +136,8 @@ export default function PrivacyPage() {
           <h2 className="text-xl font-medium">Quién procesa esos datos</h2>
           <ul className="space-y-2 text-sm text-foreground list-disc pl-5">
             <li>
-              <span className="text-foreground">Clerk</span> — autenticación y
-              gestión de cuentas. Su verificación anti-bot se carga desde
+              <span className="text-foreground">Clerk</span> — autenticación,
+              gestión de cuentas y la lista de espera. Su verificación anti-bot se carga desde
               Cloudflare, que ve tu IP cuando entras en las pantallas de acceso.
             </li>
             <li>
@@ -419,6 +433,11 @@ export default function PrivacyPage() {
             entera. Lo único que sobrevive son las entradas que otras personas
             hayan apuntado en su propio historial de regalos.
           </p>
+          <p className="text-sm text-foreground">
+            Si te apuntas a la lista de espera, Clerk conserva tu entrada (tu
+            email, la fecha y si ya tienes acceso) mientras exista la lista. Si
+            quieres salir antes de tener acceso, escríbenos y la borramos.
+          </p>
         </section>
 
         <section className="space-y-3">
@@ -501,7 +520,7 @@ export default function PrivacyPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 16 de octubre de 2026.
+          Última actualización: 21 de octubre de 2026.
         </p>
       </main>
 

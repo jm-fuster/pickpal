@@ -44,6 +44,7 @@ La casilla del registro de Clerk dice «Acepto los Términos de Servicio y he le
 ## 4. Cuenta de usuario
 
 - Para usar PickPal hay que registrarse con **Google** o con **correo electrónico y contraseña**.
+- El registro está en modo **lista de espera** (panel de Clerk): una cuenta nueva necesita que se apruebe su entrada antes. Los datos de la lista están en `privacy.md` §2.7.
 - El usuario es responsable de mantener la confidencialidad de sus credenciales.
 - El usuario debe ser **mayor de 18 años**. Hasta el 27-sep-2026 el mínimo era 14, con consentimiento de los tutores por debajo (RGPD art. 8 + LOPDGDD art. 7). Se subió porque los términos de la Gemini API prohíben usarla en apps dirigidas a menores de 18 o que probablemente usen, y eso no lo arregla el consentimiento de los tutores (ver `privacy.md` §4.1 y §10).
 
