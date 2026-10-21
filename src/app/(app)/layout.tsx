@@ -75,7 +75,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile header + content */}
       <div className="flex flex-1 flex-col min-w-0">
-        <header className="lg:hidden flex items-center justify-between border-b px-4 py-3">
+        {/* En táctil el menú y la campana miden 44: el relleno baja a 6 px para
+            que la barra siga en 56. */}
+        <header className="lg:hidden flex items-center justify-between border-b px-4 py-3 pointer-coarse:py-1.5">
           <div className="flex items-center gap-3">
             <MobileNav />
             <Link href="/agenda" className="flex">

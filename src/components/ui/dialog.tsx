@@ -47,13 +47,17 @@ function DialogContent({
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
 }) {
+  // Alto máximo de la pantalla visible menos 2 rem, con scroll dentro: en un
+  // móvil en horizontal o con el teclado abierto, un formulario largo dejaba el
+  // título y los botones fuera de la pantalla, y la página de detrás no se
+  // mueve. dvh sigue al área visible. El pie (DialogFooter) va pegado abajo.
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:motion-safe:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:motion-safe:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto overscroll-contain rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:motion-safe:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:motion-safe:zoom-out-95",
           className
         )}
         {...props}
@@ -102,7 +106,11 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        // Pegado abajo cuando el diálogo hace scroll, así que el fondo es opaco:
+        // el mismo muted al 50 % sobre el popover, mezclado en vez de translúcido.
+        // -bottom-4 y no bottom-0: sticky cuenta desde el relleno del diálogo
+        // (p-4), y con 0 el pie quedaba 16 px por encima del borde.
+        "sticky -bottom-4 -mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-[color-mix(in_oklab,var(--muted)_50%,var(--popover))] p-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}

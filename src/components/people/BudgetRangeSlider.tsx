@@ -53,7 +53,7 @@ export function BudgetRangeSlider({
         max={BUDGET_MAX}
         step={BUDGET_STEP}
         minStepsBetweenValues={BUDGET_STEP}
-        className="py-2"
+        className="py-2 pointer-coarse:py-0"
       >
         <SliderControl>
           <SliderTrack>
@@ -64,6 +64,8 @@ export function BudgetRangeSlider({
         </SliderControl>
       </SliderRoot>
 
+      {/* Sin text-sm en los campos: con menos de 16 px, iOS amplía la página al
+          enfocarlos. Heredan el text-base md:text-sm del Input. */}
       <div className="flex items-center gap-2 text-sm">
         <div className="flex items-center gap-1">
           <Input
@@ -78,7 +80,7 @@ export function BudgetRangeSlider({
             onChange={(e) =>
               onMinChange(e.target.value !== "" ? Number(e.target.value) : undefined)
             }
-            className="h-7 w-20 text-sm"
+            className="h-7 w-20 pointer-coarse:w-22"
           />
           <span className="text-muted-foreground">€</span>
         </div>
@@ -96,7 +98,7 @@ export function BudgetRangeSlider({
             onChange={(e) =>
               onMaxChange(e.target.value !== "" ? Number(e.target.value) : undefined)
             }
-            className="h-7 w-20 text-sm"
+            className="h-7 w-20 pointer-coarse:w-22"
           />
           <span className="text-muted-foreground">€</span>
         </div>

@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useRef, useState, KeyboardEvent } from "react";
 import { Plus, RefreshCw, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeTouchTarget } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -114,19 +114,19 @@ export function InterestTagInput({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 pointer-coarse:space-y-3">
       {value.length > 0 ? (
-        <ul className="flex flex-wrap gap-2">
+        <ul className="flex flex-wrap gap-2 pointer-coarse:gap-y-3">
           {value.map((tag) => (
-            <li key={tag}>
+            <li key={tag} className="max-w-full">
               <Badge
                 variant="secondary"
-                className="cursor-pointer hover:bg-secondary/80"
-                title="Eliminar"
+                className={cn("cursor-pointer hover:bg-secondary/80", badgeTouchTarget)}
+                title={`Eliminar ${tag}`}
                 aria-label={`Eliminar ${tag}`}
                 render={<button type="button" onClick={() => removeTag(tag)} />}
               >
-                {tag}
+                <span className="min-w-0 truncate">{tag}</span>
                 <X className="size-3" aria-hidden />
               </Badge>
             </li>
@@ -207,7 +207,7 @@ export function InterestTagInput({
         ) : null}
       </div>
       {suggestions.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 pointer-coarse:gap-y-3">
           {/* El botón "Otras" va al PRINCIPIO de la fila (ancho fijo), NO al
               final de los chips: con `flex-wrap` los chips cambian de ancho y
               número en cada refresco, así que un botón al final saltaba de
@@ -232,7 +232,7 @@ export function InterestTagInput({
             <Badge
               key={suggestion}
               variant="outline"
-              className="cursor-pointer transition-colors hover:bg-muted"
+              className={cn("cursor-pointer transition-colors hover:bg-muted", badgeTouchTarget)}
               title={`Añadir ${suggestion}`}
               aria-label={`Añadir ${suggestion}`}
               render={
@@ -240,7 +240,7 @@ export function InterestTagInput({
               }
             >
               <Plus className="size-3" aria-hidden />
-              {suggestion}
+              <span className="min-w-0 truncate">{suggestion}</span>
             </Badge>
           ))}
         </div>

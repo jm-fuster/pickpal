@@ -35,7 +35,7 @@ export function NotificationBell() {
   return (
     <Popover>
       <PopoverTrigger
-        className="relative inline-flex items-center justify-center size-8 rounded-md hover:bg-muted transition-colors"
+        className="relative inline-flex items-center justify-center size-8 pointer-coarse:size-11 rounded-md hover:bg-muted transition-colors"
         aria-label={
           count === 0
             ? "Notificaciones: sin fechas próximas"
@@ -46,7 +46,7 @@ export function NotificationBell() {
         {count > 0 && (
           <Badge
             variant="default"
-            className="absolute -top-1 -right-1 size-4 p-0 text-[10px] flex items-center justify-center rounded-full"
+            className="absolute -top-1 -right-1 pointer-coarse:top-1 pointer-coarse:right-1 size-4 p-0 text-[10px] flex items-center justify-center rounded-full"
           >
             {count > 9 ? "9+" : count}
           </Badge>

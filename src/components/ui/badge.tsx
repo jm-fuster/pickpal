@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-1 text-xs font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
+  "group/badge inline-flex h-5 w-fit max-w-full shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-1 text-xs font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
   {
     variants: {
       variant: {
@@ -26,6 +26,13 @@ const badgeVariants = cva(
     },
   }
 )
+
+// Para un Badge que es un botón (quitar una etiqueta): en táctil gana una zona
+// de toque invisible de 44 px de alto con un ::after. Va con overflow-visible
+// porque el overflow-hidden de la base recortaría el ::after; el texto largo se
+// recorta en un <span className="min-w-0 truncate"> dentro.
+const badgeTouchTarget =
+  "relative overflow-visible pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-3"
 
 function Badge({
   className,
@@ -49,4 +56,4 @@ function Badge({
   })
 }
 
-export { Badge, badgeVariants }
+export { Badge, badgeTouchTarget, badgeVariants }

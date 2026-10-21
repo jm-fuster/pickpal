@@ -182,8 +182,12 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
+  /* Una palabra más larga que su caja (un email, una marca, un enlace pegado)
+     se parte en el borde en vez de salirse de la tarjeta y, a 360 px, empujar
+     la página de lado. El texto normal parte igual que antes. */
   body {
     @apply bg-background text-foreground;
+    overflow-wrap: break-word;
   }
   html {
     @apply font-sans;

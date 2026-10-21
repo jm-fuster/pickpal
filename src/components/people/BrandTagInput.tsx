@@ -2,9 +2,10 @@
 
 import { useRef, useState, KeyboardEvent } from "react";
 import { Plus, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeTouchTarget } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { normalizeInterest } from "@/lib/interests";
 import { MAX_BRANDS } from "@/lib/brands";
 
@@ -61,19 +62,19 @@ export function BrandTagInput({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 pointer-coarse:space-y-3">
       {value.length > 0 ? (
-        <ul className="flex flex-wrap gap-2">
+        <ul className="flex flex-wrap gap-2 pointer-coarse:gap-y-3">
           {value.map((tag) => (
-            <li key={tag}>
+            <li key={tag} className="max-w-full">
               <Badge
                 variant="secondary"
-                className="cursor-pointer hover:bg-secondary/80 transition-colors"
-                title="Eliminar"
+                className={cn("cursor-pointer hover:bg-secondary/80 transition-colors", badgeTouchTarget)}
+                title={`Eliminar ${tag}`}
                 aria-label={`Eliminar ${tag}`}
                 render={<button type="button" onClick={() => removeTag(tag)} />}
               >
-                {tag}
+                <span className="min-w-0 truncate">{tag}</span>
                 <X className="size-3" aria-hidden />
               </Badge>
             </li>

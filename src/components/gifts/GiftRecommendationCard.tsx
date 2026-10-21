@@ -34,6 +34,11 @@ const generateGoogleUrl = (query: string) =>
 const STORE_SECTION_LABEL_CLASS =
   "font-sans text-2xs font-medium uppercase tracking-[0.12em] text-muted-foreground";
 
+// Pulgares: fantasmas, sin relleno en reposo. Con ratón, 22 px; en táctil, 36
+// con un ::after de 44 (-inset-1).
+const THUMB =
+  "relative inline-flex items-center justify-center rounded-full p-1 text-muted-foreground hover:bg-muted/60 transition-colors pointer-coarse:size-9 pointer-coarse:p-0 pointer-coarse:after:absolute pointer-coarse:after:-inset-1";
+
 interface GiftRecommendationCardProps {
   idea: GiftRecommendation;
   index?: number;
@@ -144,7 +149,9 @@ export function GiftRecommendationCard({
               {idea.title}
             </h3>
             {(onSave || onDiscard) && (
-              <div className="flex gap-1 shrink-0">
+              // En táctil, 36 px separados 8, con zona de toque de 44 (::after):
+              // con 22 px a 4 de distancia era fácil dar a «No me interesa».
+              <div className="flex gap-1 pointer-coarse:gap-2 shrink-0">
                 {onSave && (
                   <button
                     type="button"
@@ -152,9 +159,9 @@ export function GiftRecommendationCard({
                     disabled={saved}
                     aria-label={saved ? "Idea guardada" : "Guardar idea"}
                     aria-pressed={saved}
-                    className="rounded-full p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:pointer-events-none"
+                    className={cn(THUMB, "hover:text-foreground disabled:pointer-events-none")}
                   >
-                    <ThumbsUp className="size-3.5" aria-hidden fill={saved ? "currentColor" : "none"} />
+                    <ThumbsUp className="size-3.5 pointer-coarse:size-4" aria-hidden fill={saved ? "currentColor" : "none"} />
                   </button>
                 )}
                 {onDiscard && (
@@ -162,9 +169,9 @@ export function GiftRecommendationCard({
                     type="button"
                     onClick={onDiscard}
                     aria-label="No me interesa"
-                    className="rounded-full p-1 text-muted-foreground hover:text-destructive hover:bg-muted/60 transition-colors"
+                    className={cn(THUMB, "hover:text-destructive")}
                   >
-                    <ThumbsDown className="size-3.5" aria-hidden />
+                    <ThumbsDown className="size-3.5 pointer-coarse:size-4" aria-hidden />
                   </button>
                 )}
               </div>
@@ -182,7 +189,7 @@ export function GiftRecommendationCard({
               >
                 <Tags className="size-3" aria-hidden />
                 <span className="sr-only">Marca favorita: </span>
-                {brand}
+                <span className="min-w-0 truncate">{brand}</span>
               </Badge>
             ))}
             {visibleCategoryTags.map((tag) => (

@@ -145,8 +145,8 @@ function Tags({ values }: { values: string[] }) {
   return (
     <span className="flex flex-wrap gap-1.5">
       {values.map((t) => (
-        <Badge key={t} variant="secondary">
-          {t}
+        <Badge key={t} variant="secondary" title={t}>
+          <span className="min-w-0 truncate">{t}</span>
         </Badge>
       ))}
     </span>
