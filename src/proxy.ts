@@ -7,6 +7,10 @@ const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  // Lista de espera: con el registro en modo waitlist (panel de Clerk), es el
+  // único camino para quien aún no tiene cuenta. Solo monta <Waitlist />; el
+  // email va a Clerk, la app no lee ni guarda nada.
+  "/lista-de-espera",
   // Aviso de privacidad: legítimamente público — debe ser legible antes de
   // crear cuenta y para que cualquiera al que un usuario haya añadido como
   // "ser querido" pueda consultar el tratamiento de sus datos.

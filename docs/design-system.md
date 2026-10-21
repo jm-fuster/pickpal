@@ -68,7 +68,7 @@ import { Logo } from "@/components/ui/Logo";
 |---|---|---|
 | Sidebar desktop | `Logo` | `src/app/(app)/layout.tsx` |
 | Header móvil | `Logo` (el símbolo pasa de 24 a 28 px el 20-oct-2026) | `src/app/(app)/layout.tsx` |
-| Auth layout (sign-in / sign-up) | `Logo` | `src/app/(auth)/layout.tsx` |
+| Auth layout (sign-in / sign-up / lista de espera) | `Logo` | `src/app/(auth)/layout.tsx` |
 | Páginas legales | `Logo` | `src/app/privacidad/page.tsx`, `src/app/terminos/page.tsx` |
 | Landing · cabecera | `Logo` | `src/components/landing/LandingHeader.tsx` |
 | Landing · pie | `Logo size="sm"` | `src/components/landing/LandingFooter.tsx` |
@@ -2766,6 +2766,14 @@ Revisando dónde seguía el logo viejo salieron las imágenes que lo llevan pint
 - **Figma**: las 9 capturas de pantalla incrustadas como imagen (el carrusel «My list» de la portada, cuatro en `03 · From a date to a gift` y cuatro en `07 · What shipped, what is next`) se volvieron a exportar dentro del plugin desde sus marcos de `Screens & prototype`. Se ocultaron las capas `Hotspots` mientras se exportaba. «My list» y «Managed list» han crecido desde que se capturaron (1.216 → 1.282 y 1.212 → 1.298 px), y el carrusel enseña solo los primeros 900 px. En esos tres el relleno pasa a `CROP` y enseña la parte de arriba, para mantener el encuadre de antes. Versión «Screenshots re-exported with the new logo».
 
 Lo que queda fuera de este repositorio o pide la sesión de Jorge está en Pendientes. **Para la próxima prueba de interfaz**: se crea otra vez una página `Playground` al final, tras un separador, y se borra antes de cada publicación en Community. Las menciones al Playground en este documento son históricas.
+
+## La lista de espera se queda en la app (21-oct-2026)
+
+El registro de producción está en modo lista de espera, que se activa en el panel de Clerk y no en el repo. Recorriendo el flujo salieron dos fallos que no eran nuestros, pero se veían como nuestros:
+- **La traducción `esES` de Clerk se equivoca en tres textos.** «Acceso restringido» decía «Te has unido a la lista de espera» antes de que nadie se apuntara. Además, dos enlaces que llevan a iniciar sesión se leían «Contáctanos para más información» y «¡Únete a la lista de espera!». Se sobrescriben en `clerkLocalization` (`src/app/layout.tsx`), igual que el «tú» y el consentimiento legal. Ya de paso, el subtítulo, el botón y el aviso de éxito de la lista cuentan lo que pasa de verdad: te llega un correo cuando tienes acceso.
+- **«Unirte a la lista de espera» sacaba a la web de cuentas de Clerk**, en inglés y en oscuro aunque PickPal estuviera en claro. Ahora `waitlistUrl="/lista-de-espera"` en `ClerkProvider` lleva a `src/app/(auth)/lista-de-espera/page.tsx`, con el layout de acceso (logo, conmutador de tema, pie legal), y la ruta es pública en `proxy.ts`. No hay `afterJoinWaitlistUrl`, así que después de apuntarse se queda en el aviso.
+
+La pregunta «¿Puedo entrar ya?» de la landing describe este flujo. **Si se abre el registro**, hay que reescribirla y se puede quitar la página. La instancia de desarrollo de Clerk no está en modo lista de espera, así que en local `/sign-up` sale normal y «Acceso restringido» solo se ve en producción.
 
 ---
 

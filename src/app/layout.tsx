@@ -40,6 +40,33 @@ const clerkLocalization = {
           "Al continuar, aceptas los términos y confirmas que has leído la política de privacidad.",
       },
     },
+    // Sign-up runs in waitlist mode (Clerk dashboard). esES gets this screen
+    // wrong: it tells people they already joined before they have, and labels
+    // the sign-in link "Contáctanos para más información".
+    restrictedAccess: {
+      ...esES.signUp?.restrictedAccess,
+      subtitleWaitlist:
+        "Ahora mismo las cuentas nuevas pasan por una lista de espera. Apúntate y te avisaremos por correo cuando tengas acceso.",
+      actionText: "¿Ya tienes cuenta?",
+      actionLink: "Inicia sesión",
+    },
+  },
+  // Same slip on the waitlist page: the sign-in link reads "¡Únete a la lista
+  // de espera!".
+  waitlist: {
+    ...esES.waitlist,
+    start: {
+      ...esES.waitlist?.start,
+      subtitle: "Deja tu correo y te avisaremos cuando tengas acceso.",
+      formButton: "Apuntarme",
+      actionText: "¿Ya tienes acceso?",
+      actionLink: "Inicia sesión",
+    },
+    success: {
+      ...esES.waitlist?.success,
+      title: "Ya estás en la lista",
+      subtitle: "Cuando tengas acceso, te llegará un correo para crear la cuenta.",
+    },
   },
 };
 
@@ -109,7 +136,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider localization={clerkLocalization}>
+    // waitlistUrl: «Unirte a la lista de espera» stays in the app instead of
+    // going to Clerk's Account Portal, which is in English and off-brand.
+    <ClerkProvider localization={clerkLocalization} waitlistUrl="/lista-de-espera">
       <html
         lang="es"
         suppressHydrationWarning
