@@ -20,7 +20,7 @@
     "@base-ui/react": "^1.9.0",
     "@clerk/localizations": "^4.23.0",
     "@clerk/nextjs": "^7.9.16",
-    "@hookform/resolvers": "^5.9.1",
+    "@hookform/resolvers": "^6.0.1",
     "@vercel/analytics": "^2.0.1",
     "ai": "^7.0.142",
     "class-variance-authority": "^0.7.1",
