@@ -1431,7 +1431,11 @@ Geist y Fraunces se cargan en [`src/app/layout.tsx`](../src/app/layout.tsx), se 
 - **Body**: tamaños `text-sm` o `text-base`, `leading-relaxed` cuando hay párrafo de varias líneas.
 - **Títulos de tarjeta** (desde el 2-nov-2026): `<h2 className="text-base font-semibold">`, en minúscula inicial y sin icono delante. Es la letra de los titulares, porque el base layer pone Fraunces a todo `h1`–`h3`, y es el mismo título que los grupos de la Agenda («Mañana», «Te han compartido»). Fuera de un encabezado (la cabecera plegable de «Lo que vas a regalar», las réplicas de la landing), `font-heading text-base font-semibold`. Los contadores van en `Count`, nunca con «· N».
 - **Títulos dentro de una tarjeta**: un subgrupo («El resto») o la caja de un formulario en línea («Añadir evento», «Editar regalo», «Apuntar algo») llevan `text-sm font-medium` en la sans. Una etiqueta de campo es un `Label`, sin clases propias.
-- **Sin versalitas espaciadas.** Hasta el 2-nov-2026, cada tarjeta empezaba con `text-xs uppercase tracking-[0.18em]` y, a menudo, un icono lucide de 14 delante: 22 usos en 19 archivos, con tres espaciados distintos (0,12, 0,18 y 0,2 em). Era la marca más visible de interfaz hecha con IA, y se probó en el Playground del Figma (`Playground · Titles & people`) antes de quitarla. Los tres estilos `Eyebrow/` del Figma ya no los usa el código.
+- **Sin versalitas espaciadas.** Hasta el 2-nov-2026, cada tarjeta empezaba con `text-xs uppercase tracking-[0.18em]` y, a menudo, un icono lucide de 14 delante: 22 usos en 19 archivos, con tres espaciados distintos (0,12, 0,18 y 0,2 em). Era la marca más visible de interfaz hecha con IA, y se probó en el Playground del Figma (`Playground · Titles & people`) antes de quitarla. En el Figma se hizo el mismo día:
+  - en `Screens & prototype` los títulos en versalitas (unos 200, en las pantallas, los estados y las réplicas de la landing) pasan a texto local en Fraunces SemiBold 16/24, sin icono, y «Lo que vas a regalar» lleva su `Count`;
+  - los tres estilos `Eyebrow/` se quedan, porque rotulan la documentación del propio archivo (cabeceras de página, páginas Story, el apéndice), y su descripción dice ya que no tienen uso en el producto.
+
+  Versión con nombre: «Card titles and Person Card».
 
 ### Cuándo NO usar serif
 
@@ -1495,6 +1499,13 @@ Visible a partir de `lg` (1024px). Implementado en `src/app/(app)/layout.tsx`.
   - El `Link` lleva `min-w-0`; sin él, la línea de gustos ensanchaba la tarjeta fuera del margen en el móvil.
   - Rejilla `sm:grid-cols-2 xl:grid-cols-3`, y su esqueleto de carga, de `h-32`.
   - Antes, cuatro tics de tarjeta de perfil de plantilla: avatar centrado, «INTERESES» a 10 px en versalitas, nube de etiquetas y relación en pastilla de color en la esquina.
+  - **En el Figma** (`Person Card`, `06 · Cards`):
+    - las dos variantes, `Default` y `Hover`, son horizontales, de 368 de ancho, con huecos ligados a `space/inline/sm`, `space/inline/xs` y `space/stack/xs`;
+    - el hover es `color/fill/component` al 40 % sobre la superficie, sin sombra;
+    - hay una propiedad booleana nueva, `Shared`, para «Compartida»;
+    - la página lleva al día la descripción, «When not to use it» y los tokens;
+    - las 48 instancias de `Screens` (Seres queridos a 1440 y 1024, sus estados) llevan relación, fecha y gustos, en rejilla de 3 a 1440 y de 2 a 1024.
+  - **Divergencia asumida**: el `Avatar` de la librería llega a 40 (`Lg`) y la tarjeta usa 48, así que va una instancia `Lg` reescalada, como antes iba a 64.
 - **Filtro de relación en `/seres-queridos`**: encima del grid, el `<Select>` shadcn solo, con su `<Label>` «Filtrar por relación» en `sr-only`, porque «Todas las relaciones» ya dice qué hace (hasta el 2-nov-2026, «FILTRAR» en versalitas al lado). Opciones: "Todas las relaciones" (valor sentinel `"all"`) + las de `RELATIONSHIPS`. El `Select` controlado normaliza `null → "all"` en `onValueChange`. Filtrado client-side en memoria (lista pequeña, no merece pasar por Convex). Cuando el filtro vacía la lista, mostrar empty state propio con el mismo estilo dashed que el original (no reutilizar el de "una libreta en blanco" — distinto motivo).
 - **Hover · cards con acción interna** (la card no es link, pero contiene botón): `transition-shadow hover:shadow-md`. Sin translate ni cambio de fondo. Ejemplo: `GiftRecommendationCard`.
 - **Cards estáticas** (sin acción): solo `shadow-sm`, sin hover. Ejemplo: `IdeaExampleCard` y `CalendarLeaf` de la landing.
