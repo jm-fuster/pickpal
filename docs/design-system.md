@@ -1944,9 +1944,10 @@ La función entera está en [`docs/encargo-lista.md`](encargo-lista.md). Aquí, 
     - las 2 cuentas bloqueadas de Ajustes llevan el correo entre paréntesis;
     - los 12 «Lo que tienes pensado · N» de las réplicas de la landing pasan a `Count`.
 
-    Se cambió solo el separador, con `deleteCharacters` e `insertCharacters`, para no perder los estilos mezclados («Mañana» en medium). **Dos desajustes con el código que ya estaban**:
-    - la tesela «De su lista» de `NextOccasionCard` pinta «unos 38 € · elcorteingles.es» en una línea, cuando el código pone el precio y debajo el enlace;
-    - la cabecera de «Ideas de regalo» en Screens («Ideas para Marta Ibáñez» con la ocasión debajo) no es la del código, que lleva el enlace a la ficha, «Ideas de regalo» y su subtítulo.
+    Se cambió solo el separador, con `deleteCharacters` e `insertCharacters`, para no perder los estilos mezclados («Mañana» en medium).
+  - **Dos desajustes con el código que ya estaban, cerrados el mismo día** (versión «Occasion list tile and Gift ideas header»):
+    - la tesela «De su lista» de `NextOccasionCard` pintaba «unos 38 € · elcorteingles.es» en una línea; ahora lleva el precio y debajo el enlace (`ListItemLink`: logo de 14, dominio en `Body 5` y `external-link` de 12, 6 entre piezas). Son 22 teselas, con su fila igualada en alto;
+    - la cabecera de «Ideas de regalo» decía «Ideas para Marta Ibáñez» con la ocasión debajo; ahora es la del código: «Volver», el avatar de 36 con el nombre, «Ideas de regalo» y su subtítulo, a 12 entre sí, en los seis marcos.
 - **Rayas fuera de los textos de la interfaz** (2-nov-2026). La raya como muletilla para meter un inciso era otro tic. Seis textos pasan a coma o punto, y de paso pierden lo de asistente:
   - el vacío de «Seres queridos», «Empieza por alguien cercano, como tu pareja o tu madre. Apunta lo que le gusta y sus fechas.» (antes, «…mejor amigo. Anota sus intereses y déjanos cuidar las fechas»);
   - el vacío de ideas sin fechas, «Las ideas se piensan para una ocasión. Apunta su cumpleaños, un aniversario o cualquier otra fecha.» (antes, «…cumpleaños, aniversario, lo que sea»);
