@@ -17,15 +17,19 @@ const RULES: ReadonlyArray<readonly [GiftImageKey, readonly string[]]> = [
   ["experiencia-aventura", ["paracaidas", "escalada", "kayak", "rafting", "buceo", "parapente", "vuelo en globo"]],
   ["taller-curso", ["clase de", "clases de", "curso de", "cursillo", "taller de", "masterclass"]],
   ["viajes", ["viaje", "escapada", "maleta", "billete"]],
-  ["libros", ["libro", "novela", "comic", "manga", "poemario", "audiolibro"]],
+  ["libros", ["libro", "novela", "comic", "manga", "poemario", "audiolibro", "cuento", "tebeo", "album ilustrado"]],
   ["audio", ["auriculares", "cascos", "altavoz", "tocadiscos", "airpods"]],
   ["fotografia", ["camara", "polaroid", "instax", "carrete", "tripode"]],
   ["gaming", ["videojuego", "consola", "playstation", "nintendo", "xbox", "mando"]],
   ["tecnologia", ["movil", "tablet", "ipad", "portatil", "kindle", "ebook", "smartwatch", "cargador", "teclado", "raton", "airtag", "power bank"]],
   ["musica", ["vinilo", "guitarra", "ukelele", "piano", "partitura"]],
-  ["juegos-mesa", ["juego de mesa", "puzzle", "rompecabezas", "baraja", "ajedrez"]],
+  // Los juguetes no tienen categoría propia en el catálogo; la más cercana es
+  // la de jugar. Van antes que el tema: «Cocinita de juguete» es un juguete.
+  ["juegos-mesa", ["juego de mesa", "puzzle", "rompecabezas", "baraja", "ajedrez", "juguete", "lego", "playmobil", "peluche", "muneca", "muneco", "marioneta", "dinosaurio", "juego de construccion", "construcciones"]],
   ["papeleria", ["libreta", "cuaderno", "agenda", "pluma", "boligrafo", "lapiz", "lapices", "rotulador", "washi"]],
-  ["arte-manualidades", ["acuarela", "pincel", "lienzo", "oleo", "arcilla", "ganchillo", "punto de cruz", "bordado", "ceramica"]],
+  // «Pintura de uñas» es belleza, no manualidades.
+  ["belleza", ["pintura de unas", "pintaunas"]],
+  ["arte-manualidades", ["acuarela", "pincel", "lienzo", "oleo", "arcilla", "ganchillo", "punto de cruz", "bordado", "ceramica", "pintura", "tempera", "plastilina", "manualidades", "colorear", "abalorio", "ceras de colores", "goma eva"]],
   ["mascotas", ["perro", "gato", "mascota", "correa", "comedero", "rascador", "arenero"]],
   ["bricolaje", ["taladro", "destornillador", "herramienta", "llave inglesa", "sierra", "atornillador"]],
   ["joyeria-relojes", ["reloj", "pendiente", "collar", "pulsera", "anillo", "colgante", "joya", "broche"]],

@@ -28,7 +28,22 @@ describe("listItemImageKey", () => {
     expect(listItemImageKey("Tienda de campaña para dos")).toBe("aire-libre");
   });
 
+  it("reconoce lo de una lista a cargo de un niño", () => {
+    expect(listItemImageKey("Caja de LEGO City: la de los bomberos")).toBe("juegos-mesa");
+    expect(listItemImageKey("Dinosaurio de peluche grande")).toBe("juegos-mesa");
+    expect(listItemImageKey("Muñeca de trapo")).toBe("juegos-mesa");
+    expect(listItemImageKey("Cuento ilustrado de dragones")).toBe("libros");
+    expect(listItemImageKey("Pinturas de dedos")).toBe("arte-manualidades");
+    expect(listItemImageKey("Plastilina de colores")).toBe("arte-manualidades");
+    // El juguete gana al tema, como el libro de recetas.
+    expect(listItemImageKey("Cocinita de juguete")).toBe("juegos-mesa");
+    expect(listItemImageKey("Libro de dinosaurios")).toBe("libros");
+  });
+
   it("no confunde palabras que solo se parecen", () => {
+    // La pintura de uñas es belleza, no manualidades; la vela de cera, también.
+    expect(listItemImageKey("Pintura de uñas roja")).toBe("belleza");
+    expect(listItemImageKey("Vela de cera de higo")).toBe("belleza");
     // «te» suelto es el pronombre, no el té.
     expect(listItemImageKey("Algo que te guste")).toBe("regalo-generico");
     // «mesa» en «lámpara de mesa» no es un juego de mesa.
