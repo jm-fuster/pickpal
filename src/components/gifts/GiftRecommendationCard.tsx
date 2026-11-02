@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, Tags, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Bookmark, ExternalLink, Tags, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -33,9 +33,11 @@ const generateGoogleUrl = (query: string) =>
 // marketplaces (que eligió en Ajustes > Tiendas).
 const STORE_SECTION_LABEL_CLASS = "text-xs font-medium text-muted-foreground";
 
-// Pulgares: fantasmas, sin relleno en reposo. Con ratón, 22 px; en táctil, 36
+// Guardar (marcador) y «No me interesa» (X): fantasmas, sin relleno en reposo.
+// Hasta el 2-nov-2026 eran pulgares, el gesto de puntuar a un chatbot, que se
+// leía como «valora esta idea» y no como «guárdala». Con ratón, 22 px; en táctil, 36
 // con un ::after de 44 (-inset-1).
-const THUMB =
+const ICON_ACTION =
   "relative inline-flex items-center justify-center rounded-full p-1 text-muted-foreground hover:bg-muted/60 transition-colors pointer-coarse:size-9 pointer-coarse:p-0 pointer-coarse:after:absolute pointer-coarse:after:-inset-1";
 
 interface GiftRecommendationCardProps {
@@ -158,9 +160,10 @@ export function GiftRecommendationCard({
                     disabled={saved}
                     aria-label={saved ? "Idea guardada" : "Guardar idea"}
                     aria-pressed={saved}
-                    className={cn(THUMB, "hover:text-foreground disabled:pointer-events-none")}
+                    title={saved ? undefined : "Guardar idea"}
+                    className={cn(ICON_ACTION, "hover:text-foreground disabled:pointer-events-none", saved && "text-foreground")}
                   >
-                    <ThumbsUp className="size-3.5 pointer-coarse:size-4" aria-hidden fill={saved ? "currentColor" : "none"} />
+                    <Bookmark className="size-3.5 pointer-coarse:size-4" aria-hidden fill={saved ? "currentColor" : "none"} />
                   </button>
                 )}
                 {onDiscard && (
@@ -168,9 +171,10 @@ export function GiftRecommendationCard({
                     type="button"
                     onClick={onDiscard}
                     aria-label="No me interesa"
-                    className={cn(THUMB, "hover:text-destructive")}
+                    title="No me interesa"
+                    className={cn(ICON_ACTION, "hover:text-destructive")}
                   >
-                    <ThumbsDown className="size-3.5 pointer-coarse:size-4" aria-hidden />
+                    <X className="size-3.5 pointer-coarse:size-4" aria-hidden />
                   </button>
                 )}
               </div>

@@ -77,8 +77,8 @@ export function GiftsPanel({
     ready ? { personId } : "skip",
   );
   const settings = useQuery(api.settings.getMine, ready ? {} : "skip");
-  // Ideas ya guardadas para esta persona: sembramos el estado "me gusta"
-  // (pulgar relleno) desde la BD para que sobreviva a recargas. El estado local
+  // Ideas ya guardadas para esta persona: sembramos el estado de guardada
+  // (marcador relleno) desde la BD para que sobreviva a recargas. El estado local
   // `savedTitles` solo cubre la sesión en curso.
   const savedIdeasForPerson = useQuery(
     api.savedIdeas.getByPerson,
@@ -285,11 +285,11 @@ export function GiftsPanel({
   const hasCached = cached !== undefined && cached !== null;
   const showIdeas = ideas ?? (hasCached ? (cached!.ideas as GiftRecommendation[]) : null);
 
-  // Una idea sale marcada como "me gusta" (pulgar relleno) si está en el set
+  // Una idea sale guardada (marcador relleno) si está en el set
   // local (guardada en esta sesión) o ya persiste en la ficha, en cualquier
   // ocasión. La clave espeja la dedupe del servidor: misma persona y mismo
   // título son la misma idea (decisión 14 de docs/encargo-ocasiones.md). Sin
-  // esto, el pulgar se vaciaba al recargar.
+  // esto, el marcador se vaciaba al recargar.
   const selectedEvent = events?.find((e) => e.label === occasion);
   const persistedSaved = new Map((savedIdeasForPerson ?? []).map((s) => [s.title, s]));
   const isSaved = (title: string) =>

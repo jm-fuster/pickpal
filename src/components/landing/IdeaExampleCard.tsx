@@ -6,7 +6,7 @@ import { resolveGiftImage } from "@/lib/giftImages";
 import { STORE_LABELS } from "@/lib/stores";
 import { cn } from "@/lib/utils";
 
-// GiftRecommendationCard sin pulgares, sin foto y sin hover. No es una réplica
+// GiftRecommendationCard sin guardar ni descartar, sin foto y sin hover. No es una réplica
 // inerte: es texto de verdad que se lee y se anuncia. Sin h3 (la real lo
 // lleva): nueve tarjetas colgarían del árbol de títulos de la página. Las
 // tiendas van en texto, sin logos, sin enlace y sin la flecha ↗ de la app:
