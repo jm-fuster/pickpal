@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Check,
-  Sparkles,
+  Gift,
   RefreshCw,
   ShoppingBag,
   Ticket,
@@ -449,7 +449,7 @@ export function GiftsPanel({
             {hasCached ? (
               <RefreshCw className="size-4" aria-hidden />
             ) : (
-              <Sparkles className="size-4" aria-hidden />
+              <Gift className="size-4" aria-hidden />
             )}
             {loading ? "Generando…" : hasCached ? "Regenerar" : "Generar 9 ideas"}
           </Button>
@@ -505,7 +505,7 @@ export function GiftsPanel({
           {hasCached ? (
             <RefreshCw className="size-4" aria-hidden />
           ) : (
-            <Sparkles className="size-4" aria-hidden />
+            <Gift className="size-4" aria-hidden />
           )}
           {loading ? "Generando…" : hasCached ? "Regenerar" : "Generar 9 ideas"}
         </Button>
@@ -583,7 +583,7 @@ export function GiftsPanel({
       ) : showIdeas ? (
         /* El usuario descartó las 9 ideas: estado vacío con CTA, no un grid en blanco */
         <EmptyState
-          icon={Sparkles}
+          icon={Gift}
           title="Has descartado todas las ideas"
           description="La próxima tanda evitará sugerencias parecidas a las que has descartado."
           cta={
@@ -595,7 +595,7 @@ export function GiftsPanel({
         />
       ) : events && events.length === 0 ? (
         <EmptyState
-          icon={Sparkles}
+          icon={Gift}
           title="Sin eventos todavía"
           description="Las ideas se piensan para una ocasión. Apunta su cumpleaños, un aniversario o cualquier otra fecha."
           cta={
@@ -609,9 +609,9 @@ export function GiftsPanel({
         />
       ) : (
         <EmptyState
-          icon={Sparkles}
-          title={`A medida para ${person.name}`}
-          description="La IA combinará intereses, notas y presupuesto que has guardado con la ocasión y el tipo de regalo que elijas para sugerir nueve ideas concretas."
+          icon={Gift}
+          title={`Ideas para ${person.name}`}
+          description="Elige la ocasión y el tipo de regalo, y pulsa «Generar 9 ideas»."
           descriptionClassName="max-w-md"
         />
       )}

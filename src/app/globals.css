@@ -48,6 +48,18 @@
 }
 
 @theme {
+  /* La barra indeterminada de GenerationProgress: un tramo del 30 % que cruza
+     la pista de fuera a fuera (−100 % → 333 % de su propio ancho). */
+  --animate-indeterminate: indeterminate 1.6s ease-in-out infinite;
+  @keyframes indeterminate {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(333%);
+    }
+  }
+
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: calc(1 / 0.6875);
   --text-3xl: 1.75rem;

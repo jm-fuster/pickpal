@@ -33,6 +33,7 @@ import { GiftHistoryCard, loadGiftHistoryForm } from "@/components/people/GiftHi
 import type { GiveTarget, SharedList } from "@/components/people/ideaParts";
 import { cn } from "@/lib/utils";
 import { closestOccasionLabel } from "@/lib/dates";
+import { userErrorMessage } from "@/lib/errors";
 import { nextOccasion } from "@/lib/nextOccasion";
 import { ALL_STORES, sanitizeFavoriteStores, type StoreId } from "@/lib/stores";
 
@@ -165,7 +166,10 @@ function PersonDetailContent({
       await removePerson({ id });
       toast.success("Persona eliminada");
       router.push("/seres-queridos");
-    } catch { toast.error("Algo salió mal"); setDeleting(false); }
+    } catch (err) {
+      toast.error(userErrorMessage(err, `No se pudo eliminar la ficha de ${person.name}`));
+      setDeleting(false);
+    }
   };
 
   // Lo que ya enseña «Lo que tienes pensado» no se repite debajo.

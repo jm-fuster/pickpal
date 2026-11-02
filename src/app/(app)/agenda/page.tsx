@@ -89,7 +89,7 @@ export default function DashboardPage() {
           <EmptyState
             icon={Coffee}
             title="Todo tranquilo"
-            description="Tus seres queridos no tienen fechas en los próximos 4 meses. ¿Les falta algún evento?"
+            description="Tus seres queridos no tienen fechas en los próximos 4 meses. Si falta algún cumpleaños, añádelo en su ficha."
             cta={
               <Link
                 href="/seres-queridos"
@@ -102,8 +102,8 @@ export default function DashboardPage() {
         ) : (
           <EmptyState
             icon={Coffee}
-            title="Empieza aquí"
-            description="Añade a alguien para que la agenda cobre vida."
+            title="Aún no hay nadie"
+            description="Añade a alguien con sus fechas y aquí verás lo que llega en los próximos 4 meses."
             cta={
               <Link
                 href="/seres-queridos/new"
