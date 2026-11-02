@@ -120,7 +120,7 @@ export function ImportantDateForm({
         onSubmit={handleSubmit(onSubmit)}
         className="space-y-3 rounded-xl border border-dashed border-border/70 bg-background/40 p-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
       >
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="text-sm font-medium">
           Añadir evento
 </p>
 

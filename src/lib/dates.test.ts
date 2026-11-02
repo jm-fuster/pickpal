@@ -7,6 +7,7 @@ import {
   formatDaysUntil,
   freeEventLabel,
   monthsWindowDays,
+  nextDatePhrase,
   nextOccurrenceDate,
 } from "./dates";
 
@@ -174,6 +175,19 @@ describe("formatDaysUntil", () => {
     expect(formatDaysUntil(2)).toBe("En 2 días");
     expect(formatDaysUntil(30)).toBe("En 30 días");
     expect(formatDaysUntil(365)).toBe("En 365 días");
+  });
+});
+
+describe("nextDatePhrase", () => {
+  it("cerca, cuenta atrás", () => {
+    expect(nextDatePhrase("Nuestro aniversario", 0, 9, 10)).toBe("Nuestro aniversario, hoy");
+    expect(nextDatePhrase("Nuestro aniversario", 1, 9, 10)).toBe("Nuestro aniversario, mañana");
+    expect(nextDatePhrase("Cumpleaños", 12, 9, 21)).toBe("Cumpleaños, en 12 días");
+    expect(nextDatePhrase("Cumpleaños", 30, 10, 9)).toBe("Cumpleaños, en 30 días");
+  });
+
+  it("a más de un mes, el día", () => {
+    expect(nextDatePhrase("Cumpleaños", 31, 11, 30)).toBe("Cumpleaños, el 30 de noviembre");
   });
 });
 

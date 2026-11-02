@@ -5,7 +5,7 @@ import { badgeVariants } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { MockFrame } from "@/components/landing/MockFrame";
 import { beat } from "@/components/landing/motion";
-import { Eyebrow, FakeButton, FakeIconButton, StackCell } from "@/components/landing/mocks/parts";
+import { SectionTitle, FakeButton, FakeIconButton, StackCell } from "@/components/landing/mocks/parts";
 import { LIST, PERSON } from "@/components/landing/sample";
 import { giftImageFor } from "@/lib/giftImages";
 import { listItemImageKey } from "@/lib/listItemImage";
@@ -168,7 +168,7 @@ export function ListReaderMock(props: MockProps) {
         <CardContent className="space-y-4 p-5">
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-2">
-              <Eyebrow>La lista de {PERSON.name}</Eyebrow>
+              <SectionTitle>La lista de {PERSON.name}</SectionTitle>
               <FakeIconButton icon={Ellipsis} />
             </div>
             <p className="text-xs text-muted-foreground">{PERSON.name} no ve lo que marcas.</p>

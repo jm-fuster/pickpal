@@ -11,7 +11,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { userErrorMessage } from "@/lib/errors";
-import { CalendarDays, CalendarX2, Camera, Plus, Repeat2, Ruler, Shuffle, Trash2, UserRound } from "lucide-react";
+import { CalendarX2, Camera, Plus, Repeat2, Shuffle, Trash2, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -293,8 +293,7 @@ function EventsSection({
   return (
     <Card className="border-border/60 shadow-sm">
       <CardContent className="space-y-4 p-5">
-        <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-          <CalendarDays className="size-3.5" aria-hidden />
+        <h2 className="text-base font-semibold">
           Eventos
         </h2>
         <p className="text-xs text-muted-foreground">
@@ -434,8 +433,7 @@ export function PersonForm({
         {/* ── Left column: identity card ── */}
         <Card className="border-border/60 shadow-sm">
           <CardContent className="space-y-5 p-5">
-            <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-              <UserRound className="size-3.5" aria-hidden />
+            <h2 className="text-base font-semibold">
               Quién es
             </h2>
             <p className="text-xs text-muted-foreground">
@@ -572,8 +570,7 @@ export function PersonForm({
         <div className="space-y-6">
           <Card className="border-border/60 shadow-sm">
             <CardContent className="space-y-4 p-5">
-              <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-                <Ruler className="size-3.5" aria-hidden />
+              <h2 className="text-base font-semibold">
                 Datos prácticos
               </h2>
               <p className="text-xs text-muted-foreground">

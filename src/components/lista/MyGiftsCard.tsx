@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
-import { ChevronDown, Gift } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
+import { Count } from "@/components/layout/Count";
 import { Card, CardContent } from "@/components/ui/card";
 import { ListItemLink } from "@/components/lista/ListItemLink";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
@@ -54,11 +55,10 @@ export function MyGiftsCard() {
           onClick={() => setOpen((v) => !v)}
           className="flex w-full items-center gap-2 px-5 py-4 text-left"
         >
-          <Gift className="size-3.5 text-muted-foreground" aria-hidden />
-          <span className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="font-heading text-base font-semibold">
             Lo que vas a regalar
+            <Count>{gifts.length}</Count>
           </span>
-          <span className="text-xs text-muted-foreground">· {gifts.length}</span>
           <ChevronDown
             className={cn("ml-auto size-4 text-muted-foreground motion-safe:transition-transform", open && "rotate-180")}
             aria-hidden

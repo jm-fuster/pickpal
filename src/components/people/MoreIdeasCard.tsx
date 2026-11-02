@@ -83,10 +83,7 @@ export function MoreIdeasCard({
 
         {ideas.length > 0 && (
           <section aria-labelledby="otras-ideas" className={lists.length > 0 ? "space-y-4 border-t border-border/60 pt-5" : "space-y-4"}>
-            <h2
-              id="otras-ideas"
-              className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
-            >
+            <h2 id="otras-ideas" className="text-base font-semibold">
               {lists.length > 0 ? "Otras ideas" : "Más ideas"}
             </h2>
             {groups.map((group) => {

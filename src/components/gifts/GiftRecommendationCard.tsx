@@ -31,8 +31,7 @@ const generateGoogleUrl = (query: string) =>
 // botón de marca, para que el usuario distinga de dónde sale cada enlace: la
 // tienda oficial de la marca (que añadió en la ficha de la persona) vs. los
 // marketplaces (que eligió en Ajustes > Tiendas).
-const STORE_SECTION_LABEL_CLASS =
-  "font-sans text-2xs font-medium uppercase tracking-[0.12em] text-muted-foreground";
+const STORE_SECTION_LABEL_CLASS = "text-xs font-medium text-muted-foreground";
 
 // Pulgares: fantasmas, sin relleno en reposo. Con ratón, 22 px; en táctil, 36
 // con un ::after de 44 (-inset-1).

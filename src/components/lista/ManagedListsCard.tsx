@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, HandHeart } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
@@ -51,8 +51,7 @@ export function ManagedListsCard() {
     <Card className="border-border/60 shadow-sm">
       <CardContent className="space-y-4 p-5">
         <div className="space-y-1">
-          <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-            <HandHeart className="size-3.5" aria-hidden />
+          <h2 className="text-base font-semibold">
             Listas que llevas
           </h2>
           <p className="text-sm text-muted-foreground">

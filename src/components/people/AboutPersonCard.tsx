@@ -66,7 +66,7 @@ function EditableCard({
     <Card className="border-border/60 shadow-sm">
       <CardContent className="space-y-3 p-5">
         <div className="flex min-h-9 items-center justify-between gap-2 sm:min-h-7">
-          <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{title}</h2>
+          <h2 className="text-base font-semibold">{title}</h2>
           {editing ? (
             <div className="flex items-center gap-2.5">
               <span className="text-xs text-muted-foreground">Se guarda solo</span>

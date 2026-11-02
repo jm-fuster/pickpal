@@ -270,10 +270,7 @@ export function SharedListSection({
     <section id="lista" aria-labelledby={`${groupId}-titulo`} className="@container scroll-mt-6 space-y-4">
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
-          <h2
-            id={`${groupId}-titulo`}
-            className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
-          >
+          <h2 id={`${groupId}-titulo`} className="text-base font-semibold">
             La lista de {name}
           </h2>
           <ActionMenu label={`Más acciones para la lista de ${name}`} groups={listMenu} />

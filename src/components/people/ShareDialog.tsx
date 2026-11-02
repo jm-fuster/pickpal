@@ -140,7 +140,7 @@ export function ShareDialog({
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            <Label>
               Con acceso
             </Label>
             <ul className="space-y-1.5 text-sm">

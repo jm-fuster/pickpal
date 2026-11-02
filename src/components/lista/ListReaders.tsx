@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
-import { Users } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -110,8 +109,7 @@ export function ListReaders({ listId, forName }: { listId?: Id<"managedLists">; 
     <Card className="border-border/60 shadow-sm">
       <CardContent className="space-y-4 p-5">
         <div className="flex items-center gap-2">
-          <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-            <Users className="size-3.5" aria-hidden />
+          <h2 className="text-base font-semibold">
             Quién la ve
           </h2>
           {readerCount >= READERS_COUNTER_FROM && (

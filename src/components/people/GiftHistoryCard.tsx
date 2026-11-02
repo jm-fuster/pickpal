@@ -39,7 +39,7 @@ export function GiftHistoryCard({ personId, entries }: { personId: Id<"people">;
     <Card className="border-border/60 shadow-sm">
       <CardContent className="space-y-3 p-5">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <h2 className="text-base font-semibold">
             Historial de regalos
           </h2>
           {entries.length > 0 && (

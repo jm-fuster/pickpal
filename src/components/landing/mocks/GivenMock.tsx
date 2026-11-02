@@ -2,7 +2,7 @@ import { ChevronDown, Ellipsis, Gift } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { MockFrame } from "@/components/landing/MockFrame";
 import { beat, reveal, type BeatProps } from "@/components/landing/motion";
-import { CompactTile, Eyebrow, FakeIconButton, OccasionCard, StackCell } from "@/components/landing/mocks/parts";
+import { CompactTile, SectionTitle, FakeIconButton, OccasionCard, StackCell } from "@/components/landing/mocks/parts";
 import { HISTORY, OCCASION, TILES } from "@/components/landing/sample";
 import { cn } from "@/lib/utils";
 
@@ -76,7 +76,7 @@ export function HistoryCard({ givenBeat, className }: { givenBeat?: BeatProps; c
     <Card className={cn("shadow-sm", className)}>
       <CardContent className="space-y-3 p-5">
         <div className="flex items-center justify-between gap-2">
-          <Eyebrow>Historial de regalos</Eyebrow>
+          <SectionTitle>Historial de regalos</SectionTitle>
           <span className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground">
             Ocultar
             <ChevronDown className="size-3.5 rotate-180" />

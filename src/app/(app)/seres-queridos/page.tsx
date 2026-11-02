@@ -6,7 +6,8 @@ import { Notebook, Plus } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { PersonCard } from "@/components/people/PersonCard";
+import type { Id } from "../../../../convex/_generated/dataModel";
+import { PersonCard, type NextDate } from "@/components/people/PersonCard";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { IncomingListsCard } from "@/components/lista/IncomingListsCard";
 import { MyGiftsCard } from "@/components/lista/MyGiftsCard";
@@ -18,9 +19,13 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { computeDaysUntil } from "@/lib/dates";
 import { RELATIONSHIPS } from "@/lib/options";
 
 const ALL_VALUE = "all";
+
+// La rejilla de las tarjetas y la de su esqueleto de carga.
+const GRID = "grid gap-4 sm:grid-cols-2 xl:grid-cols-3";
 
 export default function PeoplePage() {
   const { isLoaded, isSignedIn, userId } = useAuth();
@@ -28,6 +33,27 @@ export default function PeoplePage() {
     api.people.getAll,
     isLoaded && isSignedIn ? {} : "skip",
   );
+
+  // La misma consulta que la Agenda y la campana: la próxima fecha de cada
+  // persona sale de aquí, en el navegador.
+  const upcoming = useQuery(
+    api.importantDates.getUpcoming,
+    isLoaded && isSignedIn ? {} : "skip",
+  );
+  const nextDates = useMemo(() => {
+    if (!upcoming) return undefined;
+    const today = new Date();
+    const byPerson = new Map<Id<"people">, NextDate>();
+    for (const { date, person } of upcoming) {
+      const days = computeDaysUntil(date, today);
+      if (days === null) continue;
+      const current = byPerson.get(person._id);
+      if (!current || days < current.days) {
+        byPerson.set(person._id, { label: date.label, days, month: date.month, day: date.day });
+      }
+    }
+    return byPerson;
+  }, [upcoming]);
 
   const [relationshipFilter, setRelationshipFilter] = useState<string>(ALL_VALUE);
 
@@ -63,13 +89,13 @@ export default function PeoplePage() {
       <MyGiftsCard />
 
       {!isLoaded || people === undefined ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" role="status">
+        <div className={GRID} role="status">
           <span className="sr-only">Cargando seres queridos…</span>
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
               aria-hidden
-              className="h-56 rounded-2xl border border-dashed border-border/60 motion-safe:animate-pulse"
+              className="h-32 rounded-xl border border-dashed border-border/60 motion-safe:animate-pulse"
             />
           ))}
         </div>
@@ -86,9 +112,10 @@ export default function PeoplePage() {
         />
       ) : (
         <>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="relationship-filter" className="text-xs font-sans uppercase tracking-[0.18em] text-muted-foreground">
-              Filtrar
+          <div>
+            {/* El selector ya dice lo que hace («Todas las relaciones»); la etiqueta, para el lector de pantalla. */}
+            <Label htmlFor="relationship-filter" className="sr-only">
+              Filtrar por relación
             </Label>
             <Select
               value={relationshipFilter}
@@ -109,9 +136,14 @@ export default function PeoplePage() {
           </div>
 
           {filteredPeople && filteredPeople.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div className={GRID}>
               {filteredPeople.map((p) => (
-                <PersonCard key={p._id} person={p} currentUserId={userId} />
+                <PersonCard
+                  key={p._id}
+                  person={p}
+                  currentUserId={userId}
+                  next={nextDates === undefined ? undefined : (nextDates.get(p._id) ?? null)}
+                />
               ))}
             </div>
           ) : (

@@ -33,14 +33,13 @@ export function PersonAvatar({ src, className }: { src: string; className?: stri
   );
 }
 
-/** El título en versalitas de los bloques de la ficha («Gustos», «Historial de regalos»). */
-export function Eyebrow({ icon: Icon, children }: { icon?: LucideIcon; children: ReactNode }) {
-  return (
-    <p className="flex items-center gap-2 font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-      {Icon && <Icon className="size-3.5" />}
-      {children}
-    </p>
-  );
+/**
+ * El título de un bloque de la ficha («Gustos», «Historial de regalos»): el
+ * `h2` de la app, en la letra de los titulares. Aquí un párrafo, porque dentro
+ * de una réplica no hay títulos. Hasta el 2-nov-2026 iba en versalitas.
+ */
+export function SectionTitle({ children }: { children: ReactNode }) {
+  return <p className="font-heading text-base font-semibold">{children}</p>;
 }
 
 /** Fila de lectura de la ficha, etiqueta y valor. Las props sueltas llevan el compás. */

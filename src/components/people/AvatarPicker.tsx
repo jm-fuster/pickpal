@@ -283,7 +283,7 @@ function Section({
     <div className="space-y-2" role="group" aria-labelledby={labelId}>
       <p
         id={labelId}
-        className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
+        className="text-sm font-medium"
       >
         {label}
       </p>

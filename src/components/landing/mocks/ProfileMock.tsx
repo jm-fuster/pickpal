@@ -5,7 +5,7 @@ import { MockFrame } from "@/components/landing/MockFrame";
 import { beat, reveal } from "@/components/landing/motion";
 import { PERSON } from "@/components/landing/sample";
 import {
-  Eyebrow,
+  SectionTitle,
   FakeButton,
   MissingLine,
   PersonAvatar,
@@ -27,7 +27,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
     <Card className="shadow-sm">
       <CardContent className="space-y-3 p-5">
         <div className="flex min-h-7 items-center justify-between gap-2">
-          <Eyebrow>{title}</Eyebrow>
+          <SectionTitle>{title}</SectionTitle>
           <FakeButton variant="outline" size="sm" className="h-7">
             <PencilLine />
             Editar

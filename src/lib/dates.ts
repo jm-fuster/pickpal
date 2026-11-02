@@ -117,6 +117,18 @@ export function formatDaysUntil(days: number): string {
 }
 
 /**
+ * La próxima fecha de alguien en una frase, para la tarjeta de «Seres
+ * queridos»: «Cumpleaños, mañana», «Cumpleaños, en 12 días». A más de un mes,
+ * el día («Cumpleaños, el 30 de noviembre»), que es como se recuerda.
+ */
+export function nextDatePhrase(label: string, days: number, month: number, day: number): string {
+  if (days === 0) return `${label}, hoy`;
+  if (days === 1) return `${label}, mañana`;
+  if (days <= 30) return `${label}, en ${days} días`;
+  return `${label}, el ${formatDayMonth(month, day)}`;
+}
+
+/**
  * La etiqueta de la fecha de la ficha más cercana a hoy, hacia delante o hacia
  * atrás. Es la ocasión que propone «Ya se lo he regalado» en «Mi lista»
  * (decisión 16 de docs/encargo-lista.md): casi siempre se marca justo después

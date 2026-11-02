@@ -184,8 +184,7 @@ export default function BookmarkletPage() {
       {draft !== undefined && (
         <Card className="border-border/60 shadow-sm">
           <CardContent className="space-y-4 p-5">
-            <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-              <Bookmark className="size-3.5" aria-hidden />
+            <h2 className="text-base font-semibold">
               {draft ? "El botón" : "Cómo se pone"}
             </h2>
             <p className="text-sm text-muted-foreground">

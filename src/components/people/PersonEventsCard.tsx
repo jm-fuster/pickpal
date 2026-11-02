@@ -47,7 +47,7 @@ export function PersonEventsCard({
   return (
     <Card id="eventos" className="scroll-mt-6 border-border/60 shadow-sm">
       <CardContent className="space-y-3 p-5">
-        <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <h2 className="text-base font-semibold">
           Eventos
         </h2>
         {dates.length === 0 ? (
