@@ -105,6 +105,11 @@ const TYPE_FALLBACK: Record<GiftType, GiftImageVisual> = {
   sorprendeme: entry(Shuffle, "amber"),
 };
 
+/** El icono y el tinte de una clave del catálogo (la de algo de una lista, por ejemplo). */
+export function giftImageFor(key: GiftImageKey): GiftImageVisual {
+  return GIFT_IMAGES[key];
+}
+
 export function resolveGiftImage(
   imageKey: string | undefined,
   giftType: GiftType,

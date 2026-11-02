@@ -92,10 +92,12 @@ export function AboutNote({ listId, forName }: { listId?: Id<"managedLists">; fo
     );
   }
 
+  // Citada con la letra de los titulares, como la verá quien la lee
+  // («Escaparate y libreta», 2-nov-2026).
   return (
-    <div className="flex items-start gap-2 text-sm">
-      <p className="min-w-0 flex-1 whitespace-pre-line text-muted-foreground">
-        <span className="text-foreground">{forName ? `Para quien regala a ${forName}:` : "Para quien te regala:"}</span> «{about}»
+    <div className="flex items-start gap-2">
+      <p className="min-w-0 flex-1 font-heading text-[17px] leading-snug whitespace-pre-line">
+        <span className="sr-only">{forName ? `Para quien regala a ${forName}:` : "Para quien te regala:"} </span>«{about}»
       </p>
       <Button
         variant="ghost"

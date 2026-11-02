@@ -1,6 +1,6 @@
 "use client";
 
-import { BookHeart, Check, Gift, NotebookPen, Trash2, X } from "lucide-react";
+import { Check, Gift, NotebookPen, Trash2, X } from "lucide-react";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import type { FunctionReturnType } from "convex/server";
@@ -10,7 +10,8 @@ import { BrandStoreLink } from "@/components/gifts/BrandStoreLink";
 import type { MenuGroup } from "@/components/people/ActionMenu";
 import { matchFavoriteBrands } from "@/lib/brands";
 import { userErrorMessage } from "@/lib/errors";
-import { resolveGiftImage } from "@/lib/giftImages";
+import { giftImageFor, resolveGiftImage } from "@/lib/giftImages";
+import { listItemImageKey } from "@/lib/listItemImage";
 import type { GiftType } from "@/lib/gifts";
 import { formatApproxPrice } from "@/lib/price";
 import { formatEventDate, moveDestinations } from "@/lib/savedIdeaGroups";
@@ -42,7 +43,7 @@ export function ideaPrice(idea: SavedIdea): string | null {
   return min === max ? `${min} €` : `${min}–${max} €`;
 }
 
-type Visual =
+export type Visual =
   | { kind: "photo"; url: string }
   | { kind: "icon"; Icon: typeof Gift; container: string; iconClass: string };
 
@@ -61,11 +62,14 @@ export function ideaVisual(idea: SavedIdea): Visual {
   return { kind: "icon", Icon: v.icon, container: v.container, iconClass: v.iconClass };
 }
 
-/** La foto que subió la dueña, o el libro de «Mi lista» si no subió ninguna. */
-export function itemVisual(item: Pick<SharedItem, "photoUrl">): Visual {
-  return item.photoUrl
-    ? { kind: "photo", url: item.photoUrl }
-    : { kind: "icon", Icon: BookHeart, ...TERRACOTTA };
+/**
+ * La foto que subió la dueña o, sin foto, el icono de la categoría que sale del
+ * título (src/lib/listItemImage.ts): el mismo que tendría como idea de regalo.
+ */
+export function itemVisual(item: { photoUrl: string | null; title: string }): Visual {
+  if (item.photoUrl) return { kind: "photo", url: item.photoUrl };
+  const v = giftImageFor(listItemImageKey(item.title));
+  return { kind: "icon", Icon: v.icon, container: v.container, iconClass: v.iconClass };
 }
 
 export function VisualBox({ visual, className, iconSize = "size-8" }: { visual: Visual; className?: string; iconSize?: string }) {

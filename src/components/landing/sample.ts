@@ -74,11 +74,12 @@ export const LIST = {
   about: "Todo lo que sea para el rincón del café me hace ilusión.",
   top: [
     { title: "Regadera de cobre pequeña", price: "unos 30 €", reader: "claim" as const },
+    { title: "Hervidor de cuello de cisne", price: "unos 65 €", reader: "free" as const },
     { title: "Báscula para café con temporizador", price: "unos 45 €", reader: "taken" as const },
   ],
   rest: [{ title: "Delantal de lona para el taller", price: "unos 25 €", reader: "free" as const }],
-  /** 30 y 45 caben en 30–60; 25 no (fitsBudget, src/lib/price.ts). */
-  fitLine: "2 de sus cosas encajan en lo que pensabas gastar para Cumpleaños.",
+  /** 30 y 45 caben en 30–60; 65 y 25, no (fitsBudget, src/lib/price.ts). El filtro las cuenta todas, cogidas también. */
+  fitCount: 2,
 };
 
 export const EMAIL = {

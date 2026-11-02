@@ -1,11 +1,12 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import type { VariantProps } from "class-variance-authority";
-import { BookHeart, Ellipsis, Gift, NotebookPen, type LucideIcon } from "lucide-react";
+import { Ellipsis, Gift, NotebookPen, type LucideIcon } from "lucide-react";
 import { badgeVariants } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import type { BeatProps } from "@/components/landing/motion";
 import type { TileSpec } from "@/components/landing/sample";
-import { resolveGiftImage } from "@/lib/giftImages";
+import { giftImageFor, resolveGiftImage } from "@/lib/giftImages";
+import { listItemImageKey } from "@/lib/listItemImage";
 import { cn } from "@/lib/utils";
 
 // Piezas de las réplicas de la landing. Copian las clases de los componentes
@@ -121,12 +122,16 @@ export function StackCell({ className, children, ...rest }: HTMLAttributes<HTMLS
 
 const TILE_ORIGIN: Record<TileSpec["kind"], string> = { list: "De su lista", own: "Tuya", suggested: "Sugerida" };
 
-// Como `itemVisual` e `ideaVisual` de ideaParts.tsx, sin fotos.
+// Como `itemVisual` e `ideaVisual` de ideaParts.tsx, sin fotos: lo de su lista
+// lleva el icono de la categoría de su título; lo tuyo, la libreta.
 const TERRACOTTA = { container: "bg-secondary/15", iconClass: "text-brand-secondary" };
-const TILE_VISUAL = {
-  list: { icon: BookHeart, ...TERRACOTTA },
-  own: { icon: NotebookPen, ...TERRACOTTA },
-} as const;
+const OWN_VISUAL = { icon: NotebookPen, ...TERRACOTTA } as const;
+
+function tileVisual(spec: TileSpec) {
+  if (spec.kind === "suggested") return resolveGiftImage(spec.imageKey, "fisica");
+  if (spec.kind === "own") return OWN_VISUAL;
+  return giftImageFor(listItemImageKey(spec.title));
+}
 
 /**
  * Lo que tienes pensado, en pequeño. Desvío asumido del `TILE` de
@@ -139,7 +144,7 @@ export function CompactTile({
   className,
   ...rest
 }: { spec: TileSpec; className?: string } & HTMLAttributes<HTMLDivElement>) {
-  const visual = spec.kind === "suggested" ? resolveGiftImage(spec.imageKey, "fisica") : TILE_VISUAL[spec.kind];
+  const visual = tileVisual(spec);
   return (
     <div
       className={cn("flex h-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card", className)}

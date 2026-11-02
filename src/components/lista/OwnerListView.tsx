@@ -1,31 +1,57 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { BookHeart, Bookmark, Check, ClipboardPaste, Ellipsis, Gift, PencilLine, Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  ArrowDown,
+  ArrowUp,
+  BookHeart,
+  Bookmark,
+  CakeSlice,
+  Camera,
+  Check,
+  ClipboardPaste,
+  Gift,
+  Heart,
+  ImageOff,
+  PencilLine,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AddRowButton } from "@/components/layout/AddRowButton";
 import { EmptyState } from "@/components/layout/EmptyState";
+import { ActionMenu, type MenuGroup } from "@/components/people/ActionMenu";
 import { AddToHistoryDialog, type HistoryValues } from "@/components/people/AddToHistoryDialog";
-import { ListItemLink } from "@/components/lista/ListItemLink";
+import { itemVisual } from "@/components/people/ideaParts";
 import { ListReaders } from "@/components/lista/ListReaders";
 import { AboutNote } from "@/components/lista/AboutNote";
 import { OwnerBirthday } from "@/components/lista/OwnerBirthday";
+import {
+  FavoriteToggle,
+  GroupTitle,
+  ItemRow,
+  ItemSheet,
+  itemMeta,
+  SheetActions,
+  SheetLinkRow,
+  SHOWCASE,
+  SHOWCASE_ITEM,
+  ShowcaseTile,
+} from "@/components/lista/ListParts";
 import { usePhotoUpload } from "@/components/lista/usePhotoUpload";
-import { closestOccasionLabel } from "@/lib/dates";
+import { closestOccasionLabel, formatDayMonth } from "@/lib/dates";
 import { userErrorMessage } from "@/lib/errors";
 import { ITEMS_COUNTER_FROM, MAX_LIST_FAVORITES, MAX_LIST_ITEMS } from "@/lib/listLimits";
-import { formatApproxPrice } from "@/lib/price";
 import { cn } from "@/lib/utils";
 
 // El formulario (react-hook-form + zod) solo aparece al apuntar o editar algo.
@@ -42,6 +68,17 @@ type RemoveReason = "got" | undefined;
 // Lo que dura el aviso con «Deshacer» antes de borrar de verdad.
 const UNDO_MS = 6000;
 
+// «Apuntar desde la tienda» es un marcador del navegador: en el móvil no hay
+// barra de marcadores, así que solo se ofrece con pantalla de ordenador.
+const WIDE = "(min-width: 768px)";
+const subscribeWide = (onChange: () => void) => {
+  const mq = window.matchMedia(WIDE);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+};
+const useWide = () =>
+  useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches, () => false);
+
 /**
  * Lo que ve quien escribe una lista: su propia «Mi lista» o una lista que lleva
  * para otra persona (docs/encargo-listas-ninos.md, opción A).
@@ -51,6 +88,12 @@ const UNDO_MS = 6000;
  * - **Lista a cargo** (`listId`): quien la lleva también regala, así que ve qué
  *   está cogido, nunca quién (`lists.managedItems`), y puede marcar. La sorpresa
  *   es para quien no tiene cuenta, que nunca entra.
+ *
+ * «Escaparate y libreta» (2-nov-2026, docs/design-system.md): lo que más ilusión
+ * le haría va en tarjetas grandes y el resto en filas; en las dos, el corazón
+ * es la única acción a la vista. Editar, la foto, el orden, «Ya lo tengo» y
+ * quitar viven en la hoja que se abre al tocar una cosa; pegar una lista, el
+ * marcador y el cumpleaños, en el «⋯» de la tarjeta.
  */
 export function OwnerListView({
   listId,
@@ -63,12 +106,15 @@ export function OwnerListView({
   personId?: Id<"people"> | null;
 }) {
   const managed = listId !== undefined;
+  const router = useRouter();
+  const wide = useWide();
   const { isLoaded, isSignedIn } = useAuth();
   const ready = isLoaded && isSignedIn;
   const ownItems = useQuery(api.lists.myItems, ready && !managed ? {} : "skip");
   const managedItems = useQuery(api.lists.managedItems, ready && listId ? { listId } : "skip");
   const items: Item[] | undefined = managed ? managedItems : ownItems;
   const dates = useQuery(api.importantDates.getByPerson, ready && personId ? { personId } : "skip");
+  const birthday = useQuery(api.lists.myBirthday, ready ? (listId ? { listId } : {}) : "skip");
 
   const removeItem = useMutation(api.lists.removeItem);
   const setFavorite = useMutation(api.lists.setFavorite);
@@ -85,8 +131,11 @@ export function OwnerListView({
 
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<Id<"listItems"> | null>(null);
+  const [editingBirthday, setEditingBirthday] = useState(false);
   const [highlightId, setHighlightId] = useState<Id<"listItems"> | null>(null);
   const [giving, setGiving] = useState<{ claimId: Id<"listClaims">; title: string } | null>(null);
+  // La hoja guarda su cosa al cerrarse, para que no se vacíe mientras baja.
+  const [sheet, setSheet] = useState<{ id: Id<"listItems">; open: boolean } | null>(null);
 
   // Textos: la lista propia habla de ti; la que llevas, de esa persona.
   const t = managed
@@ -107,6 +156,7 @@ export function OwnerListView({
         pasteHref: `/mi-lista/llevas/${listId}/traer`,
         // La foto es de la cosa, nunca de la persona para la que es la lista.
         photo: "Añadir una foto de la cosa",
+        birthday: birthday ? "Su cumpleaños" : `Añadir el cumpleaños de ${forName}`,
         idPrefix: `lista-${listId}`,
       }
     : {
@@ -125,6 +175,7 @@ export function OwnerListView({
           "Apunta lo que te haría ilusión recibir, con su enlace si lo tienes. Quien tenga acceso a tu lista lo verá en su libreta, junto a tus fechas.",
         pasteHref: "/mi-lista/traer",
         photo: "Añadir una foto",
+        birthday: birthday ? "Tu cumpleaños" : "Añadir tu cumpleaños",
         idPrefix: "mi-lista",
       };
 
@@ -192,6 +243,15 @@ export function OwnerListView({
     return () => clearTimeout(timer);
   }, [highlightId]);
 
+  // Editar se pide desde la hoja, que puede estar lejos del formulario.
+  useEffect(() => {
+    if (!editingId) return;
+    const el = document.getElementById(`editar-${editingId}`);
+    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+  }, [editingId]);
+
   const run = async (action: () => Promise<unknown>, fallback: string) => {
     try {
       await action();
@@ -216,12 +276,6 @@ export function OwnerListView({
     });
     pending.current.set(item._id, { reason, toastId });
   };
-
-  const handleFavorite = (item: Item, favorite: boolean) =>
-    run(async () => {
-      await setFavorite({ id: item._id, favorite });
-      toast.success(t.moved(favorite));
-    }, "No se pudo guardar");
 
   const pickPhoto = (item: Item) => {
     photoFor.current = item._id;
@@ -250,122 +304,69 @@ export function OwnerListView({
   // lo que espera a borrarse todavía ocupa sitio.
   const count = items?.length ?? 0;
   const favoriteCount = items?.filter((i) => i.favorite).length ?? 0;
+  const favoritesFull = favoriteCount >= MAX_LIST_FAVORITES;
   const full = count >= MAX_LIST_ITEMS;
 
-  /** Solo en una lista a cargo: si está cogido y, si lo regalas tú, tus acciones. */
-  const claimControls = (item: Item) => {
-    if (!managed || !item.state) return null;
-    if (item.state === "taken") {
-      return <Badge variant="outline" className="text-muted-foreground">Cogido</Badge>;
+  // El corazón: con el tope lleno no se desactiva (un botón apagado no explica
+  // nada); avisa de por qué no puede.
+  const toggleFavorite = (item: Item) => {
+    if (!item.favorite && favoritesFull) {
+      toast.error(`Ya hay ${MAX_LIST_FAVORITES} en lo que más ilusión. Saca una para pasar esta.`);
+      return;
     }
-    if (item.state === "free") {
-      return (
-        <Button size="sm" variant="outline" onClick={() => run(() => claim({ itemId: item._id }), "No se pudo marcar")}>
-          <Gift aria-hidden />
-          Lo regalo yo
-        </Button>
-      );
-    }
-    const claimId = item.claimId;
-    if (!claimId) return null;
-    return (
-      <>
-        {item.state === "mine" ? (
-          <>
-            <Badge variant="secondary">Lo regalas tú</Badge>
-            <Button size="sm" className="hover:bg-primary/80" onClick={() => setGiving({ claimId, title: item.title })}>
-              Ya se lo he regalado
-            </Button>
-          </>
-        ) : (
-          <Badge variant="outline" className="gap-1 text-muted-foreground">
-            <Check className="size-3" aria-hidden />
-            Regalado
-          </Badge>
-        )}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`Quitar tu marca de ${item.title}`}
-          title="Quitar tu marca"
-          onClick={() => run(() => unclaim({ claimId }), "No se pudo quitar la marca")}
-        >
-          <X className="size-3.5" aria-hidden />
-        </Button>
-      </>
-    );
+    void run(async () => {
+      await setFavorite({ id: item._id, favorite: !item.favorite });
+      toast.success(t.moved(!item.favorite));
+    }, "No se pudo guardar");
   };
 
-  const renderRow = (item: Item, index: number, group: Item[]) => (
-    <li key={item._id} id={`elemento-${item._id}`}>
-      {editingId === item._id ? (
-        <ListItemForm item={item} listId={listId} onDone={() => setEditingId(null)} />
-      ) : (
-        <div
-          className={cn(
-            "flex flex-col gap-3 rounded-lg border border-border/60 bg-background/60 p-4 text-sm transition-colors duration-700",
-            highlightId === item._id && "bg-secondary/10",
-          )}
-        >
-          <div className="flex items-start justify-between gap-3">
-            {item.photoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={item.photoUrl}
-                alt=""
-                className="size-14 shrink-0 rounded-md border border-border/60 object-cover"
-              />
-            )}
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <p className="font-medium leading-snug">{item.title}</p>
-              {uploadingId === item._id && (
-                <p className="text-xs text-muted-foreground" role="status">Subiendo la foto…</p>
-              )}
-              {(item.priceCents !== null || item.url) && (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  {item.priceCents !== null && (
-                    <span className="text-xs text-muted-foreground">{formatApproxPrice(item.priceCents)}</span>
-                  )}
-                  {item.url && <ListItemLink url={item.url} />}
-                </div>
-              )}
-              {item.note && <p className="whitespace-pre-line text-xs text-muted-foreground">{item.note}</p>}
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Editar ${item.title}`}
-                title="Editar"
-                onClick={() => setEditingId(item._id)}
-              >
-                <PencilLine className="size-3.5" aria-hidden />
-              </Button>
-              <OwnerItemMenu
-                item={item}
-                labels={t}
-                favoritesFull={favoriteCount >= MAX_LIST_FAVORITES}
-                onFavorite={(favorite) => handleFavorite(item, favorite)}
-                canMoveUp={index > 0}
-                canMoveDown={index < group.length - 1}
-                onMove={(direction) => run(() => moveItem({ id: item._id, direction }), "No se pudo mover")}
-                onPhoto={() => pickPhoto(item)}
-                onRemovePhoto={() =>
-                  run(async () => {
-                    await removeItemPhoto({ id: item._id });
-                    toast.success("Foto quitada");
-                  }, "No se pudo quitar la foto")
-                }
-                onGot={() => handleRemove(item, "got")}
-                onRemove={() => handleRemove(item, undefined)}
-              />
-            </div>
-          </div>
-          {managed && <div className="flex flex-wrap items-center justify-end gap-2">{claimControls(item)}</div>}
-        </div>
-      )}
-    </li>
+  /** En una lista a cargo, cómo está cada cosa para quien regala. */
+  const claimLine = (item: Item) => {
+    if (!managed || !item.state) return null;
+    if (item.state === "taken") return "Cogido";
+    if (item.state === "mine") return <span className="text-brand-secondary">Lo regalas tú</span>;
+    if (item.state === "given") return "Regalado";
+    return null;
+  };
+
+  const sub = (item: Item) => {
+    if (uploadingId === item._id) return <span role="status">Subiendo la foto…</span>;
+    const meta = itemMeta(item) ?? item.note ?? null;
+    const line = claimLine(item);
+    if (line && meta) return <>{line} · {meta}</>;
+    return line ?? meta;
+  };
+
+  const heartLabel = (item: Item) => `${item.favorite ? t.fromTop : t.toTop}: ${item.title}`;
+
+  const open = (id: Id<"listItems">) => setSheet({ id, open: true });
+  const closeSheet = () => setSheet((s) => (s ? { ...s, open: false } : s));
+  const sheetItem = sheet ? items?.find((i) => i._id === sheet.id) : undefined;
+
+  const sheetGroup = sheetItem ? (sheetItem.favorite ? favorites : rest) : [];
+  const sheetIndex = sheetItem ? sheetGroup.findIndex((i) => i._id === sheetItem._id) : -1;
+
+  const cardMenu: MenuGroup[] = [
+    {
+      actions: [
+        { label: "Pegar una lista", icon: ClipboardPaste, onSelect: () => router.push(t.pasteHref) },
+        ...(wide ? [{ label: "Apuntar desde la tienda", icon: Bookmark, onSelect: () => router.push("/mi-lista/apuntar") }] : []),
+        {
+          label: t.birthday,
+          icon: CakeSlice,
+          hint: birthday ? formatDayMonth(birthday.month, birthday.day) : undefined,
+          onSelect: () => setEditingBirthday(true),
+        },
+      ],
+    },
+  ];
+
+  const editForm = (item: Item) => (
+    <div id={`editar-${item._id}`} className="scroll-mt-6">
+      <ListItemForm item={item} listId={listId} onDone={() => setEditingId(null)} />
+    </div>
   );
+  const editingFavorite = favorites.find((i) => i._id === editingId);
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -396,18 +397,20 @@ export function OwnerListView({
           }
         />
       ) : (
-        <Card className="border-border/60 shadow-sm">
-          <CardContent className="space-y-4 p-5">
-            <div className="flex items-center gap-2">
-              <h2 className="font-sans text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-                <BookHeart className="size-3.5" aria-hidden />
-                {t.heading}
-              </h2>
+        <Card className="@container border-border/60 shadow-sm">
+          <CardContent className="space-y-5 p-5">
+            <div className="flex items-start gap-2">
+              {/* Dentro de la fila: suelto, el space-y le daría su margen aunque no se vea. */}
+              <h2 className="sr-only">{t.heading}</h2>
+              <div className="min-w-0 flex-1">
+                <AboutNote listId={listId} forName={forName} />
+              </div>
               {count >= ITEMS_COUNTER_FROM && (
-                <span className="ml-auto text-xs text-muted-foreground">
+                <span className="pt-1.5 text-xs whitespace-nowrap text-muted-foreground">
                   {count} de {MAX_LIST_ITEMS}
                 </span>
               )}
+              <ActionMenu label="Más opciones de la lista" groups={cardMenu} />
             </div>
 
             {managed && (
@@ -416,10 +419,12 @@ export function OwnerListView({
               </p>
             )}
 
-            <div className="flex flex-col gap-1.5">
-              <AboutNote listId={listId} forName={forName} />
-              <OwnerBirthday listId={listId} forName={forName} />
-            </div>
+            <OwnerBirthday
+              listId={listId}
+              forName={forName}
+              editing={editingBirthday}
+              onEditingChange={setEditingBirthday}
+            />
 
             {adding ? (
               <ListItemForm
@@ -432,53 +437,117 @@ export function OwnerListView({
             ) : full ? (
               <p className="rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground">{t.full}</p>
             ) : (
-              <div className="space-y-2">
-                <AddRowButton onClick={() => setAdding(true)}>Apuntar algo</AddRowButton>
-                <div className="flex flex-wrap gap-x-5 gap-y-1">
-                  <Link
-                    href={t.pasteHref}
-                    className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-                  >
-                    <ClipboardPaste className="size-3.5" aria-hidden />
-                    Pegar una lista
-                  </Link>
-                  {/* Solo en ordenador: en el móvil no hay barra de marcadores. */}
-                  <Link
-                    href="/mi-lista/apuntar"
-                    className="hidden items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline md:inline-flex"
-                  >
-                    <Bookmark className="size-3.5" aria-hidden />
-                    Apuntar desde la tienda
-                  </Link>
-                </div>
-              </div>
+              <AddRowButton onClick={() => setAdding(true)}>Apuntar algo</AddRowButton>
             )}
 
-            {favorites.length > 0 ? (
-              <div className="space-y-5">
-                <section aria-labelledby={`${t.idPrefix}-mas-ilusion`} className="space-y-2">
-                  <h3 id={`${t.idPrefix}-mas-ilusion`} className="font-sans text-sm font-medium">
-                    {t.top}
-                  </h3>
-                  <ul className="space-y-3">{favorites.map(renderRow)}</ul>
-                </section>
-                {rest.length > 0 && (
-                  <section aria-labelledby={`${t.idPrefix}-resto`} className="space-y-2">
-                    <h3 id={`${t.idPrefix}-resto`} className="font-sans text-sm font-medium text-muted-foreground">
-                      El resto
-                    </h3>
-                    <ul className="space-y-3">{rest.map(renderRow)}</ul>
-                  </section>
+            {favorites.length > 0 && (
+              <section aria-labelledby={`${t.idPrefix}-mas-ilusion`} className="space-y-3">
+                <GroupTitle id={`${t.idPrefix}-mas-ilusion`} favorite>
+                  {t.top}
+                  <span className="font-normal text-muted-foreground">
+                    · {favoriteCount} de {MAX_LIST_FAVORITES}
+                  </span>
+                </GroupTitle>
+                {editingFavorite && editForm(editingFavorite)}
+                <ul className={SHOWCASE}>
+                  {favorites.map((item) => (
+                    <li
+                      key={item._id}
+                      id={`elemento-${item._id}`}
+                      className={cn(SHOWCASE_ITEM, "rounded-xl transition-shadow duration-700", highlightId === item._id && "ring-4 ring-secondary/20")}
+                    >
+                      <ShowcaseTile
+                        visual={itemVisual(item)}
+                        title={item.title}
+                        meta={sub(item)}
+                        dimmed={item.state === "taken"}
+                        corner={<FavoriteToggle on label={heartLabel(item)} onClick={() => toggleFavorite(item)} overlay />}
+                        onOpen={() => open(item._id)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {rest.length > 0 && (
+              <section aria-labelledby={favorites.length > 0 ? `${t.idPrefix}-resto` : undefined} className="space-y-1">
+                {favorites.length > 0 && (
+                  <GroupTitle id={`${t.idPrefix}-resto`} muted>
+                    El resto
+                  </GroupTitle>
                 )}
-              </div>
-            ) : (
-              visible.length > 0 && <ul className="space-y-3">{visible.map(renderRow)}</ul>
+                <ul>
+                  {rest.map((item) =>
+                    editingId === item._id ? (
+                      <li key={item._id} className="py-1.5">{editForm(item)}</li>
+                    ) : (
+                      <ItemRow
+                        key={item._id}
+                        id={`elemento-${item._id}`}
+                        highlighted={highlightId === item._id}
+                        visual={itemVisual(item)}
+                        title={item.title}
+                        sub={sub(item)}
+                        dimmed={item.state === "taken"}
+                        onOpen={() => open(item._id)}
+                        action={<FavoriteToggle on={false} label={heartLabel(item)} onClick={() => toggleFavorite(item)} />}
+                      />
+                    ),
+                  )}
+                </ul>
+              </section>
             )}
           </CardContent>
         </Card>
       )}
 
       <ListReaders listId={listId} forName={forName} />
+
+      {sheetItem && (
+        <ItemSheet
+          open={sheet?.open ?? false}
+          onOpenChange={(o) => (o ? null : closeSheet())}
+          visual={itemVisual(sheetItem)}
+          title={sheetItem.title}
+          meta={itemMeta(sheetItem)}
+        >
+          {sheetItem.note && <p className="whitespace-pre-line text-sm text-muted-foreground">{sheetItem.note}</p>}
+          {managed && sheetItem.state === "taken" && (
+            <p className="text-sm text-muted-foreground">Cogido: alguien va a regalarlo. No sabes quién.</p>
+          )}
+          {sheetItem.url && (
+            <div className="border-t border-border/60 pt-2">
+              <SheetLinkRow url={sheetItem.url} />
+            </div>
+          )}
+          <div className="border-t border-border/60 pt-1">
+            <OwnerItemActions
+              item={sheetItem}
+              managed={managed}
+              labels={t}
+              canMoveUp={sheetIndex > 0}
+              canMoveDown={sheetIndex >= 0 && sheetIndex < sheetGroup.length - 1}
+              onEdit={() => setEditingId(sheetItem._id)}
+              onFavorite={() => toggleFavorite(sheetItem)}
+              onPhoto={() => pickPhoto(sheetItem)}
+              onRemovePhoto={() =>
+                run(async () => {
+                  await removeItemPhoto({ id: sheetItem._id });
+                  toast.success("Foto quitada");
+                }, "No se pudo quitar la foto")
+              }
+              onMove={(direction) => run(() => moveItem({ id: sheetItem._id, direction }), "No se pudo mover")}
+              onGot={() => handleRemove(sheetItem, "got")}
+              onRemove={() => handleRemove(sheetItem, undefined)}
+              onClaim={() => run(() => claim({ itemId: sheetItem._id }), "No se pudo marcar")}
+              onUnclaim={(claimId) => run(() => unclaim({ claimId }), "No se pudo quitar la marca")}
+              onGiven={(claimId) => setGiving({ claimId, title: sheetItem.title })}
+              onDone={closeSheet}
+            />
+          </div>
+        </ItemSheet>
+      )}
 
       <input
         ref={photoInput}
@@ -508,95 +577,83 @@ export function OwnerListView({
   );
 }
 
-type MenuLabels = { toTop: string; fromTop: string; got: string; remove: string; photo: string };
+type ActionLabels = { toTop: string; fromTop: string; got: string; remove: string; photo: string };
 
 /**
- * Las acciones de una fila, en un `Popover` como el de las ideas guardadas.
- * Quitar va al final, en rojo y tras un separador.
+ * Lo que se hace con una cosa, en su hoja: lo que antes iba en el «⋯» de la
+ * fila. En una lista a cargo, primero la marca de quien la lleva. Quitar va al
+ * final y en rojo.
  */
-function OwnerItemMenu({
+function OwnerItemActions({
   item,
+  managed,
   labels,
-  favoritesFull,
-  onFavorite,
   canMoveUp,
   canMoveDown,
-  onMove,
+  onEdit,
+  onFavorite,
   onPhoto,
   onRemovePhoto,
+  onMove,
   onGot,
   onRemove,
+  onClaim,
+  onUnclaim,
+  onGiven,
+  onDone,
 }: {
   item: Item;
-  labels: MenuLabels;
-  favoritesFull: boolean;
-  onFavorite: (favorite: boolean) => void;
+  managed: boolean;
+  labels: ActionLabels;
   canMoveUp: boolean;
   canMoveDown: boolean;
-  onMove: (direction: "up" | "down") => void;
+  onEdit: () => void;
+  onFavorite: () => void;
   onPhoto: () => void;
-  onRemovePhoto: () => void;
+  onRemovePhoto: () => unknown;
+  onMove: (direction: "up" | "down") => unknown;
   onGot: () => void;
   onRemove: () => void;
+  onClaim: () => unknown;
+  onUnclaim: (claimId: Id<"listClaims">) => unknown;
+  onGiven: (claimId: Id<"listClaims">) => void;
+  onDone: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const run = (action: () => void) => {
-    setOpen(false);
-    action();
-  };
-  const cannotAdd = !item.favorite && favoritesFull;
-  const row =
-    "flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted outline-hidden disabled:pointer-events-none disabled:opacity-50";
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={<Button variant="ghost" size="icon-sm" aria-label={`Más acciones para ${item.title}`} />}
-      >
-        <Ellipsis className="size-3.5" aria-hidden />
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 gap-0.5 p-1.5">
-        <button
-          type="button"
-          className={cn(row, "flex-col items-start gap-0.5")}
-          disabled={cannotAdd}
-          aria-describedby={cannotAdd ? `tope-ilusion-${item._id}` : undefined}
-          onClick={() => run(() => onFavorite(!item.favorite))}
-        >
-          {item.favorite ? labels.fromTop : labels.toTop}
-          {cannotAdd && (
-            <span id={`tope-ilusion-${item._id}`} className="text-xs text-muted-foreground">
-              Ya hay {MAX_LIST_FAVORITES}. Saca una para pasar esta.
-            </span>
-          )}
-        </button>
-        {(canMoveUp || canMoveDown) && (
-          <>
-            <button type="button" className={row} disabled={!canMoveUp} onClick={() => run(() => onMove("up"))}>
-              Subir un puesto
-            </button>
-            <button type="button" className={row} disabled={!canMoveDown} onClick={() => run(() => onMove("down"))}>
-              Bajar un puesto
-            </button>
-          </>
-        )}
-        <button type="button" className={row} onClick={() => run(onPhoto)}>
-          {item.photoUrl ? "Cambiar la foto" : labels.photo}
-        </button>
-        {item.photoUrl && (
-          <button type="button" className={row} onClick={() => run(onRemovePhoto)}>
-            Quitar la foto
-          </button>
-        )}
-        <button type="button" className={row} onClick={() => run(onGot)}>
-          {labels.got}
-        </button>
-        <div role="separator" className="my-1 h-px bg-border/60" />
-        <button type="button" className={cn(row, "gap-2 text-destructive")} onClick={() => run(onRemove)}>
-          <Trash2 className="size-4 shrink-0" aria-hidden />
-          {labels.remove}
-        </button>
-      </PopoverContent>
-    </Popover>
-  );
+  const claimId = item.claimId;
+  const claimActions: MenuGroup["actions"] = !managed
+    ? []
+    : item.state === "free"
+      ? [{ label: "Lo regalo yo", icon: Gift, onSelect: onClaim }]
+      : claimId && item.state === "mine"
+        ? [
+            { label: "Ya se lo he regalado", icon: Check, onSelect: () => onGiven(claimId) },
+            { label: "Quitar tu marca", icon: X, onSelect: () => onUnclaim(claimId) },
+          ]
+        : claimId && item.state === "given"
+          ? [{ label: "Quitar tu marca", icon: X, onSelect: () => onUnclaim(claimId) }]
+          : [];
+  const groups: MenuGroup[] = [
+    { actions: claimActions },
+    {
+      actions: [
+        { label: "Editar", icon: PencilLine, onSelect: onEdit },
+        { label: item.favorite ? labels.fromTop : labels.toTop, icon: Heart, onSelect: onFavorite },
+        { label: item.photoUrl ? "Cambiar la foto" : labels.photo, icon: Camera, onSelect: onPhoto },
+        ...(item.photoUrl ? [{ label: "Quitar la foto", icon: ImageOff, onSelect: onRemovePhoto }] : []),
+      ],
+    },
+    {
+      actions: [
+        ...(canMoveUp ? [{ label: "Subir un puesto", icon: ArrowUp, onSelect: () => onMove("up") }] : []),
+        ...(canMoveDown ? [{ label: "Bajar un puesto", icon: ArrowDown, onSelect: () => onMove("down") }] : []),
+      ],
+    },
+    {
+      actions: [
+        { label: labels.got, icon: Check, onSelect: onGot },
+        { label: labels.remove, icon: Trash2, destructive: true, onSelect: onRemove },
+      ],
+    },
+  ];
+  return <SheetActions groups={groups} onDone={onDone} />;
 }
