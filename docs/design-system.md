@@ -1937,6 +1937,16 @@ La función entera está en [`docs/encargo-lista.md`](encargo-lista.md). Aquí, 
   - **Un correo o un recuento, entre paréntesis**: la cuenta bloqueada («Julián (julian@…)») y cada grupo de la vista previa de pegar («Lista 1 (12 cosas)»).
   - **Una frase más, con su punto**: el aviso de pegar («12 cosas apuntadas en tu lista. 2 ya estaban»).
   - **Un contador, `Count`**, nunca «· N».
+  - **En `Screens & prototype`**, el mismo día (versión «One middle dot per line»):
+    - 28 líneas de ocasión pasan a coma;
+    - 36 filas de «Listas que llevas»;
+    - 18 cabeceras de «Más ideas»;
+    - las 2 cuentas bloqueadas de Ajustes llevan el correo entre paréntesis;
+    - los 12 «Lo que tienes pensado · N» de las réplicas de la landing pasan a `Count`.
+
+    Se cambió solo el separador, con `deleteCharacters` e `insertCharacters`, para no perder los estilos mezclados («Mañana» en medium). **Dos desajustes con el código que ya estaban**:
+    - la tesela «De su lista» de `NextOccasionCard` pinta «unos 38 € · elcorteingles.es» en una línea, cuando el código pone el precio y debajo el enlace;
+    - la cabecera de «Ideas de regalo» en Screens («Ideas para Marta Ibáñez» con la ocasión debajo) no es la del código, que lleva el enlace a la ficha, «Ideas de regalo» y su subtítulo.
 - **Rayas fuera de los textos de la interfaz** (2-nov-2026). La raya como muletilla para meter un inciso era otro tic. Seis textos pasan a coma o punto, y de paso pierden lo de asistente:
   - el vacío de «Seres queridos», «Empieza por alguien cercano, como tu pareja o tu madre. Apunta lo que le gusta y sus fechas.» (antes, «…mejor amigo. Anota sus intereses y déjanos cuidar las fechas»);
   - el vacío de ideas sin fechas, «Las ideas se piensan para una ocasión. Apunta su cumpleaños, un aniversario o cualquier otra fecha.» (antes, «…cumpleaños, aniversario, lo que sea»);
