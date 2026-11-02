@@ -1,5 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
-import { ChevronRight, Ellipsis, Gift, Heart, PencilLine, Plus } from "lucide-react";
+import { ChevronRight, Ellipsis, Gift, Heart, Plus } from "lucide-react";
 import { Count } from "@/components/layout/Count";
 import { badgeVariants } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -103,7 +103,6 @@ export function ListOwnerMock(props: MockProps) {
         <CardContent className="space-y-5 p-5">
           <div className="flex items-start gap-2">
             <p className="min-w-0 flex-1 font-heading text-lg leading-snug">«{LIST.about}»</p>
-            <FakeIconButton icon={PencilLine} />
             <FakeIconButton icon={Ellipsis} />
           </div>
 

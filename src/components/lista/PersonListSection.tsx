@@ -406,9 +406,10 @@ export function SharedListSection({
             <ChevronRight className={cn("size-4 transition-transform", showTaken && "rotate-90")} aria-hidden />
             Ya lo regala otra persona<Count>{taken.length}</Count>
           </button>
-          {showTaken && (
-            <ul id={`${groupId}-cogido`}>{taken.map(renderRow)}</ul>
-          )}
+          {/* Siempre en el DOM, para que el aria-controls apunte a algo aunque esté plegado. */}
+          <ul id={`${groupId}-cogido`} hidden={!showTaken}>
+            {taken.map(renderRow)}
+          </ul>
         </div>
       )}
 

@@ -118,6 +118,7 @@ export function OwnerListView({
   const items: Item[] | undefined = managed ? managedItems : ownItems;
   const dates = useQuery(api.importantDates.getByPerson, ready && personId ? { personId } : "skip");
   const birthday = useQuery(api.lists.myBirthday, ready ? (listId ? { listId } : {}) : "skip");
+  const about = useQuery(api.lists.myAbout, ready ? (listId ? { listId } : {}) : "skip");
 
   const removeItem = useMutation(api.lists.removeItem);
   const setFavorite = useMutation(api.lists.setFavorite);
@@ -135,6 +136,7 @@ export function OwnerListView({
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<Id<"listItems"> | null>(null);
   const [editingBirthday, setEditingBirthday] = useState(false);
+  const [editingNote, setEditingNote] = useState(false);
   const [highlightId, setHighlightId] = useState<Id<"listItems"> | null>(null);
   const [giving, setGiving] = useState<{ claimId: Id<"listClaims">; title: string } | null>(null);
   // La hoja guarda su cosa al cerrarse, para que no se vacíe mientras baja.
@@ -358,6 +360,8 @@ export function OwnerListView({
   const cardMenu: MenuGroup[] = [
     {
       actions: [
+        // Sin nota escrita no hace falta: la card ya enseña su enlace para añadirla.
+        ...(about ? [{ label: "Editar la nota", icon: PencilLine, onSelect: () => setEditingNote(true) }] : []),
         { label: "Pegar una lista", icon: ClipboardPaste, onSelect: () => router.push(t.pasteHref) },
         ...(wide ? [{ label: "Apuntar desde la tienda", icon: Bookmark, onSelect: () => router.push("/mi-lista/apuntar") }] : []),
         {
@@ -412,7 +416,7 @@ export function OwnerListView({
               {/* Dentro de la fila: suelto, el space-y le daría su margen aunque no se vea. */}
               <h2 className="sr-only">{t.heading}</h2>
               <div className="min-w-0 flex-1">
-                <AboutNote listId={listId} forName={forName} />
+                <AboutNote listId={listId} forName={forName} editing={editingNote} onEditingChange={setEditingNote} />
               </div>
               {count >= ITEMS_COUNTER_FROM && (
                 <span className="pt-1.5 text-xs whitespace-nowrap text-muted-foreground">
