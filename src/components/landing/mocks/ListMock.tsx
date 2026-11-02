@@ -1,5 +1,6 @@
 import type { HTMLAttributes, ReactNode } from "react";
-import { Check, ChevronRight, Ellipsis, Gift, Heart, PencilLine, Plus } from "lucide-react";
+import { ChevronRight, Ellipsis, Gift, Heart, PencilLine, Plus } from "lucide-react";
+import { badgeVariants } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { MockFrame } from "@/components/landing/MockFrame";
 import { beat } from "@/components/landing/motion";
@@ -142,20 +143,20 @@ export function ListOwnerMock(props: MockProps) {
 }
 
 /**
- * Marcar la regadera: «Lo regalo yo» se hunde y se va, y en su sitio queda
- * «Lo regalas tú». Las dos ocupan la misma celda, así que la tarjeta no salta.
+ * Marcar la regadera: «Lo regalo yo» se hunde y se va, y en su sitio queda el
+ * badge «Lo regalas tú», el mismo de «Lo que tienes pensado». Los dos ocupan
+ * la misma celda, así que la tarjeta no salta.
  */
 function ClaimScene() {
   return (
-    <StackCell className="grid w-full">
+    <StackCell className="grid w-full items-center">
       <FakeButton variant="outline" size="sm" className="w-full opacity-0" {...beat("press-out", 500, 900)}>
         <Gift />
         Lo regalo yo
       </FakeButton>
-      <FakeButton size="sm" className="w-full" {...beat("swap-in", 1400)}>
-        <Check />
+      <span className={badgeVariants({ variant: "secondary" })} {...beat("swap-in", 1400)}>
         Lo regalas tú
-      </FakeButton>
+      </span>
     </StackCell>
   );
 }

@@ -337,7 +337,13 @@ export function OwnerListView({
     return line ?? meta;
   };
 
-  const heartLabel = (item: Item) => `${item.favorite ? t.fromTop : t.toTop}: ${item.title}`;
+  // El corazón se nombra por lo que es (fijo) y su tooltip, por lo que hace.
+  const heart = (item: Item) => ({
+    on: item.favorite,
+    label: `${t.top}: ${item.title}`,
+    hint: item.favorite ? t.fromTop : t.toTop,
+    onClick: () => toggleFavorite(item),
+  });
 
   const open = (id: Id<"listItems">) => setSheet({ id, open: true });
   const closeSheet = () => setSheet((s) => (s ? { ...s, open: false } : s));
@@ -461,7 +467,7 @@ export function OwnerListView({
                         title={item.title}
                         meta={sub(item)}
                         dimmed={item.state === "taken"}
-                        corner={<FavoriteToggle on label={heartLabel(item)} onClick={() => toggleFavorite(item)} overlay />}
+                        corner={<FavoriteToggle {...heart(item)} overlay />}
                         onOpen={() => open(item._id)}
                       />
                     </li>
@@ -491,7 +497,7 @@ export function OwnerListView({
                         sub={sub(item)}
                         dimmed={item.state === "taken"}
                         onOpen={() => open(item._id)}
-                        action={<FavoriteToggle on={false} label={heartLabel(item)} onClick={() => toggleFavorite(item)} />}
+                        action={<FavoriteToggle {...heart(item)} />}
                       />
                     ),
                   )}

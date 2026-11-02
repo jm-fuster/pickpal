@@ -184,12 +184,19 @@ export function GiftToggle({ state, title, onClick }: { state: GiftState; title:
 export function FavoriteToggle({
   on,
   label,
+  hint,
   onClick,
   overlay,
 }: {
   on: boolean;
-  /** Lo que hace al pulsarlo: «Pasar a lo que más ilusión te haría». */
+  /**
+   * Qué es, no qué hace, y no cambia: «Lo que más ilusión te haría:
+   * Regadera». Si cambiaba con el estado además de `aria-pressed`, el lector
+   * de pantalla lo decía dos veces («Sacar de…, pulsado»).
+   */
   label: string;
+  /** Lo que hace al pulsarlo, para el tooltip: «Pasar a lo que más ilusión te haría». */
+  hint: string;
   onClick: () => void;
   /** Sobre la imagen de una tarjeta: lleva fondo para que se lea encima. */
   overlay?: boolean;
@@ -200,7 +207,7 @@ export function FavoriteToggle({
       onClick={onClick}
       aria-pressed={on}
       aria-label={label}
-      title={label}
+      title={hint}
       className={cn(
         "relative grid size-8 shrink-0 place-items-center rounded-full transition-[background-color,translate] active:translate-y-px pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5",
         overlay ? "bg-card/90 hover:bg-card" : "hover:bg-muted",

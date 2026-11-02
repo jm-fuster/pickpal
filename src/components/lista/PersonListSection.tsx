@@ -209,28 +209,30 @@ export function SharedListSection({
       <Badge variant="outline" className="bg-card">Nuevo</Badge>
     ) : null;
 
+  // El pie solo lleva botón cuando hay algo que hacer: marcar. Lo marcado o
+  // regalado es un estado, con el mismo badge que en «Lo que tienes pensado»;
+  // lo que se hace con esa marca está en la hoja, que se abre tocando la
+  // tarjeta. Mide lo que el botón, para que las tarjetas no bailen.
   const tileFooter = (item: SharedItem) => {
     if (item.state === "free") {
       return (
-        <Button size="sm" variant="outline" className="w-full" onClick={() => doClaim(item)}>
+        <Button size="sm" variant="outline" className="w-full" onClick={() => doClaim(item)} aria-label={`Lo regalo yo: ${item.title}`}>
           <Gift aria-hidden />
           Lo regalo yo
         </Button>
       );
     }
-    if (item.state === "mine") {
-      return (
-        <Button size="sm" className="w-full" onClick={() => open(item._id)} aria-label={`Lo regalas tú: ${item.title}. Ver opciones`}>
-          <Check aria-hidden />
-          Lo regalas tú
-        </Button>
-      );
-    }
     return (
-      <Button size="sm" variant="ghost" className="w-full text-muted-foreground" onClick={() => open(item._id)}>
-        <Check aria-hidden />
-        Regalado
-      </Button>
+      <div className="flex h-7 items-center">
+        {item.state === "mine" ? (
+          <Badge variant="secondary">Lo regalas tú</Badge>
+        ) : (
+          <Badge variant="outline" className="gap-1 text-muted-foreground">
+            <Check aria-hidden />
+            Regalado
+          </Badge>
+        )}
+      </div>
     );
   };
 
