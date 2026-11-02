@@ -95,8 +95,8 @@ export function MoreIdeasCard({
                       <span className="font-medium text-muted-foreground">Sin ocasión</span>
                     ) : (
                       <>
-                        <span className="font-medium">{group.event.label}</span>
-                        <span className="text-muted-foreground">· {formatEventDate(group.event)}</span>
+                        <span className="font-medium">{group.event.label},</span>
+                        <span className="text-muted-foreground">{formatEventDate(group.event)}</span>
                         {group.past && (
                           <Badge variant="outline" className="ml-1 text-muted-foreground">Ya pasó</Badge>
                         )}

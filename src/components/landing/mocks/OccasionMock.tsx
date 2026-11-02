@@ -10,8 +10,10 @@ const LABEL =
  * La réplica del hero: la cabecera de la ficha de Marta y su próxima ocasión
  * (PersonHeader + NextOccasionCard). La escena cuenta atrás 21 → 14 → 7 días;
  * a los 7 la tarjeta se vuelve urgente como en la app (URGENT_DAYS) y se posan
- * las tres cosas pensadas. Sin la fecha («· 24 sep ·») que lleva la línea real:
- * junto a una cuenta atrás, una fecha absoluta se queda vieja.
+ * las tres cosas pensadas. Sin la fecha («, 24 sep») que lleva la línea real:
+ * junto a una cuenta atrás, una fecha absoluta se queda vieja. Lo que queda,
+ * «En 21 días · 30 – 60 €», lleva el único punto medio de la línea: separa el
+ * dinero, como en NextOccasionCard.
  */
 export function OccasionMock({ className }: { className?: string }) {
   return (

@@ -298,7 +298,7 @@ export function OwnIdeaForm({
             <SelectContent>
               {options.map((d) => (
                 <SelectItem key={d._id} value={d._id}>
-                  {d.label} · {formatEventDate(d)}
+                  {d.label}, {formatEventDate(d)}
                 </SelectItem>
               ))}
               <SelectItem value={NONE}>Sin ocasión</SelectItem>

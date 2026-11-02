@@ -71,7 +71,7 @@ export function ManagedListsCard() {
                   <span className="min-w-0">
                     <span className="block font-medium">La lista de {l.forName}</span>
                     <span className="text-xs text-muted-foreground">
-                      {things(l.itemCount)} · {readers(l.readerCount)}
+                      {things(l.itemCount)}, {readers(l.readerCount)}
                     </span>
                   </span>
                   <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />

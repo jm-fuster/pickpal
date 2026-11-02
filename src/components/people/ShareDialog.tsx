@@ -134,7 +134,7 @@ export function ShareDialog({
             Quien tenga acceso ve y edita la ficha entera: intereses, marcas,
             notas, tallas, <strong>alergias y restricciones</strong>, fechas,
             historial de regalos e ideas guardadas. Las alergias pueden ser un
-            dato de salud — compártela solo con quien deba verlas.
+            dato de salud, así que compártela solo con quien deba verlas.
           </DialogDescription>
         </DialogHeader>
 
@@ -180,8 +180,8 @@ export function ShareDialog({
           ) : (
             <div className="space-y-2 rounded-lg border border-border/60 p-3">
               <p className="text-sm text-muted-foreground">
-                Te han compartido esta ficha. Puedes dejar de verla cuando quieras
-                — seguirá existiendo para el resto.
+                Te han compartido esta ficha. Si dejas de verla, el resto la
+                seguirá teniendo.
               </p>
               <Button variant="outline" onClick={handleLeave} disabled={leaving}>
                 {leaving ? "Saliendo…" : "Dejar de ver esta ficha"}

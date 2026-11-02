@@ -103,7 +103,7 @@ export default function PeoplePage() {
         <EmptyState
           icon={Notebook}
           title="Una libreta en blanco"
-          description="Empieza por alguien fácil — pareja, padres, mejor amigo. Anota sus intereses y déjanos cuidar las fechas."
+          description="Empieza por alguien cercano, como tu pareja o tu madre. Apunta lo que le gusta y sus fechas."
           cta={
             <Link href="/seres-queridos/new" className={buttonVariants({ size: "lg" })}>
               Añadir la primera persona

@@ -105,8 +105,9 @@ export function NextOccasionCard({
           </h2>
           {next ? (
             <p className="text-sm text-muted-foreground sm:text-base">
+              {/* «Mañana, 10 de septiembre · 40 – 80 €»: el cuándo y el día son una frase; el punto solo separa el dinero. */}
               <span className={cn(urgent && "font-medium text-foreground")}>{occasionWhen(next.days)}</span>
-              {" · "}
+              {", "}
               {formatDayMonth(next.event.month, next.event.day)}
               {budget && ` · ${budget}`}
             </p>

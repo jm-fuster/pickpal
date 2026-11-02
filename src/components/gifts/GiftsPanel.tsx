@@ -350,7 +350,7 @@ export function GiftsPanel({
     const args = { personId, occasionLabel: occasion, giftType, ideaTitle: idea.title, ideaCategories };
     pendingDiscards.current.set(idea.title, { idea, insertAt: displayIndex, args });
 
-    toast("Descartada — la IA evitará ideas parecidas", {
+    toast("Descartada. Las próximas ideas evitarán otras parecidas.", {
       duration: Infinity,
       action: {
         label: "Deshacer",
@@ -394,7 +394,7 @@ export function GiftsPanel({
           )}
           <h1 className="text-4xl font-medium leading-tight">Ideas de regalo</h1>
           <p className="text-sm text-muted-foreground">
-            Sugerencias personalizadas con sus intereses, notas y presupuesto.
+            Ideas a partir de sus intereses, sus notas y tu presupuesto.
           </p>
         </div>
       )}
@@ -597,7 +597,7 @@ export function GiftsPanel({
         <EmptyState
           icon={Sparkles}
           title="Sin eventos todavía"
-          description="Para generar ideas necesitas al menos un evento — cumpleaños, aniversario, lo que sea."
+          description="Las ideas se piensan para una ocasión. Apunta su cumpleaños, un aniversario o cualquier otra fecha."
           cta={
             <Link
               href={`/seres-queridos/${personId}`}

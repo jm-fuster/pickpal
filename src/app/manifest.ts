@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "PickPal",
     short_name: "PickPal",
     description:
-      "Recuerda fechas importantes y recibe ideas de regalo personalizadas con IA.",
+      "Apunta lo que sabes de cada persona y sus fechas. PickPal te avisa cuando se acercan y te propone ideas de regalo.",
     start_url: "/",
     display: "standalone",
     // «Compartir» del móvil → PickPal, con la app instalada (Android; iPhone no

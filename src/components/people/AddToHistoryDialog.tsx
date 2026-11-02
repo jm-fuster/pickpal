@@ -102,7 +102,7 @@ export function AddToHistoryDialog({
           <DialogTitle>Añadir al historial de regalos</DialogTitle>
           <DialogDescription>
             {gift?.title}
-            {fixedOccasion ? ` · ${fixedOccasion}` : ""}
+            {fixedOccasion ? `, para ${fixedOccasion}` : ""}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">

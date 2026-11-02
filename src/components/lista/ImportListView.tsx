@@ -196,7 +196,7 @@ export function ImportListView({ listId, forName }: { listId?: Id<"managedLists"
       const { inserted } = await importItems(listId ? { items: rows, listId } : { items: rows });
       const message =
         `${inserted === 1 ? "1 cosa apuntada" : `${inserted} cosas apuntadas`} en ${forName ? `la lista de ${forName}` : "tu lista"}` +
-        (skipped > 0 ? ` · ${skipped} ya ${skipped === 1 ? "estaba" : "estaban"}` : "");
+        (skipped > 0 ? `. ${skipped} ya ${skipped === 1 ? "estaba" : "estaban"}` : "");
       toast.success(
         message,
         readers && readers.length === 0
@@ -443,7 +443,7 @@ function PreviewGroup({
             onChange={onToggleGroup}
             className="size-4 rounded border-input accent-primary"
           />
-          Lista {group + 1} · {things(rows.length)}
+          Lista {group + 1} ({things(rows.length)})
         </label>
       )}
       <ul className="space-y-2">

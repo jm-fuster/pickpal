@@ -270,7 +270,7 @@ export function GiftRecommendationCard({
                   </div>
                   {isFallback && (
                     <p className="text-2xs text-muted-foreground">
-                      Búsqueda genérica — esta idea encaja mejor en otras tiendas.
+                      Búsqueda genérica. Esta idea encaja mejor en otras tiendas.
                     </p>
                   )}
                 </div>

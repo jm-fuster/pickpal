@@ -47,7 +47,7 @@ export function BlockedLists() {
               <span className="min-w-0 truncate">
                 {label}
                 {b.ownerName && b.ownerEmail && (
-                  <span className="text-muted-foreground"> · {b.ownerEmail}</span>
+                  <span className="text-muted-foreground"> ({b.ownerEmail})</span>
                 )}
               </span>
               <Button variant="ghost" size="sm" className="shrink-0" onClick={() => handleUnblock(b.blockId, label)}>
