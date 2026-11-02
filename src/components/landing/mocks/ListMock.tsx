@@ -1,5 +1,6 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { ChevronRight, Ellipsis, Gift, Heart, PencilLine, Plus } from "lucide-react";
+import { Count } from "@/components/layout/Count";
 import { badgeVariants } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { MockFrame } from "@/components/landing/MockFrame";
@@ -40,7 +41,7 @@ function Tile({ item, corner, footer }: { item: ListEntry; corner?: ReactNode; f
     <div className="relative flex h-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card">
       <ItemVisual title={item.title} className="h-24 w-full" iconSize="size-9" />
       <div className={cn("flex flex-col gap-1 px-3 pt-2.5", !footer && "pb-3")}>
-        <p className="line-clamp-2 text-[15px] leading-snug font-medium">{item.title}</p>
+        <p className="line-clamp-2 text-base leading-snug font-medium">{item.title}</p>
         <p className="truncate text-sm text-muted-foreground">{item.price}</p>
       </div>
       {corner && <span className="absolute top-2 right-2">{corner}</span>}
@@ -67,13 +68,8 @@ function Row({ item, action }: { item: ListEntry; action: ReactNode }) {
   );
 }
 
-function GroupLabel({ favorite, muted, children }: { favorite?: boolean; muted?: boolean; children: ReactNode }) {
-  return (
-    <p className={cn("flex items-center gap-1.5 font-sans text-sm font-medium", muted && "text-muted-foreground")}>
-      {favorite && <Heart className="size-3.5 text-brand-secondary" />}
-      {children}
-    </p>
-  );
+function GroupLabel({ muted, children }: { muted?: boolean; children: ReactNode }) {
+  return <p className={cn("font-sans text-sm font-medium", muted && "text-muted-foreground")}>{children}</p>;
 }
 
 function GiftCircle() {
@@ -87,7 +83,7 @@ function GiftCircle() {
 function HeartToggle({ on, overlay }: { on: boolean; overlay?: boolean }) {
   return (
     <span className={cn("grid size-8 shrink-0 place-items-center rounded-full", overlay && "bg-card/90")}>
-      <Heart className={cn("size-[18px]", on ? "fill-current text-brand-secondary" : "text-subtle-foreground")} />
+      <Heart className={cn("size-4.5", on ? "fill-current text-brand-secondary" : "text-subtle-foreground")} />
     </span>
   );
 }
@@ -106,7 +102,7 @@ export function ListOwnerMock(props: MockProps) {
       <Card className="@container shadow-sm">
         <CardContent className="space-y-5 p-5">
           <div className="flex items-start gap-2">
-            <p className="min-w-0 flex-1 font-heading text-[17px] leading-snug">«{LIST.about}»</p>
+            <p className="min-w-0 flex-1 font-heading text-lg leading-snug">«{LIST.about}»</p>
             <FakeIconButton icon={PencilLine} />
             <FakeIconButton icon={Ellipsis} />
           </div>
@@ -117,9 +113,9 @@ export function ListOwnerMock(props: MockProps) {
           </div>
 
           <div className="space-y-3">
-            <GroupLabel favorite>
+            <GroupLabel>
               Lo que más ilusión te haría
-              <span className="font-normal text-muted-foreground">· {LIST.top.length} de 5</span>
+              <Count>{LIST.top.length} de 5</Count>
             </GroupLabel>
             <Showcase>
               {LIST.top.map((item) => (
@@ -179,20 +175,20 @@ export function ListReaderMock(props: MockProps) {
             <p className="text-xs text-muted-foreground">{PERSON.name} no ve lo que marcas.</p>
           </div>
 
-          <p className="font-heading text-[17px] leading-snug">«{LIST.about}»</p>
+          <p className="font-heading text-lg leading-snug">«{LIST.about}»</p>
 
           <div className="flex flex-wrap gap-2">
             <span className="h-8 rounded-full border border-primary bg-primary px-3.5 text-sm leading-[30px] text-primary-foreground">
               Todo
             </span>
             <span className="h-8 rounded-full border border-input px-3.5 text-sm leading-[30px] text-muted-foreground">
-              En tu presupuesto · {LIST.fitCount}
+              En tu presupuesto<Count>{LIST.fitCount}</Count>
             </span>
           </div>
 
           <div className="space-y-5">
             <div className="space-y-3">
-              <GroupLabel favorite>Lo que más ilusión le haría</GroupLabel>
+              <GroupLabel>Lo que más ilusión le haría</GroupLabel>
               <Showcase>
                 {READER_TOP.map((item) => (
                   <div key={item.title} className="w-52 shrink-0">
@@ -224,7 +220,7 @@ export function ListReaderMock(props: MockProps) {
           <div className="border-t border-border/60 pt-1">
             <p className="flex min-h-11 items-center gap-2 text-sm text-muted-foreground">
               <ChevronRight className="size-4" />
-              Ya lo regala otra persona · {TAKEN.length}
+              Ya lo regala otra persona<Count>{TAKEN.length}</Count>
             </p>
           </div>
         </CardContent>

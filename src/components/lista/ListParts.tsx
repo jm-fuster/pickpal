@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ArrowUpRight, Check, ExternalLink, Gift, Heart, X } from "lucide-react";
+import { ArrowUpRight, Camera, Check, ExternalLink, Gift, Heart, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import type { MenuAction, MenuGroup } from "@/components/people/ActionMenu";
@@ -18,13 +18,35 @@ import { cn } from "@/lib/utils";
 // con una baldosa y una sola acción, y todo lo demás vive en la hoja que se
 // abre al tocar una cosa.
 
-/** «unos 25 € · amazon.es»: lo que cabe bajo el título, sin enlaces. */
-export function itemMeta(item: { priceCents: number | null; url?: string | null }): string | null {
-  const parts = [
-    item.priceCents !== null ? formatApproxPrice(item.priceCents) : null,
-    item.url ? linkHostname(item.url) : null,
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join(" · ") : null;
+type MetaSource = { priceCents: number | null; url?: string | null };
+
+/** Si hay precio o un enlace con dominio que enseñar bajo el título. */
+export const hasItemMeta = (item: MetaSource) =>
+  item.priceCents !== null || (item.url ? linkHostname(item.url) !== null : false);
+
+/**
+ * «unos 25 €» y la tienda, con su logo si es una de las conocidas: lo que cabe
+ * bajo el título, sin enlaces (el enlace está en la hoja). El logo distingue
+ * cosas que comparten baldosa, y separa precio y tienda sin un punto medio.
+ */
+export function ItemMeta({ item }: { item: MetaSource }) {
+  const host = item.url ? linkHostname(item.url) : null;
+  const store = item.url ? storeIdForUrl(item.url) : null;
+  if (item.priceCents === null && !host) return null;
+  return (
+    <span className="inline-flex max-w-full min-w-0 items-center gap-2 align-bottom">
+      {item.priceCents !== null && <span className="shrink-0">{formatApproxPrice(item.priceCents)}</span>}
+      {host && (
+        <span className="inline-flex min-w-0 items-center gap-1">
+          {store && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={STORE_ICONS[store]} alt="" aria-hidden className="size-3.5 shrink-0 rounded-sm bg-white object-contain p-px" />
+          )}
+          <span className="truncate">{host}</span>
+        </span>
+      )}
+    </span>
+  );
 }
 
 /**
@@ -34,11 +56,14 @@ export function itemMeta(item: { priceCents: number | null; url?: string | null 
 export const SHOWCASE = "-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-1 @xl:grid @xl:grid-cols-3 @xl:overflow-visible";
 export const SHOWCASE_ITEM = "w-52 shrink-0 snap-start @xl:w-auto";
 
-/** Rótulo de un grupo de la lista: «Lo que más ilusión le haría», «El resto». */
-export function GroupTitle({ id, favorite, muted, children }: { id: string; favorite?: boolean; muted?: boolean; children: ReactNode }) {
+/**
+ * Rótulo de un grupo de la lista: «Lo que más ilusión le haría», «El resto».
+ * Sin icono delante: el ♡ repetía lo que dice el texto y, en «Mi lista», se
+ * confundía con los corazones que sí se pulsan.
+ */
+export function GroupTitle({ id, muted, children }: { id: string; muted?: boolean; children: ReactNode }) {
   return (
-    <h3 id={id} className={cn("flex items-center gap-1.5 font-sans text-sm font-medium", muted && "text-muted-foreground")}>
-      {favorite && <Heart className="size-3.5 text-brand-secondary" aria-hidden />}
+    <h3 id={id} className={cn("font-sans text-sm font-medium", muted && "text-muted-foreground")}>
       {children}
     </h3>
   );
@@ -46,8 +71,9 @@ export function GroupTitle({ id, favorite, muted, children }: { id: string; favo
 
 /**
  * Una tarjeta del escaparate. Tocar la imagen o el título abre la hoja; el pie
- * lleva la acción que no puede esperar («Lo regalo yo»), y la esquina, el
- * corazón de quien la escribe.
+ * lleva la acción que no puede esperar («Lo regalo yo»); la esquina, el
+ * corazón de quien la escribe, y abajo a la izquierda de la imagen, la cámara
+ * si aún no tiene foto.
  */
 export function ShowcaseTile({
   visual,
@@ -55,6 +81,7 @@ export function ShowcaseTile({
   meta,
   badge,
   corner,
+  visualAction,
   footer,
   dimmed,
   onOpen,
@@ -64,6 +91,8 @@ export function ShowcaseTile({
   meta?: ReactNode;
   badge?: ReactNode;
   corner?: ReactNode;
+  /** Sobre la imagen, abajo a la izquierda: «Añadir una foto». */
+  visualAction?: ReactNode;
   footer?: ReactNode;
   dimmed?: boolean;
   onOpen: () => void;
@@ -73,14 +102,37 @@ export function ShowcaseTile({
       <button type="button" onClick={onOpen} className="flex flex-1 flex-col text-left -outline-offset-2">
         <VisualBox visual={visual} className={cn("h-28 w-full", dimmed && "opacity-60")} iconSize="size-10" />
         <span className={cn("flex flex-col gap-1 px-3 pt-2.5", !footer && "pb-3")}>
-          <span className="line-clamp-2 text-[15px] leading-snug font-medium">{title}</span>
+          <span className="line-clamp-2 text-base leading-snug font-medium">{title}</span>
           {meta && <span className="truncate text-sm text-muted-foreground">{meta}</span>}
         </span>
       </button>
       {badge && <span className="pointer-events-none absolute top-2 left-2">{badge}</span>}
       {corner && <span className="absolute top-2 right-2">{corner}</span>}
+      {/* La imagen mide h-28 (112): 112 − 8 de margen − 32 del botón = 72. */}
+      {visualAction && <span className="absolute top-18 left-2">{visualAction}</span>}
       {footer && <div className="mt-auto px-3 pt-3 pb-3">{footer}</div>}
     </article>
+  );
+}
+
+/**
+ * La cámara sobre una tarjeta sin foto, en la vista de quien la escribe. La
+ * baldosa de categoría repite icono entre cosas parecidas (tres tazas en una
+ * lista de café); una foto es lo único que las distingue, así que se pide
+ * donde más se ve, en lo que más ilusión le haría. Solo icono: con cinco
+ * tarjetas sin foto, cinco «Añadir foto» escritos serían otra pared de texto.
+ */
+export function AddPhotoButton({ title, onClick }: { title: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Añadir una foto: ${title}`}
+      title="Añadir una foto"
+      className="relative grid size-8 place-items-center rounded-full bg-card/90 text-muted-foreground transition-[background-color,color,translate] hover:bg-card hover:text-foreground active:translate-y-px pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5"
+    >
+      <Camera className="size-4" aria-hidden />
+    </button>
   );
 }
 
@@ -214,7 +266,7 @@ export function FavoriteToggle({
       )}
     >
       <Heart
-        className={cn("size-[18px]", on ? "fill-current text-brand-secondary" : "text-subtle-foreground")}
+        className={cn("size-4.5", on ? "fill-current text-brand-secondary" : "text-subtle-foreground")}
         aria-hidden
       />
     </button>
@@ -238,7 +290,7 @@ export function ItemSheet({
   onOpenChange: (open: boolean) => void;
   visual: Visual;
   title: string;
-  meta?: string | null;
+  meta?: ReactNode;
   children: ReactNode;
 }) {
   return (

@@ -1,6 +1,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import type { VariantProps } from "class-variance-authority";
 import { Ellipsis, Gift, NotebookPen, type LucideIcon } from "lucide-react";
+import { Count } from "@/components/layout/Count";
 import { badgeVariants } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import type { BeatProps } from "@/components/landing/motion";
@@ -214,7 +215,7 @@ export function OccasionCard({
         </div>
         <div className="space-y-3">
           <p className="text-sm font-medium" {...countBeat}>
-            Lo que tienes pensado<span className="font-normal text-muted-foreground"> · {count}</span>
+            Lo que tienes pensado<Count>{count}</Count>
           </p>
           <div className="grid grid-cols-3 gap-2">{children}</div>
         </div>

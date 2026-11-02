@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ListItemLink } from "@/components/lista/ListItemLink";
 import { AddRowButton } from "@/components/layout/AddRowButton";
+import { Count } from "@/components/layout/Count";
 import { ActionMenu } from "@/components/people/ActionMenu";
 import { OwnIdeaForm } from "@/components/people/OwnIdeaForm";
 import {
@@ -152,7 +153,7 @@ export function NextOccasionCard({
       {(next || count > 0) && (
         <div className="space-y-3">
           <p className="text-sm font-medium">
-            Lo que tienes pensado{count > 0 && <span className="font-normal text-muted-foreground"> · {count}</span>}
+            Lo que tienes pensado{count > 0 && <Count>{count}</Count>}
           </p>
           {/* En el móvil, carrusel; con sitio, rejilla. */}
           <ul className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-1 @2xl:grid @2xl:grid-cols-3 @2xl:overflow-visible @4xl:grid-cols-4">
@@ -232,7 +233,7 @@ function ItemTile({
       <VisualBox visual={itemVisual(item)} className="h-24 w-full @2xl:h-28" />
       <div className="flex flex-1 flex-col gap-1 p-3 pt-2">
         <TileHead origin="De su lista" menu={<ActionMenu label={`Más acciones para ${item.title}`} groups={groups} />} />
-        <h3 className="line-clamp-2 font-sans text-[15px] leading-snug font-medium">{item.title}</h3>
+        <h3 className="line-clamp-2 font-sans text-base leading-snug font-medium">{item.title}</h3>
         {item.priceCents !== null && (
           <p className="text-sm text-muted-foreground">{formatApproxPrice(item.priceCents)}</p>
         )}
@@ -284,7 +285,7 @@ function IdeaTile({
       <VisualBox visual={ideaVisual(idea)} className="h-24 w-full @2xl:h-28" />
       <div className="flex flex-1 flex-col gap-1 p-3 pt-2">
         <TileHead origin={ideaOrigin(idea)} menu={<ActionMenu label={`Más acciones para ${idea.title}`} groups={groups} />} />
-        <h3 className="line-clamp-2 font-sans text-[15px] leading-snug font-medium">{idea.title}</h3>
+        <h3 className="line-clamp-2 font-sans text-base leading-snug font-medium">{idea.title}</h3>
         {price && <p className="text-sm text-muted-foreground">{price}</p>}
         {isOwnIdea(idea) ? (
           <>

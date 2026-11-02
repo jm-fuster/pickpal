@@ -22,13 +22,15 @@ import {
   GroupTitle,
   ItemRow,
   ItemSheet,
-  itemMeta,
+  hasItemMeta,
+  ItemMeta,
   SheetActions,
   SheetLinkRow,
   SHOWCASE,
   SHOWCASE_ITEM,
   ShowcaseTile,
 } from "@/components/lista/ListParts";
+import { Count } from "@/components/layout/Count";
 import { ActionMenu, type MenuGroup } from "@/components/people/ActionMenu";
 import {
   itemVisual,
@@ -240,13 +242,13 @@ export function SharedListSection({
     if (item.state === "mine") {
       return (
         <span className="text-brand-secondary">
-          {item.occasionLabel ? `Lo regalas tú · para ${item.occasionLabel}` : "Lo regalas tú"}
+          {item.occasionLabel ? `Lo regalas tú, para ${item.occasionLabel}` : "Lo regalas tú"}
         </span>
       );
     }
     if (item.state === "given") return "Regalado";
     if (item.state === "taken") return "Ya lo regala otra persona";
-    return itemMeta(item) ?? item.note ?? null;
+    return hasItemMeta(item) ? <ItemMeta item={item} /> : (item.note ?? null);
   };
 
   const renderRow = (item: SharedItem) => (
@@ -286,7 +288,7 @@ export function SharedListSection({
       {list.about && (
         // Su nota, con su voz: la letra de los titulares y sin «Marta:» delante,
         // porque la sección ya dice de quién es la lista.
-        <p className="font-heading text-[17px] leading-snug whitespace-pre-line">
+        <p className="font-heading text-lg leading-snug whitespace-pre-line">
           <span className="sr-only">{name} dice: </span>«{list.about}»
         </p>
       )}
@@ -319,7 +321,7 @@ export function SharedListSection({
                 : `Lo que encaja en el presupuesto que tienes para ${name}`
             }
           >
-            En tu presupuesto · {fitting}
+            En tu presupuesto<Count inverted={budgetOn}>{fitting}</Count>
           </FilterChip>
         </div>
       )}
@@ -332,7 +334,7 @@ export function SharedListSection({
         <div className="space-y-5">
           {favorites.length > 0 && (
             <section aria-labelledby={`${groupId}-mas-ilusion`} className="space-y-3">
-              <GroupTitle id={`${groupId}-mas-ilusion`} favorite>
+              <GroupTitle id={`${groupId}-mas-ilusion`}>
                 Lo que más ilusión le haría
               </GroupTitle>
               <ul className={SHOWCASE}>
@@ -341,7 +343,7 @@ export function SharedListSection({
                     <ShowcaseTile
                       visual={itemVisual(item)}
                       title={item.title}
-                      meta={itemMeta(item)}
+                      meta={<ItemMeta item={item} />}
                       badge={tileBadge(item)}
                       footer={tileFooter(item)}
                       onOpen={() => open(item._id)}
@@ -402,7 +404,7 @@ export function SharedListSection({
             className="flex min-h-11 w-full items-center gap-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronRight className={cn("size-4 transition-transform", showTaken && "rotate-90")} aria-hidden />
-            Ya lo regala otra persona · {taken.length}
+            Ya lo regala otra persona<Count>{taken.length}</Count>
           </button>
           {showTaken && (
             <ul id={`${groupId}-cogido`}>{taken.map(renderRow)}</ul>
@@ -416,7 +418,7 @@ export function SharedListSection({
           onOpenChange={(o) => (o ? null : closeSheet())}
           visual={itemVisual(sheetItem)}
           title={sheetItem.title}
-          meta={itemMeta(sheetItem)}
+          meta={<ItemMeta item={sheetItem} />}
         >
           <SharedItemSheetBody
             item={sheetItem}

@@ -29,6 +29,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AddRowButton } from "@/components/layout/AddRowButton";
+import { Count } from "@/components/layout/Count";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ActionMenu, type MenuGroup } from "@/components/people/ActionMenu";
 import { AddToHistoryDialog, type HistoryValues } from "@/components/people/AddToHistoryDialog";
@@ -37,11 +38,13 @@ import { ListReaders } from "@/components/lista/ListReaders";
 import { AboutNote } from "@/components/lista/AboutNote";
 import { OwnerBirthday } from "@/components/lista/OwnerBirthday";
 import {
+  AddPhotoButton,
   FavoriteToggle,
   GroupTitle,
   ItemRow,
   ItemSheet,
-  itemMeta,
+  hasItemMeta,
+  ItemMeta,
   SheetActions,
   SheetLinkRow,
   SHOWCASE,
@@ -331,9 +334,9 @@ export function OwnerListView({
 
   const sub = (item: Item) => {
     if (uploadingId === item._id) return <span role="status">Subiendo la foto…</span>;
-    const meta = itemMeta(item) ?? item.note ?? null;
+    const meta = hasItemMeta(item) ? <ItemMeta item={item} /> : (item.note ?? null);
     const line = claimLine(item);
-    if (line && meta) return <>{line} · {meta}</>;
+    if (line && meta) return <>{line}, {meta}</>;
     return line ?? meta;
   };
 
@@ -448,11 +451,11 @@ export function OwnerListView({
 
             {favorites.length > 0 && (
               <section aria-labelledby={`${t.idPrefix}-mas-ilusion`} className="space-y-3">
-                <GroupTitle id={`${t.idPrefix}-mas-ilusion`} favorite>
+                <GroupTitle id={`${t.idPrefix}-mas-ilusion`}>
                   {t.top}
-                  <span className="font-normal text-muted-foreground">
-                    · {favoriteCount} de {MAX_LIST_FAVORITES}
-                  </span>
+                  <Count>
+                    {favoriteCount} de {MAX_LIST_FAVORITES}
+                  </Count>
                 </GroupTitle>
                 {editingFavorite && editForm(editingFavorite)}
                 <ul className={SHOWCASE}>
@@ -468,6 +471,11 @@ export function OwnerListView({
                         meta={sub(item)}
                         dimmed={item.state === "taken"}
                         corner={<FavoriteToggle {...heart(item)} overlay />}
+                        visualAction={
+                          !item.photoUrl && uploadingId !== item._id ? (
+                            <AddPhotoButton title={item.title} onClick={() => pickPhoto(item)} />
+                          ) : null
+                        }
                         onOpen={() => open(item._id)}
                       />
                     </li>
@@ -516,7 +524,7 @@ export function OwnerListView({
           onOpenChange={(o) => (o ? null : closeSheet())}
           visual={itemVisual(sheetItem)}
           title={sheetItem.title}
-          meta={itemMeta(sheetItem)}
+          meta={<ItemMeta item={sheetItem} />}
         >
           {sheetItem.note && <p className="whitespace-pre-line text-sm text-muted-foreground">{sheetItem.note}</p>}
           {managed && sheetItem.state === "taken" && (
