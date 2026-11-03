@@ -97,7 +97,8 @@ const GIFT_IMAGES: Record<GiftImageKey, GiftImageVisual> = {
 };
 
 // Ideas persistidas antes de que existiera imageKey: fallback por tipo de
-// regalo, con los mismos iconos que las tarjetas de tipo del GiftsPanel.
+// regalo, con los iconos que llevaban las fichas de tipo del GiftsPanel hasta
+// el 3-nov-2026 (desde entonces el tipo es un filtro sin iconos).
 const TYPE_FALLBACK: Record<GiftType, GiftImageVisual> = {
   fisica: entry(ShoppingBag, "terracotta"),
   experiencia: entry(Ticket, "green"),

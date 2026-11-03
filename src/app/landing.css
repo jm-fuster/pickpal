@@ -11,13 +11,13 @@
 
 [data-landing] ::selection { background-color: color-mix(in oklab, var(--chart-3) 40%, transparent); }
 
-/* Selector de tipo de regalo: funciona sin JS. Sin :has() se queda en «Producto físico». */
-[data-landing] [data-set]:not([data-set="fisica"]) { display: none; }
+/* Filtro por tipo de las ideas: funciona sin JS. Sin :has() se queda en «Todas» (sorprendeme). */
+[data-landing] [data-set]:not([data-set="sorprendeme"]) { display: none; }
 @supports selector(:has(*)) {
-  [data-landing] [data-switcher]:has(input:not([value="fisica"]):checked) [data-set="fisica"] { display: none; }
+  [data-landing] [data-switcher]:has(input:not([value="sorprendeme"]):checked) [data-set="sorprendeme"] { display: none; }
+  [data-landing] [data-switcher]:has(input[value="fisica"]:checked) [data-set="fisica"],
   [data-landing] [data-switcher]:has(input[value="experiencia"]:checked) [data-set="experiencia"],
-  [data-landing] [data-switcher]:has(input[value="tiempo-juntos"]:checked) [data-set="tiempo-juntos"],
-  [data-landing] [data-switcher]:has(input[value="sorprendeme"]:checked) [data-set="sorprendeme"] { display: grid; }
+  [data-landing] [data-switcher]:has(input[value="tiempo-juntos"]:checked) [data-set="tiempo-juntos"] { display: grid; }
 }
 
 @keyframes landing-rise      { from { opacity: 0; translate: 0 0.75rem; } }

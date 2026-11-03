@@ -118,6 +118,10 @@ export default defineSchema({
             }),
           ),
         ),
+        // Qué es la idea en una tanda mezclada: fisica, experiencia o
+        // tiempo-juntos (ALLOWED_IDEA_KINDS). Opcional: las tandas anteriores
+        // al 3-nov-2026 no lo traen y el cliente lo deduce (ideaKindOf).
+        giftType: v.optional(v.string()),
       }),
     ),
     // Lo que quien regala descartó de esta tanda; va al prompt para no repetirlo.

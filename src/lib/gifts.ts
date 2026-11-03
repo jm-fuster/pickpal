@@ -5,6 +5,8 @@ import { STORE_IDS } from "./stores";
 export { GIFT_IMAGE_KEYS, GIFT_TYPES } from "./giftCatalog";
 export type { GiftImageKey, GiftType } from "./giftCatalog";
 
+const IDEA_KIND_VALUES = ["fisica", "experiencia", "tiempo-juntos"] as const;
+
 const baseRecommendationSchema = z.object({
   title: z.string().min(1).max(80),
   description: z.string().min(1).max(280),
@@ -78,6 +80,9 @@ export const giftRecommendationSchema = baseRecommendationSchema.extend({
   imageKey: z.enum(GIFT_IMAGE_KEYS).optional(),
   image: giftStockImageSchema.optional(),
   matchedBrandStores: z.array(matchedBrandStoreSchema).max(10).optional(),
+  // Qué es la idea en una tanda mezclada. Ausente en las anteriores al
+  // 3-nov-2026; la UI lo deduce con ideaKindOf.
+  giftType: z.enum(IDEA_KIND_VALUES).optional(),
 });
 
 // El prompt pide 9 ideas, pero aceptamos 6–9: una tanda con alguna idea de
@@ -90,6 +95,16 @@ export const giftRecommendationsSchema = z.object({
 
 export const giftRecommendationsSchemaNoStores = z.object({
   ideas: z.array(generatedIdeaSchema).min(6).max(9),
+});
+
+// La tanda mezclada: cada idea dice qué es, para el filtro y los botones de la
+// tarjeta. Obligatorio en generación, por lo mismo que imageKey: un enum
+// opcional hace fallar a Gemini cuando intenta omitirlo.
+export const giftRecommendationsSchemaMixed = z.object({
+  ideas: z
+    .array(recommendationWithStoresSchema.extend({ giftType: z.enum(IDEA_KIND_VALUES) }))
+    .min(6)
+    .max(9),
 });
 
 export type GiftRecommendation = z.infer<typeof giftRecommendationSchema>;

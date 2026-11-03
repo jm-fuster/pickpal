@@ -28,10 +28,12 @@ apuntando sobre esa persona en ideas concretas para esa ocasión y ese presupues
    antelación quieres recibirlos (0, 2, 7 o 14 días; puedes marcar varias). Un
    cron diario en Convex manda un único correo agrupado vía Resend. Detalle en
    [`email-notifications.md`](email-notifications.md).
-5. En la página de ideas de cada persona eliges la ocasión y uno de los cuatro
-   tipos de regalo, y la IA propone ideas con rango de precio. **Pide nueve y
-   acepta entre seis y nueve**, descartando títulos repetidos. Las de producto
-   físico traen enlaces de búsqueda a las tiendas que hayas elegido.
+5. En la página de ideas de cada persona eliges la ocasión y la IA propone una
+   tanda mezclada (cosas que comprar, experiencias y planes) con rango de
+   precio, que puedes filtrar por tipo. **Pide nueve y acepta entre seis y
+   nueve**, descartando títulos repetidos. Las que se compran traen enlaces de
+   búsqueda a las tiendas que hayas elegido, ordenados por valoración donde la
+   tienda lo hace bien.
 6. Cada idea se guarda o se descarta. Lo descartado enseña a la siguiente tanda
    qué evitar; lo guardado pasa al historial de regalos cuando lo regalas de
    verdad, y ese historial vuelve a entrar en la siguiente generación.

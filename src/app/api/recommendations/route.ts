@@ -7,7 +7,13 @@ import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { giftRecommendationsSchema, giftRecommendationsSchemaNoStores, GIFT_TYPES, type GiftType } from "@/lib/gifts";
+import {
+  giftRecommendationsSchema,
+  giftRecommendationsSchemaMixed,
+  giftRecommendationsSchemaNoStores,
+  GIFT_TYPES,
+  type GiftType,
+} from "@/lib/gifts";
 import { RELATIONSHIPS, REACTIONS } from "@/lib/schemas";
 import { STORE_IDS } from "@/lib/stores";
 import { matchFavoriteBrands, normalizeBrandDomain } from "@/lib/brands";
@@ -128,10 +134,15 @@ ${placeRule}
 - Los precios deben ser bajos o cero (experiencias sin coste o materiales mínimos).
 - Omite "suggestedStores" en este tipo de ideas (no aplica).
 - "category" debe referenciar los intereses concretos de la persona que motivan el plan (ej: ["Leer"], ["Cocina"]). Si el plan no encaja con ningún interés definido, usa una etiqueta específica al plan (ej: ["Paseo al atardecer"], no ["Romántico"]).`,
-    sorprendeme: `- Mezcla libremente productos físicos, experiencias y planes juntos. Varía el tipo entre las 9 ideas.
-- Para productos: "amazonQuery" útil para buscar online y rellena "suggestedStores" siguiendo los criterios. Para experiencias/planes: "amazonQuery" útil para Google y omite "suggestedStores".
+    // La tanda de cada ocasión desde el 3-nov-2026: el tipo ya no se elige
+    // antes de generar, filtra después (IDEA_KINDS en giftCatalog.ts).
+    sorprendeme: `- Mezcla cosas para comprar, experiencias y planes. Por defecto, unas 6 para comprar, 2 experiencias y 1 plan; ajusta la mezcla a la relación y al presupuesto (con un compañero de trabajo, ningún plan íntimo; con la pareja, algún plan más; con un presupuesto muy bajo, más planes caseros).
+- "giftType" de cada idea: "fisica" si es un producto que se compra y se envuelve; "experiencia" si es una actividad que se paga (cena, taller, escapada, concierto…); "tiempo-juntos" si es un plan gratuito o casero para hacer juntos.
+- Ordena las ideas de la que mejor encaja a la que menos, sin agruparlas por tipo.
+- Para productos: "amazonQuery" útil para buscar online y rellena "suggestedStores" siguiendo los criterios. Para experiencias y planes: "amazonQuery" útil para Google y omite "suggestedStores".
 ${placeRule}
 - Si la idea es ropa o calzado y conoces la talla, inclúyela en "amazonQuery".
+- Los planes, con precios bajos o cero.
 ${storesGuide}`,
   };
 
@@ -508,7 +519,12 @@ export async function POST(req: NextRequest) {
       // lento que responde al rápido que devuelve 503 a mitad de una
       // generación que ya reservó cuota.
       model: google("gemini-3.5-flash"),
-      schema: noStores ? giftRecommendationsSchemaNoStores : giftRecommendationsSchema,
+      schema:
+        giftType === "sorprendeme"
+          ? giftRecommendationsSchemaMixed
+          : noStores
+            ? giftRecommendationsSchemaNoStores
+            : giftRecommendationsSchema,
       prompt,
       // Razonamiento dinámico: se deja en el default del modelo. Con 2.5,
       // desactivarlo con `thinkingBudget: 0` degradaba la fiabilidad del

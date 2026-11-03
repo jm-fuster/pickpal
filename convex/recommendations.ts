@@ -36,6 +36,8 @@ const ideaValidator = v.object({
       }),
     ),
   ),
+  // Qué es la idea en una tanda mezclada; validado en validateRecommendationIdeas.
+  giftType: v.optional(v.string()),
 });
 
 export const getByPersonOccasion = query({

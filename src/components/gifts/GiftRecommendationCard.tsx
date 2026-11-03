@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bookmark, ExternalLink, Tags, X } from "lucide-react";
+import { Bookmark, ChevronDown, ExternalLink, Tags, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -19,6 +19,7 @@ import {
 } from "@/lib/stores";
 import { resolveGiftImage } from "@/lib/giftImages";
 import type { GiftRecommendation, GiftType } from "@/lib/gifts";
+import { ideaKindOf } from "@/lib/giftCatalog";
 
 const formatRange = (min: number, max: number) =>
   min === max
@@ -84,8 +85,12 @@ export function GiftRecommendationCard({
     setJustSaved(saved);
   }
 
-  const isPhysical = giftType === "fisica";
-  const isSurprise = giftType === "sorprendeme";
+  // El tipo es de cada idea, no de la tanda. Hasta el 3-nov-2026 se miraba el
+  // de la tanda, y en «Sorpréndeme» los productos salían con «Buscar» en Google
+  // y sin tiendas.
+  const kind = ideaKindOf(idea, giftType);
+  const isPhysical = kind === "fisica";
+  const [otherStoresOpen, setOtherStoresOpen] = useState(false);
 
   // Cierra el círculo: si la IA usó de verdad una marca favorita, la card lo
   // muestra (heurística sobre el texto que ya devolvió, sin pedirle nada extra).
@@ -113,13 +118,14 @@ export function GiftRecommendationCard({
     idea.suggestedStores ?? undefined,
   );
 
-  const nonPhysicalLabel = isSurprise
-    ? "Buscar"
-    : giftType === "tiempo-juntos"
-      ? "Ideas"
-      : "Buscar";
+  // A la vista, dos tiendas; las demás y la comparación de precios, bajo «Otras
+  // tiendas», como en la lista de otra persona.
+  const shownStores = storesToRender.slice(0, 2);
+  const moreStores = storesToRender.slice(2);
 
-  const visual = resolveGiftImage(idea.imageKey, giftType);
+  const nonPhysicalLabel = kind === "tiempo-juntos" ? "Ideas" : "Buscar";
+
+  const visual = resolveGiftImage(idea.imageKey, kind);
   const VisualIcon = visual.icon;
   // Foto de stock rota (CDN caducado, red): cae a la cabecera de icono.
   const [photoFailed, setPhotoFailed] = useState(false);
@@ -294,37 +300,90 @@ export function GiftRecommendationCard({
                       <ExternalLink className="size-3.5 shrink-0" aria-hidden />
                     </a>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      {storesToRender.map((store, i) => {
-                        const isLastOdd =
-                          storesToRender.length % 2 === 1 &&
-                          i === storesToRender.length - 1;
-                        return (
-                          <a
-                            key={store}
-                            href={generateStoreSearchUrl(
-                              store,
-                              idea.amazonQuery,
-                              { minEuros: idea.priceMinEuros, maxEuros: idea.priceMaxEuros },
-                              { byRating: true },
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        {shownStores.map((store, i) => {
+                          const isLastOdd =
+                            shownStores.length % 2 === 1 &&
+                            i === shownStores.length - 1;
+                          return (
+                            <a
+                              key={store}
+                              href={generateStoreSearchUrl(
+                                store,
+                                idea.amazonQuery,
+                                { minEuros: idea.priceMinEuros, maxEuros: idea.priceMaxEuros },
+                                { byRating: true },
+                              )}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Buscar ${idea.title} en ${STORE_LABELS[store]} (abre en una pestaña nueva)`}
+                              className={cn(
+                                buttonVariants({ size: "default", variant: "outline" }),
+                                "min-w-0",
+                                isLastOdd && "col-span-2",
+                              )}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={STORE_ICONS[store]} alt="" className="size-4 shrink-0 rounded-sm object-contain bg-white p-px" aria-hidden />
+                              <span className="truncate">{STORE_LABELS[store]}</span>
+                              <ExternalLink className="size-3.5 shrink-0" aria-hidden />
+                            </a>
+                          );
+                        })}
+                      </div>
+                      <div>
+                        <button
+                          type="button"
+                          aria-expanded={otherStoresOpen}
+                          onClick={() => setOtherStoresOpen((v) => !v)}
+                          className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-muted-foreground")}
+                        >
+                          Otras tiendas
+                          <ChevronDown
+                            className={cn("size-4 transition-transform", otherStoresOpen && "rotate-180")}
+                            aria-hidden
+                          />
+                        </button>
+                        {otherStoresOpen && (
+                          <div className="flex flex-col gap-3 px-2.5 pt-2">
+                            {moreStores.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-2">
+                                {moreStores.map((store) => (
+                                  <a
+                                    key={store}
+                                    href={generateStoreSearchUrl(
+                                      store,
+                                      idea.amazonQuery,
+                                      { minEuros: idea.priceMinEuros, maxEuros: idea.priceMaxEuros },
+                                      { byRating: true },
+                                    )}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label={`Buscar ${idea.title} en ${STORE_LABELS[store]} (abre en una pestaña nueva)`}
+                                    className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={STORE_ICONS[store]} alt="" aria-hidden className="size-3.5 shrink-0 rounded-sm bg-white object-contain p-px" />
+                                    {STORE_LABELS[store]}
+                                  </a>
+                                ))}
+                              </div>
                             )}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`Buscar ${idea.title} en ${STORE_LABELS[store]} (abre en una pestaña nueva)`}
-                            className={cn(
-                              buttonVariants({ size: "default", variant: "outline" }),
-                              "min-w-0",
-                              isLastOdd && "col-span-2",
-                            )}
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={STORE_ICONS[store]} alt="" className="size-4 shrink-0 rounded-sm object-contain bg-white p-px" aria-hidden />
-                            <span className="truncate">{STORE_LABELS[store]}</span>
-                            <ExternalLink className="size-3.5 shrink-0" aria-hidden />
-                          </a>
-                        );
-                      })}
-                    </div>
+                            <a
+                              href={generateCompareUrl(idea.amazonQuery)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Comparar precios de ${idea.title} en idealo.es (abre en una pestaña nueva)`}
+                              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+                            >
+                              Comparar precios en idealo.es
+                              <ExternalLink className="size-3 shrink-0" aria-hidden />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>

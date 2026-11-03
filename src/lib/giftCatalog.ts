@@ -11,6 +11,39 @@ export const GIFT_TYPES = [
 
 export type GiftType = (typeof GIFT_TYPES)[number]["value"];
 
+/**
+ * Lo que es cada idea: se compra, se vive o se hace juntos. Es el filtro de
+ * encima de las ideas y decide los botones de la tarjeta. Desde el 3-nov-2026
+ * cada ocasión tiene una sola tanda mezclada y el tipo ya no se elige antes de
+ * generar: elegirlo era decidir justo lo que el usuario venía a resolver, y
+ * cada tipo era otra tanda y otra generación del día.
+ */
+export const IDEA_KINDS = [
+  { value: "fisica", label: "Para comprar" },
+  { value: "experiencia", label: "Experiencias" },
+  { value: "tiempo-juntos", label: "Planes" },
+] as const;
+
+export type IdeaKind = (typeof IDEA_KINDS)[number]["value"];
+
+/** La tanda de cada ocasión se guarda con la clave de «Sorpréndeme», que ya era la mezcla. */
+export const MIXED_GIFT_TYPE: GiftType = "sorprendeme";
+
+/**
+ * Qué es una idea. Las anteriores al 3-nov-2026 no lo dicen: en una tanda de
+ * un solo tipo es ese tipo; en «Sorpréndeme», las que traen tiendas se
+ * compran y las demás cuentan como experiencia (las dos van a Google).
+ */
+export function ideaKindOf(
+  idea: { giftType?: string; suggestedStores?: readonly string[] },
+  batchType: GiftType,
+): IdeaKind {
+  const known = IDEA_KINDS.find((k) => k.value === idea.giftType);
+  if (known) return known.value;
+  if (batchType !== "sorprendeme") return batchType;
+  return idea.suggestedStores !== undefined ? "fisica" : "experiencia";
+}
+
 // Catálogo cerrado de claves visuales para la cabecera de las cards de ideas.
 // La IA elige una por idea (enum en el schema de generación); el mapeo
 // clave → icono lucide + tinte vive en src/lib/giftImages.ts. Espejado en

@@ -4,9 +4,8 @@
 
 ```
 Usuario → selecciona un evento del perfil (Select)
-  → elige tipo de regalo (tarjeta de tipo)
-  → click "Generar 9 ideas"
-    → POST /api/recommendations { personId, occasionLabel, giftType }
+  → click "Generar 9 ideas" (una tanda mezclada; el tipo filtra después)
+    → POST /api/recommendations { personId, occasionLabel, giftType: "sorprendeme" }
     → Busca persona en Convex (intereses, marcas favoritas, notas, tallas, alergias, dislikes)
     → Busca la importantDate cuyo label == occasionLabel (presupuesto)
     → Busca historial de regalos anteriores (para no repetir)
@@ -42,20 +41,25 @@ El presupuesto (`budgetMin` / `budgetMax`) se asocia a cada **fecha importante**
 
 ---
 
-## Tipos de regalo
+## Tipos de regalo: una tanda mezclada y un filtro
 
-Cuatro opciones mutuamente excluyentes definidas en `src/lib/giftCatalog.ts`:
+**Desde el 3-nov-2026 el tipo no se elige antes de generar.** Antes había cuatro fichas («Producto físico», «Experiencia», «Tiempo juntos», «Sorpréndeme») encima del botón, con «Producto físico» marcado de entrada. Era pedir justo lo que el usuario viene a resolver, casi nadie llegaba a ver experiencias, cada tipo era su propia tanda y cambiar de tipo costaba otra generación del día; en móvil, además, las cuatro fichas empujaban la primera idea fuera de la pantalla. Ahora cada ocasión tiene **una sola tanda mezclada** y el tipo es un filtro sobre ella. Se probó antes en el Playground del Figma (`Playground · One mixed batch`).
 
-| Valor | Icono (lucide) | Label | Descripción visible | Comportamiento del prompt |
-|---|---|---|---|---|
-| `fisica` | `ShoppingBag` | Producto físico | Algo que comprar y envolver | Productos comprables online. `amazonQuery` se usa como query de búsqueda en cada tienda favorita del usuario. |
-| `experiencia` | `Ticket` | Experiencia | Cena, taller, escapada… | Cenas, talleres, escapadas, conciertos. `amazonQuery` para Google. |
-| `tiempo-juntos` | `Heart` | Tiempo juntos | Planes sin coste o caseros | Planes gratuitos o caseros. Precios bajos o cero. |
-| `sorprendeme` | `Shuffle` | Sorpréndeme | Mezcla de los tres tipos | Mezcla libre de los tres tipos anteriores. |
+- **Clave**: la tanda se guarda con `giftType: "sorprendeme"` (`MIXED_GIFT_TYPE` en `src/lib/giftCatalog.ts`), que ya era la mezcla. Las tandas de los otros tres tipos se quedan en Convex, pero el panel ya no las pide. La API sigue aceptando los cuatro valores para que una pestaña abierta con el cliente anterior no falle.
+- **Prompt**: por defecto unas 6 ideas para comprar, 2 experiencias y 1 plan, con la mezcla ajustada a la relación y al presupuesto, ordenadas de la que mejor encaja a la que menos y sin agrupar por tipo.
+- **Tipo de cada idea**: el schema mezclado (`giftRecommendationsSchemaMixed`) pide un `giftType` por idea: `fisica`, `experiencia` o `tiempo-juntos` (`IDEA_KINDS`). Se guarda en `recommendations.ideas[].giftType` (opcional, validado contra `ALLOWED_IDEA_KINDS`) y, al guardar una idea, va a `savedIdeas.giftType`, así que la ficha sabe si enseñar tiendas. Las tandas anteriores no lo traen: `ideaKindOf` lo deduce (en una tanda de un tipo, ese tipo; en «Sorpréndeme», con tiendas se compra y sin ellas cuenta como experiencia).
+- **Filtro**: «Todas · 9», «Para comprar · 6», «Experiencias · 2», «Planes · 1», solo con los tipos que haya y solo si hay más de uno. Filtrar no gasta generación. Si el tipo elegido se queda sin ideas al descartar, vuelve a «Todas».
+- **La tarjeta mira el tipo de la idea, no el de la tanda.** Hasta este cambio, en «Sorpréndeme» `isPhysical` miraba la tanda y los productos salían con «Buscar» en Google y sin tiendas, aunque el prompt pedía `suggestedStores`.
+
+| Tipo de la idea | Filtro | Botones de la tarjeta |
+|---|---|---|
+| `fisica` | Para comprar | Hasta dos tiendas y «Otras tiendas» (el resto e idealo), o «Comparar precios en idealo» si no encaja ninguna |
+| `experiencia` | Experiencias | «Buscar» en Google |
+| `tiempo-juntos` | Planes | «Ideas» en Google |
 
 **Sin ciudad en la búsqueda (3-nov-2026).** La ficha no guarda dónde vive la persona, y los ejemplos del prompt para experiencias llevaban ciudad («cata de vinos Madrid», «taller cerámica Barcelona»), así que la IA metía una en `amazonQuery` y alguien de Valencia acababa buscando en Madrid. Ahora experiencias, planes y «Sorpréndeme» llevan la regla de no poner ciudad ni lugar, salvo que las notas digan dónde vive o dónde quiere hacerlo: Google ya ordena los resultados por la ubicación de quien busca. Si algún día hace falta precisión (alguien que regala a otra ciudad sin decirlo en las notas), lo que falta es un campo, no un ejemplo.
 
-Se muestran como tarjetas en grid 2×2 (4×1 en `sm+`) con icono, nombre y descripción corta. Sin emojis — se usan iconos de lucide-react para coherencia con el resto de la UI. Cambiar el tipo limpia las ideas en pantalla (`ideas = null`).
+La landing (`IdeasSwitcher`) enseña el mismo filtro, sin recuentos, con tres ejemplos por opción y «Todas» marcado de entrada.
 
 ---
 
@@ -73,7 +77,7 @@ Mientras la petición a Gemini está en curso (`loading === true`):
 Las ideas generadas se persisten en Convex (`tabla recommendations`) indexadas por `(clerkUserId, personId, occasionLabel, giftType)`. Esto permite:
 
 - Mostrar las últimas ideas al volver a la pantalla sin consumir cuota.
-- El botón cambia a "Regenerar" (con icono `RefreshCw`) cuando existen ideas cacheadas para la combinación seleccionada.
+- El botón cambia a "Regenerar" (con icono `RefreshCw`) cuando existen ideas cacheadas para la ocasión seleccionada (el tipo ya es siempre la tanda mezclada).
 - Un aviso informa al usuario de que regenerar consume cuota diaria.
 - Las ideas locales (state React) tienen prioridad sobre las cacheadas: `showIdeas = ideas ?? cached?.ideas`.
 
@@ -343,7 +347,7 @@ Cada orden se comprobó cargando la URL y mirando que el selector de la tienda q
 Notas:
 
 - El campo de la idea se llama `amazonQuery` por motivos legacy (antes solo existía Amazon). Su contenido ya es una query genérica de 3-6 palabras válida para cualquier tienda. Renombrarlo a `searchQuery` requiere migración Convex y queda fuera de alcance.
-- Para `experiencia`, `tiempo-juntos` y `sorprendeme` se mantiene un único botón a Google (no tiene sentido buscar "cena romántica" en AliExpress).
+- Las experiencias y los planes llevan un único botón a Google (no tiene sentido buscar "cena romántica" en AliExpress). Se decide por el tipo de cada idea (`ideaKindOf`), no por el de la tanda: en la mezcla, los productos sí llevan tiendas.
 - Sin afiliación. Futuro: parámetros de afiliado por tienda para monetización (Amazon Associates, AliExpress Affiliate, etc.).
 
 ### Setting `favoriteStores` (preferencia del usuario)

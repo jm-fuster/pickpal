@@ -95,8 +95,8 @@ export function Story() {
 
             <Title className="mt-16">Pides ideas para ella</Title>
             <Para>
-              Eliges el tipo de regalo y PickPal te propone hasta nueve ideas, cada una con su precio aproximado y
-              por qué le pega.
+              Eliges la ocasión y PickPal te propone hasta nueve ideas: cosas que comprar, experiencias y planes, cada
+              una con su precio aproximado y por qué le pega.
             </Para>
             {/* Lleva dentro su pie («Ideas de ejemplo para Marta»). Lo de las
                 tiendas y Google lo cuenta la pregunta «¿En qué tiendas busca?». */}

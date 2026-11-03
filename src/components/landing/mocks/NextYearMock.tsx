@@ -20,7 +20,7 @@ export function NextYearMock({ className }: { className?: string }) {
       <div className="grid gap-4 md:grid-cols-2 md:items-start">
         <HistoryCard />
         <div {...beat("settle", 400)}>
-          <IdeaExampleCard idea={NEXT_YEAR_IDEA} type={NEXT_YEAR_IDEA.type} />
+          <IdeaExampleCard idea={NEXT_YEAR_IDEA} />
         </div>
       </div>
     </MockFrame>

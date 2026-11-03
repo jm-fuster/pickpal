@@ -215,6 +215,9 @@ export const ALLOWED_GIFT_TYPES = [
   "sorprendeme",
 ] as const;
 
+// Lo que es cada idea de una tanda mezclada (IDEA_KINDS en giftCatalog.ts).
+export const ALLOWED_IDEA_KINDS = ["fisica", "experiencia", "tiempo-juntos"] as const;
+
 /**
  * Valida la clave (ocasión, tipo) bajo la que se indexan las recomendaciones.
  * Sin esto un cliente que llame directamente a `api.recommendations.upsert`
@@ -330,6 +333,7 @@ type RecommendationIdea = {
   imageKey?: string;
   image?: IdeaImage;
   matchedBrandStores?: MatchedBrandStore[];
+  giftType?: string;
 };
 
 /**
@@ -397,6 +401,12 @@ export function validateRecommendationIdeas(
       !(ALLOWED_IMAGE_KEYS as readonly string[]).includes(idea.imageKey)
     ) {
       throw new ConvexError("Clave de imagen inválida.");
+    }
+    if (
+      idea.giftType !== undefined &&
+      !(ALLOWED_IDEA_KINDS as readonly string[]).includes(idea.giftType)
+    ) {
+      throw new ConvexError("Tipo de idea inválido.");
     }
     validateIdeaImage(idea.image);
     validateMatchedBrandStores(idea.matchedBrandStores);

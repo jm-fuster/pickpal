@@ -1,7 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { TagChip } from "@/components/landing/mocks/parts";
 import type { ExampleIdea } from "@/components/landing/sample";
-import type { GiftType } from "@/lib/giftCatalog";
 import { resolveGiftImage } from "@/lib/giftImages";
 import { STORE_LABELS } from "@/lib/stores";
 import { cn } from "@/lib/utils";
@@ -27,11 +26,12 @@ function StoreChip({ label, className }: { label: string; className?: string }) 
   );
 }
 
-export function IdeaExampleCard({ idea, type }: { idea: ExampleIdea; type: GiftType }) {
+export function IdeaExampleCard({ idea }: { idea: ExampleIdea }) {
   const visual = resolveGiftImage(idea.imageKey, idea.type);
   const stores = idea.stores ?? [];
-  // Como en la app: solo el tipo «Producto físico» reparte la búsqueda por
-  // tiendas; en «Sorpréndeme» hasta la idea física lleva un único botón.
+  // Como en la app: lo que se compra reparte la búsqueda por tiendas; las
+  // experiencias y los planes llevan un único botón a Google.
+  const type = idea.type;
   const singleLabel = type === "tiempo-juntos" ? "Ideas" : "Buscar";
 
   return (

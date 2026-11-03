@@ -43,10 +43,9 @@ const QUESTIONS: { q: string; a: ReactNode }[] = [
   },
   {
     q: "¿En qué tiendas busca?",
-    // Solo «Producto físico» reparte la búsqueda por tiendas
-    // (GiftRecommendationCard, isPhysical); los demás tipos, también
-    // «Sorpréndeme» aunque la idea sea un objeto, llevan un único botón a Google.
-    a: `Las ideas de «Producto físico» se buscan en las tiendas que marques en Ajustes, de estas once: ${STORE_LIST}. Las demás, en Google.`,
+    // Lo que se compra reparte la búsqueda por tiendas (GiftRecommendationCard,
+    // isPhysical, por idea); experiencias y planes llevan un único botón a Google.
+    a: `Lo que se compra se busca en las tiendas que marques en Ajustes, de estas once: ${STORE_LIST}. Las experiencias y los planes, en Google.`,
   },
   {
     q: "¿Hay que instalar algo?",

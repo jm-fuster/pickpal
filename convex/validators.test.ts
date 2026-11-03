@@ -162,6 +162,26 @@ describe("otros campos que vienen del modelo", () => {
       upsert(alice, personId, [idea({ title: "x".repeat(5000) })]),
     ).rejects.toThrow();
   });
+
+  test("el tipo de cada idea de la tanda mezclada entra si es uno de los tres", async () => {
+    const t = convexTest(schema, modules);
+    const { alice, personId } = await conPersona(t);
+    await expect(
+      upsert(alice, personId, [
+        idea({ giftType: "fisica" }),
+        idea({ title: "Taller de torno", giftType: "experiencia" }),
+        idea({ title: "Tarde de barro en casa", giftType: "tiempo-juntos" }),
+      ]),
+    ).resolves.toBeDefined();
+  });
+
+  test("un tipo de idea fuera de los tres se rechaza, «sorprendeme» incluido", async () => {
+    const t = convexTest(schema, modules);
+    const { alice, personId } = await conPersona(t);
+    for (const giftType of ["sorprendeme", "regalo"]) {
+      await expect(upsert(alice, personId, [idea({ giftType })])).rejects.toThrow();
+    }
+  });
 });
 
 describe("propiedad", () => {

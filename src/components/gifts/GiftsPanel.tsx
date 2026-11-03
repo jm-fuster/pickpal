@@ -2,16 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  Check,
-  Gift,
-  RefreshCw,
-  ShoppingBag,
-  Ticket,
-  Heart,
-  Shuffle,
-  X,
-} from "lucide-react";
+import { Check, Gift, RefreshCw, X } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
@@ -35,7 +26,7 @@ import { BackLink } from "@/components/layout/BackLink";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { LoadingFallback } from "@/components/layout/LoadingFallback";
 import { flipExit, useFlip } from "@/components/layout/useFlip";
-import { GIFT_TYPES, type GiftType } from "@/lib/giftCatalog";
+import { IDEA_KINDS, MIXED_GIFT_TYPE, ideaKindOf, type IdeaKind } from "@/lib/giftCatalog";
 import type { GiftRecommendation } from "@/lib/gifts";
 import { ALL_STORES, pickEffectiveStores, sanitizeFavoriteStores } from "@/lib/stores";
 
@@ -103,7 +94,9 @@ export function GiftsPanel({
   const occasion =
     occasionChoice || (events && events.length === 1 ? events[0].label : "");
   const [occasionInvalid, setOccasionInvalid] = useState(false);
-  const [giftType, setGiftType] = useState<GiftType>("fisica");
+  // Una tanda mezclada por ocasión; el tipo filtra después (IDEA_KINDS).
+  const giftType = MIXED_GIFT_TYPE;
+  const [kindFilter, setKindFilter] = useState<IdeaKind | "todas">("todas");
   const [ideas, setIdeas] = useState<GiftRecommendation[] | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -256,6 +249,7 @@ export function GiftsPanel({
     }
     setLoading(true);
     setIdeas(null);
+    setKindFilter("todas");
     setSavedTitles(new Set());
     // Persistimos los descartes pendientes ANTES de regenerar para que el prompt
     // del servidor incluya las ideas recién descartadas (lee
@@ -385,8 +379,11 @@ export function GiftsPanel({
       // la IA, para que la idea guardada enseñe exactamente lo mismo que se
       // vio: vacío si no encajaba ninguna de las del usuario (la guardada
       // ofrece idealo, como la card). Solo las físicas muestran tiendas.
+      // La guardada lleva el tipo de la idea, no el de la tanda: así la ficha
+      // sabe si enseñar tiendas.
+      const kind = ideaKindOf(idea, giftType);
       const effectiveStores =
-        giftType === "fisica"
+        kind === "fisica"
           ? pickEffectiveStores(favoriteStores, idea.suggestedStores).stores
           : undefined;
       await saveIdea({
@@ -400,7 +397,7 @@ export function GiftsPanel({
         category: idea.category,
         amazonQuery: idea.amazonQuery,
         suggestedStores: effectiveStores,
-        giftType,
+        giftType: kind,
         imageKey: idea.imageKey,
         image: idea.image,
         // Congelamos también la tienda de marca resuelta para que la idea
@@ -467,6 +464,26 @@ export function GiftsPanel({
     });
   };
 
+  // El filtro por tipo, sobre la tanda ya generada: no gasta otra generación.
+  // Si el tipo elegido se queda sin ideas (las has descartado), vuelve a «Todas».
+  const kindCounts = new Map<IdeaKind, number>();
+  for (const idea of showIdeas ?? []) {
+    const kind = ideaKindOf(idea, giftType);
+    kindCounts.set(kind, (kindCounts.get(kind) ?? 0) + 1);
+  }
+  const activeKind = kindFilter !== "todas" && kindCounts.get(kindFilter) ? kindFilter : "todas";
+  const visibleIdeas = (showIdeas ?? []).filter(
+    (idea) => activeKind === "todas" || ideaKindOf(idea, giftType) === activeKind,
+  );
+  const kindFilters = [
+    { value: "todas" as const, label: "Todas", count: showIdeas?.length ?? 0 },
+    ...IDEA_KINDS.filter((k) => kindCounts.has(k.value)).map((k) => ({
+      value: k.value,
+      label: k.label,
+      count: kindCounts.get(k.value) ?? 0,
+    })),
+  ];
+
   const content = (
     <div className="flex flex-col gap-6">
       {!embedded && (
@@ -502,6 +519,7 @@ export function GiftsPanel({
                 setOccasionChoice(v);
                 setOccasionInvalid(false);
                 setIdeas(null);
+                setKindFilter("todas");
                 // savedTitles no se vacía: una idea guardada en esta sesión
                 // sigue guardada al cambiar de ocasión, porque misma persona y
                 // mismo título son la misma idea en cualquier ocasión.
@@ -547,47 +565,7 @@ export function GiftsPanel({
           </Button>
         </div>
 
-        <div className="space-y-2">
-          <p id="gift-type-label" className="text-xs font-medium text-muted-foreground">Tipo de regalo</p>
-          <div role="group" aria-labelledby="gift-type-label" className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {GIFT_TYPES.map((t) => {
-              const selected = giftType === t.value;
-              const Icon = { ShoppingBag, Ticket, Heart, Shuffle }[t.icon];
-              return (
-                <button
-                  key={t.value}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => {
-                    setGiftType(t.value);
-                    setIdeas(null);
-                    setSavedTitles(new Set());
-                  }}
-                  // El fondo y el borde del marcado se quedan en 1,16–1,36:1
-                  // frente al panel y desaparecen con colores forzados: el
-                  // check (color de texto) es lo que lo distingue. El foco lo
-                  // pone la capa base (contorno sólido). Igual en la landing
-                  // (IdeasSwitcher).
-                  className={[
-                    "relative flex flex-col items-start gap-1 rounded-xl px-3 py-3 text-left text-sm transition-colors",
-                    selected
-                      ? "bg-muted border border-border text-foreground"
-                      : "border border-border/50 text-muted-foreground hover:border-border hover:text-foreground",
-                  ].join(" ")}
-                >
-                  <Icon className="size-4" aria-hidden />
-                  {selected && <Check className="absolute top-3 right-3 size-4" aria-hidden />}
-                  <span className="font-medium leading-tight">{t.label}</span>
-                  <span className="text-xs text-muted-foreground leading-tight">
-                    {t.description}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Móvil: botón debajo del Tipo de regalo */}
+        {/* Móvil: botón debajo de la ocasión */}
         <Button
           size="lg"
           className="w-full sm:hidden"
@@ -604,7 +582,7 @@ export function GiftsPanel({
 
         {hasCached && !loading && (
           <p className="text-xs text-muted-foreground">
-            Tienes ideas guardadas para esta combinación. Regenerar consume cuota diaria.
+            Tienes ideas guardadas para esta ocasión. Regenerar consume cuota diaria.
           </p>
         )}
         {remaining !== null && !loading && (
@@ -641,8 +619,32 @@ export function GiftsPanel({
         </div>
       ) : showIdeas && showIdeas.length > 0 ? (
         <div className="flex flex-col gap-3">
+          {/* Solo si la tanda mezcla tipos. El marcado lleva contorno y check,
+              como llevaba la ficha de tipo: el fondo solo no se distingue con
+              colores forzados. En móvil se desplaza en horizontal. */}
+          {kindFilters.length > 2 && (
+            <div role="group" aria-label="Filtrar por tipo" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
+              {kindFilters.map((f) => {
+                const selected = activeKind === f.value;
+                return (
+                  <Button
+                    key={f.value}
+                    type="button"
+                    size="sm"
+                    variant={selected ? "outline" : "ghost"}
+                    aria-pressed={selected}
+                    onClick={() => setKindFilter(f.value)}
+                    className={cn("shrink-0", !selected && "text-muted-foreground")}
+                  >
+                    {selected && <Check className="size-4" aria-hidden />}
+                    {f.label} · {f.count}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
           <div ref={flipRef} className={`grid gap-4 ${embedded ? "grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
-            {showIdeas.map((idea, i) => (
+            {visibleIdeas.map((idea, i) => (
               <GiftRecommendationCard
                 key={idea.title}
                 flipKey={idea.title}
@@ -655,7 +657,9 @@ export function GiftsPanel({
                 savedElsewhere={savedElsewhere(idea.title)}
                 onSave={() => handleSave(idea)}
                 onUnsave={canUnsave(idea.title) ? () => handleUnsave(idea) : undefined}
-                onDiscard={() => handleDiscard(idea, i)}
+                // La posición en la tanda entera, no en la vista filtrada:
+                // «Deshacer» la devuelve a su sitio.
+                onDiscard={() => handleDiscard(idea, showIdeas.indexOf(idea))}
               />
             ))}
           </div>
@@ -709,7 +713,7 @@ export function GiftsPanel({
         <EmptyState
           icon={Gift}
           title={`Ideas para ${person.name}`}
-          description="Elige la ocasión y el tipo de regalo, y pulsa «Generar 9 ideas»."
+          description="Elige la ocasión y pulsa «Generar 9 ideas»."
           descriptionClassName="max-w-md"
         />
       )}

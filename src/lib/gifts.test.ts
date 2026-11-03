@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { giftRecommendationsSchema } from "./gifts";
+import { giftRecommendationsSchema, giftRecommendationsSchemaMixed } from "./gifts";
 
 describe("giftRecommendationsSchema", () => {
   const validIdea = {
@@ -98,5 +98,28 @@ describe("giftRecommendationsSchema", () => {
     expect(
       giftRecommendationsSchema.safeParse({ ideas: broken }).success,
     ).toBe(false);
+  });
+});
+
+describe("giftRecommendationsSchemaMixed", () => {
+  const idea = {
+    title: "Taller de torno",
+    description: "Una mañana con barro y alguien que enseña",
+    priceMinEuros: 40,
+    priceMaxEuros: 60,
+    category: ["Cerámica"],
+    amazonQuery: "taller de torno",
+    imageKey: "taller-curso",
+    imageQuery: "pottery workshop",
+  };
+  const six = (over: Record<string, unknown>) => Array.from({ length: 6 }, () => ({ ...idea, ...over }));
+
+  it("pide el tipo de cada idea", () => {
+    expect(giftRecommendationsSchemaMixed.safeParse({ ideas: six({}) }).success).toBe(false);
+    expect(giftRecommendationsSchemaMixed.safeParse({ ideas: six({ giftType: "experiencia" }) }).success).toBe(true);
+  });
+
+  it("no acepta «sorprendeme» como tipo de una idea", () => {
+    expect(giftRecommendationsSchemaMixed.safeParse({ ideas: six({ giftType: "sorprendeme" }) }).success).toBe(false);
   });
 });
