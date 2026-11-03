@@ -34,9 +34,11 @@ La activación y la antelación son configurables desde `/settings`.
         ▼
 internal.emails.runDailyEmailNotifications  (action)
         │
-        ├─► internal.notifications.findEventsNeedingEmail  (query)
-        │     ├─ recorre userSettings con emailNotificationsEnabled=true
-        │     ├─ para cada user, toma sus fichas y las compartidas (peopleWithAccess)
+        ├─► internal.notifications.notificationTargetsPage  (query, por páginas de 200)
+        │     └─ userSettings con emailNotificationsEnabled=true, su email y antelaciones
+        │
+        ├─► internal.notifications.findEventsForUser  (query, una por usuario)
+        │     ├─ toma sus fichas y las compartidas (peopleWithAccess)
         │     ├─ calcula daysUntil de cada importantDate
         │     ├─ filtra eventos cuyo daysUntil ∈ emailNotifyDaysBefore
         │     └─ descarta los ya presentes en emailNotifications(user, date, year, lead)
@@ -48,6 +50,8 @@ internal.emails.runDailyEmailNotifications  (action)
               └─ inserta filas en emailNotifications
 ```
 
+**Una consulta por usuario (4-nov-2026).** Hasta esa fecha todo el cálculo iba en una sola query para todos los usuarios, y Convex pone un tope de lecturas por consulta: con unos 300 usuarios con avisos y una docena de fichas cada uno se pasaba, la query fallaba entera y no salía ningún correo, ningún día. Ahora la lista de destinatarios va por páginas y lo de cada uno en su propia query (`forEachUserToNotify`), así que el tope es por usuario. Si la de uno falla, se apunta en el log y se sigue con los demás. Test en `convex/notifications.test.ts` («con muchos usuarios»), con un tope bajo que hace de producción.
+
 Si el envío a un usuario falla (Resend devuelve 4xx/5xx, red caída, etc.), el orquestador **no** marca ese envío como hecho y continúa con el siguiente usuario. Como la ocurrencia sigue sin estar marcada, el cron del día siguiente lo vuelve a intentar — pero ese día ya `daysUntil` no coincidirá con esa antelación concreta y el filtro no matcheará, así que se pierde ese aviso (los demás disparos de la misma fecha siguen funcionando). Asumido conscientemente: simplificar > reintentar (una recuperación robusta requeriría una tabla de "pendientes").
 
 ---
@@ -56,7 +60,7 @@ Si el envío a un usuario falla (Resend devuelve 4xx/5xx, red caída, etc.), el 
 
 Quien tiene una ficha compartida como invitado (`personShares`) recibe los avisos de sus fechas igual que los de sus propias fichas: con su interruptor, sus antelaciones y en el mismo correo del día. La dueña sigue recibiendo los suyos con sus ajustes, y lo que haga uno no cambia lo que recibe el otro. Hasta esta fecha el invitado veía esas fechas en la agenda y en la campana, pero nunca le llegaban por correo.
 
-- **De qué fichas avisa:** `findEventsNeedingEmail` pide a `personShares.peopleWithAccess` las fichas de cada destinatario: las suyas (`people.by_user`) y las compartidas (`personShares.by_user`), cada una comprobada con `personHasAccess`, el mismo punto único que usa la app. Una fila de `personShares` que apunte a una ficha borrada no cuenta, y ninguna ficha entra dos veces.
+- **De qué fichas avisa:** `findEventsForUser` pide a `personShares.peopleWithAccess` las fichas de cada destinatario: las suyas (`people.by_user`) y las compartidas (`personShares.by_user`), cada una comprobada con `personHasAccess`, el mismo punto único que usa la app. Una fila de `personShares` que apunte a una ficha borrada no cuenta, y ninguna ficha entra dos veces.
 - **Dedupe por destinatario:** antes era global, por `(importantDateId, occurrenceYear, leadDays)`; con dos destinatarios para la misma fecha, el aviso de la dueña habría tapado el del invitado. Ahora el índice es `by_user_date_year_lead`, con `clerkUserId` delante, y la búsqueda usa `first()` en vez de `unique()` para que una fila repetida no tumbe el cron de todos. `markEmailsSent` siempre ha guardado `clerkUserId`, así que las filas anteriores sirven sin migración.
 - **Cómo deja de recibirlos:** apagando su interruptor o desligándose de la ficha (`personShares.leave`). Sin su fila en `personShares`, la ficha deja de entrar en su correo.
 - **El correo es el mismo:** no dice quién creó la ficha ni que es compartida. El botón de un solo evento lleva a `/seres-queridos/{personId}/gifts`, que el invitado puede abrir porque tiene acceso.
@@ -159,7 +163,7 @@ Cada tarjeta incluye el avatar circular de la persona (44 × 44 px):
 - Si `personAvatarUrl` está disponible: `<div role="img">` con la foto como `background-image`, `border-radius:50%` y borde de 2 px `#3D5040`.
 - Si no hay URL: tabla de 44 × 44 con fondo `#3D5040` y la inicial del nombre en `#FBF7EE` centrada.
 
-El campo `personAvatarUrl` se propaga desde `person.avatarUrl` en `convex/notifications.ts` (`findEventsNeedingEmail`) y se declara como `v.optional(v.string())` en el validator de `sendBatchedReminderEmail`.
+El campo `personAvatarUrl` se propaga desde `person.avatarUrl` en `convex/notifications.ts` (`findEventsForUser`) y se declara como `v.optional(v.string())` en el validator de `sendBatchedReminderEmail`.
 
 ### Línea de «Mi lista» (10-oct-2026)
 
@@ -355,7 +359,7 @@ El orquestador imprime al final un resumen `[emails] Cron diario: X usuario(s) n
 npx convex run notifications:findEventsNeedingEmail
 ```
 
-Devuelve la lista que el orquestador tomaría como entrada, **sin enviar** nada. Útil para depurar por qué no llega un correo (¿falta el toggle? ¿falta email en JWT? ¿la fecha no matchea la antelación? ¿ya estaba en `emailNotifications`?).
+Es una action que recorre lo mismo que el orquestador y devuelve la lista junta, **sin enviar** nada. Útil para depurar por qué no llega un correo (¿falta el toggle? ¿falta email en JWT? ¿la fecha no matchea la antelación? ¿ya estaba en `emailNotifications`?).
 
 ### Forzar un reenvío
 

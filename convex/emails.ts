@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import type { UserToNotify, EventToNotify } from "./notifications";
+import { forEachUserToNotify, type EventToNotify } from "./notifications";
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 const DEFAULT_FROM = "PickPal <hola@pickpal.jorgemolinafuster.com>";
 // El remitente no recibe correo (su subdominio es un CNAME a Vercel), así que
@@ -484,14 +484,9 @@ export const sendTestEmail = internalAction({
 export const runDailyEmailNotifications = internalAction({
   args: {},
   handler: async (ctx) => {
-    const users: UserToNotify[] = await ctx.runQuery(
-      internal.notifications.findEventsNeedingEmail,
-      {},
-    );
-
     let sentUsers = 0;
     let failedUsers = 0;
-    for (const user of users) {
+    await forEachUserToNotify(ctx, async (user) => {
       try {
         await ctx.runAction(internal.emails.sendBatchedReminderEmail, {
           to: user.email,
@@ -513,7 +508,7 @@ export const runDailyEmailNotifications = internalAction({
           err,
         );
       }
-    }
+    });
     console.log(
       `[emails] Cron diario: ${sentUsers} usuario(s) notificados, ${failedUsers} fallo(s).`,
     );

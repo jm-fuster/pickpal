@@ -18,6 +18,22 @@ describe("splitTrailingPrice", () => {
     expect(splitTrailingPrice("Vela de higo aprox. 25€")).toEqual({ title: "Vela de higo", priceCents: 2500 });
   });
 
+  it("no parte un rango ni un importe con el número de delante", () => {
+    for (const text of [
+      "Vela 1 299 €",
+      "Auriculares 50-80 €",
+      "Auriculares 50 - 80 €",
+      "Libro entre 20 y 30 €",
+      "Libro de 20 a 30 €",
+      "Pack 2x25 €",
+      "Pack 2 x 25 €",
+    ]) {
+      expect(splitTrailingPrice(text)).toEqual({ title: text });
+    }
+    // Un número que no toca al importe no estorba.
+    expect(splitTrailingPrice("iPhone 15 funda 20 €")).toEqual({ title: "iPhone 15 funda", priceCents: 2000 });
+  });
+
   it("no toca números sin moneda ni lo que dejaría el título vacío", () => {
     expect(splitTrailingPrice("Zapatillas talla 43")).toEqual({ title: "Zapatillas talla 43" });
     expect(splitTrailingPrice("iPhone 15")).toEqual({ title: "iPhone 15" });

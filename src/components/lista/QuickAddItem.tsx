@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ItemMeta } from "@/components/lista/ListParts";
 import { userErrorMessage } from "@/lib/errors";
-import { isHttpUrl, linkHint, looksLikeUrl, normalizeLinkInput, prepareListLink } from "@/lib/links";
+import { isHttpUrl, linkHint, looksLikeUrl, normalizeLinkInput, prepareListLink, splitTextAndLink } from "@/lib/links";
 import { MAX_LIST_ITEMS } from "@/lib/listLimits";
 import { formatApproxPrice, parsePriceInput, priceInputValue, splitTrailingPrice } from "@/lib/price";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,15 @@ const SUGGESTED = "Título sacado del enlace: escribe encima si quieres.";
 
 const things = (n: number) => (n === 1 ? "1 cosa" : `${n} cosas`);
 
+/** Lo que un cambio ha metido de golpe: lo nuevo entre lo que sigue igual al principio y al final. */
+function insertedText(before: string, after: string): string {
+  let start = 0;
+  while (start < before.length && before[start] === after[start]) start++;
+  let end = 0;
+  while (end < before.length - start && before[before.length - 1 - end] === after[after.length - 1 - end]) end++;
+  return after.slice(start, after.length - end);
+}
+
 /**
  * «Apuntar algo» de «Mi lista» y de las listas que llevas: una línea que ya es
  * un campo, como una nota. Se escribe y con Intro se apunta; el foco se queda
@@ -42,6 +51,9 @@ const things = (n: number) => (n === 1 ? "1 cosa" : `${n} cosas`);
  * - **Un enlace** se limpia como en el formulario (`prepareListLink`), pasa a
  *   su chip y, si no había nada escrito, deja el título sacado de la dirección
  *   seleccionado para escribir encima. PickPal no abre el enlace (decisión 3).
+ *   Con texto delante en la misma línea («Vela https://…»), el texto es el
+ *   nombre. También cuando llega sin evento de pegar (el portapapeles de
+ *   algunos teclados, arrastrarlo).
  * - **Varias líneas** pasan por el analizador de «Pegar una lista» y se
  *   ofrecen de golpe; esa página sigue para archivos y listas largas.
  * - **Una imagen** (copiada en la tienda, una captura) se queda como foto y se
@@ -75,6 +87,11 @@ export function QuickAddItem({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [text, setText] = useState("");
+  // Lo escrito ahora, para saber al acabar de guardar si se ha seguido escribiendo.
+  const textRef = useRef(text);
+  useEffect(() => {
+    textRef.current = text;
+  });
   const [url, setUrl] = useState("");
   const [suggested, setSuggested] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
@@ -127,12 +144,16 @@ export function QuickAddItem({
 
   // Como en el formulario: el enlace limpio va a su chip y, si no hay nada
   // escrito, el título que sale de la dirección, seleccionado.
-  const applyLink = (raw: string) => {
+  // Con `title` (lo que venía delante del enlace en la misma línea), ese es el
+  // nombre y no se sugiere otro.
+  const applyLink = (raw: string, title?: string) => {
     const link = prepareListLink(raw);
     setUrl(link.url ?? (link.wishlistCom ? "" : raw.trim()));
     setHint(linkHint(link));
     setError(null);
-    if (link.suggestedTitle && text.trim() === "") {
+    if (title) {
+      setText((prev) => (prev.trim() ? `${prev.trimEnd()} ${title}` : title));
+    } else if (link.suggestedTitle && text.trim() === "") {
       setText(link.suggestedTitle);
       setSuggested(link.suggestedTitle);
       requestAnimationFrame(() => inputRef.current?.select());
@@ -153,7 +174,15 @@ export function QuickAddItem({
     const state = createPreview([parsed], existing, MAX_LIST_ITEMS - existing.length);
     const items = selectedItems(state);
     if (items.length === 0) {
-      setHint(remaining(state) === 0 ? "Ya no cabe nada más en la lista." : "Todo eso ya está en la lista.");
+      // Las filas que no salen pueden estar repetidas o pedir un nombre (un
+      // enlace corto, una frase): solo las primeras están «ya en la lista».
+      setHint(
+        remaining(state) === 0
+          ? "Ya no cabe nada más en la lista."
+          : state.rows.every((r) => r.notice === "duplicate")
+            ? "Todo eso ya está en la lista."
+            : "De ahí no sale nada que apuntar tal cual. En «Pegar una lista» puedes revisarlo línea a línea.",
+      );
       return;
     }
     setHint(null);
@@ -170,6 +199,13 @@ export function QuickAddItem({
     }
     if (looksLikeUrl(s)) {
       applyLink(s);
+      return true;
+    }
+    // «Vela de higo https://…», como comparten las apps de tienda: el texto es
+    // el nombre y el enlace va a su sitio, no al título.
+    const both = splitTextAndLink(s);
+    if (both && both.text) {
+      applyLink(both.link, both.text);
       return true;
     }
     return false;
@@ -243,6 +279,9 @@ export function QuickAddItem({
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
     if (saving) return;
+    // Con la vista previa de varias líneas abierta y la línea vacía, Intro la
+    // confirma en vez de quejarse de que falta qué es.
+    if (batch && !text.trim()) return submitBatch();
     const title = split.title;
     if (!title) return fail("title", "Escribe qué es");
     if (title.length > MAX_TITLE) return fail("title", `Es demasiado largo: como mucho ${MAX_TITLE} caracteres`);
@@ -265,9 +304,14 @@ export function QuickAddItem({
         ...(n ? { note: n } : {}),
         ...(priceCents !== undefined ? { priceCents } : {}),
       };
+      const submitted = text;
       const newId = await addItem(listId ? { ...fields, listId } : fields);
       const file = photo?.file;
+      // La línea no se bloquea mientras se guarda: lo que se haya empezado a
+      // escribir entretanto es la siguiente cosa, y no se borra.
+      const typedSince = textRef.current !== submitted ? textRef.current : null;
       reset();
+      if (typedSince !== null) setText(typedSince);
       setAdded({ title });
       setAddedOnce(true);
       onAdded(newId);
@@ -333,6 +377,12 @@ export function QuickAddItem({
           id={`${id}-que`}
           value={text}
           onChange={(e) => {
+            // Algunos teclados del móvil (el portapapeles de Gboard) y
+            // arrastrar un enlace meten lo copiado sin evento de pegar: llega
+            // como un cambio de texto. Un enlace entero de golpe no lo teclea
+            // nadie, así que se trata como pegado y no acaba en el título.
+            const added = insertedText(text, e.target.value);
+            if (added.length > 1 && /https?:\/\/|www\./i.test(added) && handleText(added)) return;
             setText(e.target.value);
             if (error?.field === "title") setError(null);
             if (hint && !url) setHint(null);

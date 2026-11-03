@@ -75,9 +75,14 @@ export function splitTrailingPrice(text: string): { title: string; priceCents?: 
   if (!match) return { title: text };
   const cents = parsePriceCents(match[1] ?? match[2]);
   const title = text.slice(0, match.index).trim();
-  if (cents === undefined || title.length === 0) return { title: text };
+  if (cents === undefined || title.length === 0 || PRICE_CONTINUES.test(title)) return { title: text };
   return { title, priceCents: cents };
 }
+
+// Lo de antes del importe sigue siendo importe o rango: «1 299 €», «50-80 €»,
+// «entre 20 y 30 €», «2x25 €». Partir ahí dejaba «Vela 1» a 299 € o
+// «Auriculares 50» a 80 €; mejor no tocarlo y que el precio se ponga a mano.
+const PRICE_CONTINUES = /\d(?:\s*[x×]|\s+(?:y|a|o|hasta))?$/i;
 
 /** «40» o «39,99», para volver a ponerlo en el campo al editar. */
 export function priceInputValue(cents: number | null | undefined): string {

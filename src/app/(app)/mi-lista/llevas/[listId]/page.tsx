@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BackLink } from "@/components/layout/BackLink";
+import { ManagedListGone } from "@/components/lista/ManagedListGone";
 import { OwnerListView } from "@/components/lista/OwnerListView";
 import { userErrorMessage } from "@/lib/errors";
 
@@ -50,6 +51,7 @@ export default function ManagedListPage({ params }: { params: Promise<{ listId: 
   const [name, setName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const run = async (action: () => Promise<unknown>, fallback: string) => {
     setBusy(true);
@@ -62,12 +64,18 @@ export default function ManagedListPage({ params }: { params: Promise<{ listId: 
     }
   };
 
-  if (list === undefined) {
+  // Recién borrada desde aquí, `list` pasa a null antes de que llegue la
+  // navegación: se queda en «cargando» en vez de enseñar que no existe.
+  if (list === undefined || (list === null && deleting)) {
     return (
       <main className="flex flex-1 flex-col gap-8 p-4 sm:p-6 lg:p-8 w-full max-w-5xl" role="status">
         <span className="sr-only">Cargando la lista…</span>
       </main>
     );
+  }
+
+  if (list === null) {
+    return <ManagedListGone />;
   }
 
   return (
@@ -179,7 +187,13 @@ export default function ManagedListPage({ params }: { params: Promise<{ listId: 
               disabled={busy}
               onClick={() =>
                 run(async () => {
-                  await deleteList({ listId });
+                  setDeleting(true);
+                  try {
+                    await deleteList({ listId });
+                  } catch (err) {
+                    setDeleting(false);
+                    throw err;
+                  }
                   toast.success(`Lista de ${list.forName} borrada`);
                   router.push("/mi-lista");
                 }, "No se pudo borrar la lista")

@@ -222,8 +222,8 @@ export function OwnerListView({
   };
 
   // Al salir (o cerrar la pestaña) se confirman los borrados que esperaban,
-  // como en el generador de ideas, y se cierran sus avisos: un «Deshacer» que
-  // ya no puede deshacer nada engañaría.
+  // como los descartes del generador de ideas, y se cierran sus avisos: un
+  // «Deshacer» que ya no puede deshacer nada engañaría.
   const commitRef = useRef(commitRemoval);
   useEffect(() => {
     commitRef.current = commitRemoval;

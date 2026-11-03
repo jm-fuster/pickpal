@@ -60,8 +60,11 @@ export async function GET(req: NextRequest) {
   if (readers.length > 0) {
     try {
       const client = await clerkClient();
+      // `limit` explícito: sin él Clerk devuelve 10, y una lista la ven hasta
+      // 20 personas; las que no llegaban salían como «Cuenta de PickPal».
       const { data } = await client.users.getUserList({
         userId: readers.map((r) => r.readerClerkUserId),
+        limit: readers.length,
       });
       for (const u of data) {
         emails.set(u.id, u.primaryEmailAddress?.emailAddress ?? null);
@@ -119,9 +122,9 @@ export async function POST(req: NextRequest) {
   const listId = parsed.data.listId as Id<"managedLists"> | undefined;
 
   if (listId !== undefined) {
-    try {
-      await fetchQuery(api.lists.managedList, { listId }, { token });
-    } catch {
+    // `null` es una lista ajena o borrada; un id que no vale, lanza.
+    const list = await fetchQuery(api.lists.managedList, { listId }, { token }).catch(() => null);
+    if (!list) {
       return NextResponse.json({ error: LIST_NOT_FOUND }, { status: 404 });
     }
   }

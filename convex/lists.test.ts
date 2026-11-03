@@ -970,7 +970,7 @@ describe("email de recordatorio", () => {
     });
 
     const evento = async () =>
-      (await t.query(internal.notifications.findEventsNeedingEmail, {}))[0].events[0];
+      (await t.action(internal.notifications.findEventsNeedingEmail, {}))[0].events[0];
 
     expect((await evento()).listUnclaimed).toBe(2);
     await alex.mutation(api.lists.claim, { itemId: vela });
@@ -996,7 +996,7 @@ describe("email de recordatorio", () => {
       emailNotifyDaysBefore: [7],
     });
     const evento = async () =>
-      (await t.query(internal.notifications.findEventsNeedingEmail, {}))[0].events[0];
+      (await t.action(internal.notifications.findEventsNeedingEmail, {}))[0].events[0];
 
     // Sin marcas, ni el campo.
     expect(await evento()).not.toHaveProperty("listMine");
@@ -1985,7 +1985,7 @@ describe("bloquear a quien te comparte su lista", () => {
     });
     await alex.mutation(api.settings.setMine, { emailNotificationsEnabled: true, emailNotifyDaysBefore: [7] });
     const evento = async () =>
-      (await t.query(internal.notifications.findEventsNeedingEmail, {}))[0].events[0];
+      (await t.action(internal.notifications.findEventsNeedingEmail, {}))[0].events[0];
     expect(await evento()).toMatchObject({ listUnclaimed: 2 });
 
     // Hoy no hay camino para que una fila oculta quede asociada, pero si lo
@@ -2363,9 +2363,9 @@ describe("listas a cargo: crearlas y llevarlas", () => {
       /para quién/,
     );
     const lucia = await marta.mutation(api.lists.createManagedList, { forName: "  Lucía " });
-    expect((await marta.query(api.lists.managedList, { listId: lucia })).forName).toBe("Lucía");
+    expect((await marta.query(api.lists.managedList, { listId: lucia }))?.forName).toBe("Lucía");
     await marta.mutation(api.lists.renameManagedList, { listId: lucia, forName: "Lucía María" });
-    expect((await marta.query(api.lists.managedList, { listId: lucia })).forName).toBe("Lucía María");
+    expect((await marta.query(api.lists.managedList, { listId: lucia }))?.forName).toBe("Lucía María");
     await expect(
       marta.mutation(api.lists.renameManagedList, { listId: lucia, forName: "x".repeat(41) }),
     ).rejects.toThrow(/demasiado largo/);
@@ -2375,8 +2375,9 @@ describe("listas a cargo: crearlas y llevarlas", () => {
     const t = convexTest(schema, modules);
     const { lucia, muneca } = await familia(t);
     for (const quien of [ABUELA, OTRO].map((u) => t.withIdentity(u))) {
+      // La que decide si la página se pinta no lanza: `null`, como si no existiera.
+      expect(await quien.query(api.lists.managedList, { listId: lucia })).toBeNull();
       for (const intento of [
-        () => quien.query(api.lists.managedList, { listId: lucia }),
         () => quien.query(api.lists.managedItems, { listId: lucia }),
         () => quien.query(api.lists.myItems, { listId: lucia }),
         () => quien.query(api.lists.myReaders, { listId: lucia }),
@@ -2412,7 +2413,7 @@ describe("listas a cargo: crearlas y llevarlas", () => {
       marta.mutation(api.lists.linkManagedListPerson, { listId: lucia, personId: ajena }),
     ).rejects.toThrow(/Persona no encontrada/);
     await marta.mutation(api.lists.linkManagedListPerson, { listId: lucia, personId: suFicha });
-    expect((await marta.query(api.lists.managedList, { listId: lucia })).personId).toBe(suFicha);
+    expect((await marta.query(api.lists.managedList, { listId: lucia }))?.personId).toBe(suFicha);
 
     // Compartir esa ficha con Sara no le da la lista: va por `listShares`.
     await marta.mutation(api.personShares.invite, { personId: suFicha, clerkUserId: SARA.subject });
@@ -2422,7 +2423,7 @@ describe("listas a cargo: crearlas y llevarlas", () => {
 
     // Si la ficha se borra, sale sin ficha.
     await marta.mutation(api.people.remove, { id: suFicha });
-    expect((await marta.query(api.lists.managedList, { listId: lucia })).personId).toBeNull();
+    expect((await marta.query(api.lists.managedList, { listId: lucia }))!.personId).toBeNull();
     await marta.mutation(api.lists.linkManagedListPerson, { listId: lucia, personId: null });
     expect(await t.run(async (ctx) => "personId" in (await ctx.db.get(lucia))!)).toBe(false);
   });
@@ -2822,6 +2823,8 @@ describe("listas a cargo: borrarlas", () => {
 
     await marta.mutation(api.lists.deleteManagedList, { listId: lucia });
 
+    // La página abierta ve que ya no está, sin un error que se lleve la app.
+    expect(await marta.query(api.lists.managedList, { listId: lucia })).toBeNull();
     expect(await existe(t, foto)).toBe(false);
     const quedan = await t.run(async (ctx) => ({
       lista: await ctx.db.get(lucia),
@@ -3016,7 +3019,7 @@ describe("listas a cargo: correos", () => {
     });
     await abuela.mutation(api.settings.setMine, { emailNotificationsEnabled: true, emailNotifyDaysBefore: [7] });
     const evento = async () =>
-      (await t.query(internal.notifications.findEventsNeedingEmail, {}))[0].events[0];
+      (await t.action(internal.notifications.findEventsNeedingEmail, {}))[0].events[0];
 
     expect(await evento()).toMatchObject({ personName: "Lucía", listUnclaimed: 2 });
     expect(await evento()).not.toHaveProperty("listMine");
@@ -3043,7 +3046,7 @@ describe("listas a cargo: el recordatorio de quien la lleva", () => {
     });
     await marta.mutation(api.settings.setMine, { emailNotificationsEnabled: true, emailNotifyDaysBefore: [7] });
     const evento = async () => {
-      const todos = await t.query(internal.notifications.findEventsNeedingEmail, {});
+      const todos = await t.action(internal.notifications.findEventsNeedingEmail, {});
       return todos.find((u) => u.clerkUserId === MARTA.subject)?.events[0];
     };
 
@@ -3076,7 +3079,7 @@ describe("listas a cargo: el recordatorio de quien la lleva", () => {
     });
     await marta.mutation(api.settings.setMine, { emailNotificationsEnabled: true, emailNotifyDaysBefore: [7] });
     await marta.mutation(api.lists.linkManagedListPerson, { listId: lucia, personId: fichaLucia });
-    const todos = await t.query(internal.notifications.findEventsNeedingEmail, {});
+    const todos = await t.action(internal.notifications.findEventsNeedingEmail, {});
     const evento = todos.find((u) => u.clerkUserId === MARTA.subject)!.events[0];
     expect(evento.listUnclaimed).toBe(2);
   });

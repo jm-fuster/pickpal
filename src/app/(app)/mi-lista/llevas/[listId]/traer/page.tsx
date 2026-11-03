@@ -6,6 +6,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../../convex/_generated/dataModel";
 import { ImportListView } from "@/components/lista/ImportListView";
+import { ManagedListGone } from "@/components/lista/ManagedListGone";
 
 /** «Pegar una lista» para una lista que llevas (docs/encargo-listas-ninos.md). */
 export default function ImportManagedListPage({ params }: { params: Promise<{ listId: string }> }) {
@@ -14,5 +15,6 @@ export default function ImportManagedListPage({ params }: { params: Promise<{ li
   const { isLoaded, isSignedIn } = useAuth();
   const list = useQuery(api.lists.managedList, isLoaded && isSignedIn ? { listId } : "skip");
   if (list === undefined) return null;
+  if (list === null) return <ManagedListGone />;
   return <ImportListView listId={listId} forName={list.forName} />;
 }

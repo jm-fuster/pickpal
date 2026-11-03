@@ -615,12 +615,18 @@ export const myManagedLists = query({
   },
 });
 
-/** Una lista que llevas. La de otro o una que no existe: «Lista no encontrada.» */
+/**
+ * Una lista que llevas. La de otro o una que no existe: `null`, las dos igual.
+ * No lanza, a diferencia del resto: es la que decide si la página se pinta, y
+ * un error aquí (al borrar la lista con la página abierta, o en un enlace
+ * viejo) se llevaba la app entera a la página de error.
+ */
 export const managedList = query({
   args: { listId: v.id("managedLists") },
   handler: async (ctx, { listId }) => {
     const clerkUserId = await requireUser(ctx);
-    const list = await assertManagedList(ctx, listId, clerkUserId);
+    const list = await ctx.db.get(listId);
+    if (!list || list.managerClerkUserId !== clerkUserId) return null;
     return {
       listId: list._id,
       forName: list.forName,

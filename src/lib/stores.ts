@@ -134,10 +134,13 @@ function storeSearchUrl(
   priceRange?: PriceRange,
 ): string {
   const q = encodeURIComponent(query);
-  const padded =
+  const range =
     priceRange && STORES_WITH_PRICE_FILTER.includes(store)
       ? padPriceRange(priceRange.minEuros, priceRange.maxEuros)
       : null;
+  // {0, 0} es «rango inválido» (invertido, negativo): sin filtro, mejor que
+  // buscar entre 0 y 0 €.
+  const padded = range && range.highEuros > 0 ? range : null;
 
   switch (store) {
     case "amazon": {

@@ -1,4 +1,4 @@
-import { looksLikeUrl, prepareListLink, type PreparedLink } from "../links";
+import { looksLikeUrl, prepareListLink, trimUrlEnd, type PreparedLink } from "../links";
 import { storeIdForUrl } from "../stores";
 
 /**
@@ -188,37 +188,6 @@ const SCHEME_URL = /https?:\/\/[^\s<>"«»]+/gi;
 // Sin protocolo: «www.…» o dominio con ruta («amazon.es/dp/…», «amzn.to/…»).
 const BARE_URL =
   /(?<![\p{L}\p{N}@./:_-])(?:www\.[^\s<>"«»]+|(?:[a-z0-9-]+\.)+[a-z]{2,}[/?#][^\s<>"«»]*)/giu;
-
-function count(text: string, char: string): number {
-  return text.split(char).length - 1;
-}
-
-/**
- * Quita la puntuación que se pega al final de un enlace dentro de una frase.
- * Un «)» final solo se quita si no tiene pareja dentro del enlace.
- */
-function trimUrlEnd(url: string): string {
-  let end = url.length;
-  const open = count(url, "(");
-  let close = count(url, ")");
-  const openSquare = count(url, "[");
-  let closeSquare = count(url, "]");
-  while (end > 0) {
-    const last = url[end - 1];
-    if (".,;:!?'\"»…".includes(last)) {
-      end--;
-    } else if (last === ")" && open < close) {
-      end--;
-      close--;
-    } else if (last === "]" && openSquare < closeSquare) {
-      end--;
-      closeSquare--;
-    } else {
-      break;
-    }
-  }
-  return url.slice(0, end);
-}
 
 type Cell = { text: string; links: string[] };
 

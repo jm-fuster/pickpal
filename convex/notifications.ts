@@ -1,5 +1,7 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
+import { ActionCtx, internalAction, internalMutation, internalQuery } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
 import {
   countMarkedByManager,
@@ -104,97 +106,150 @@ export type UserToNotify = {
   events: EventToNotify[];
 };
 
-export const findEventsNeedingEmail = internalQuery({
-  args: {},
-  handler: async (ctx): Promise<UserToNotify[]> => {
-    const allSettings = await ctx.db.query("userSettings").collect();
-    const targets = allSettings.filter(
-      (s) =>
-        s.emailNotificationsEnabled === true &&
-        typeof s.email === "string" &&
-        s.email.length > 0 &&
-        s.emailNotifyDaysBefore !== undefined,
-    );
+/** Quien tiene los avisos encendidos, con su correo y con cuántos días antes. */
+type NotificationTarget = { clerkUserId: string; email: string; leadDays: number[] };
 
-    const result: UserToNotify[] = [];
+// Ajustes leídos por consulta. Cada consulta de Convex tiene un tope de
+// lecturas; hasta el 4-nov-2026 el cron lo hacía todo en una sola, para todos
+// los usuarios a la vez, y con unos 300 con avisos y una docena de fichas cada
+// uno la pasaba: fallaba entera y no salía ningún correo, ningún día.
+const TARGETS_PAGE = 200;
 
-    for (const s of targets) {
+/** Una página de `userSettings`, ya filtrada a quien tiene los avisos encendidos. */
+export const notificationTargetsPage = internalQuery({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
+    const page = await ctx.db.query("userSettings").paginate(paginationOpts);
+    const targets: NotificationTarget[] = [];
+    for (const s of page.page) {
+      if (
+        s.emailNotificationsEnabled !== true ||
+        typeof s.email !== "string" ||
+        s.email.length === 0 ||
+        s.emailNotifyDaysBefore === undefined
+      ) {
+        continue;
+      }
       // Backward-compat: docs antiguos guardan número, nuevos array.
       const raw = s.emailNotifyDaysBefore as number | number[];
       const leadDays = typeof raw === "number" ? [raw] : raw;
       if (leadDays.length === 0) continue;
-      // Sus fichas y las que le han compartido: quien tiene acceso a una ficha
-      // recibe los avisos de sus fechas con sus propios ajustes, en el mismo
-      // correo del día que los de las suyas (docs/email-notifications.md,
-      // «Fichas compartidas»).
-      const people = await peopleWithAccess(ctx, s.clerkUserId);
+      targets.push({ clerkUserId: s.clerkUserId, email: s.email, leadDays });
+    }
+    return { targets, isDone: page.isDone, continueCursor: page.continueCursor };
+  },
+});
 
-      const events: EventToNotify[] = [];
-      for (const person of people) {
-        const dates = await ctx.db
-          .query("importantDates")
-          .withIndex("by_person", (q) => q.eq("personId", person._id))
-          .collect();
-        for (const date of dates) {
-          const next = nextOccurrence(date);
-          if (next === null) continue;
-          if (!leadDays.includes(next.daysUntil)) continue;
-
-          // Dedupe por destinatario y (dateId, year, leadDays). El aviso que
-          // recibió la dueña no tapa el del invitado, y uno a 14 días no
-          // bloquea el de 7 para la misma ocurrencia. `first` y no `unique`:
-          // una fila repetida no debe tumbar el cron de todos.
-          const already = await ctx.db
-            .query("emailNotifications")
-            .withIndex("by_user_date_year_lead", (q) =>
-              q
-                .eq("clerkUserId", s.clerkUserId)
-                .eq("importantDateId", date._id)
-                .eq("occurrenceYear", next.occurrenceYear)
-                .eq("leadDays", next.daysUntil),
-            )
-            .first();
-          if (already) continue;
-
-          // Solo las cifras, y solo de las listas que este usuario asoció a la
-          // persona, cada una por su permiso: si la abuela guarda en la ficha
-          // de Lucía la lista de Lucía, cuenta esa y no la propia de Marta.
-          // Quien lleva una lista a cargo suma además la suya, la que asoció a
-          // esa ficha (`managedLists.personId`). El correo nunca lleva títulos
-          // de la lista de nadie.
-          const listUnclaimed =
-            (await countUnclaimedForReader(ctx, person._id, s.clerkUserId)) +
-            (await countUnclaimedForManager(ctx, person._id, s.clerkUserId));
-          const listMine =
-            (await countMarkedByReader(ctx, person._id, s.clerkUserId)) +
-            (await countMarkedByManager(ctx, person._id, s.clerkUserId));
-
-          events.push({
-            dateId: date._id,
-            personId: person._id,
-            occurrenceYear: next.occurrenceYear,
-            label: date.label,
-            personName: person.name,
-            personAvatarUrl: person.avatarUrl,
-            month: date.month,
-            day: date.day,
-            daysUntil: next.daysUntil,
-            ...(listUnclaimed > 0 ? { listUnclaimed } : {}),
-            ...(listMine > 0 ? { listMine } : {}),
-          });
-        }
+/**
+ * A quién hay que avisar hoy y de qué: una consulta por página de ajustes y
+ * otra por usuario, cada una con su propio tope de lecturas. Si la de un
+ * usuario falla, se apunta y se sigue con los demás.
+ */
+export async function forEachUserToNotify(
+  ctx: ActionCtx,
+  fn: (user: UserToNotify) => Promise<void>,
+) {
+  let cursor: string | null = null;
+  for (;;) {
+    const page: { targets: NotificationTarget[]; isDone: boolean; continueCursor: string } =
+      await ctx.runQuery(internal.notifications.notificationTargetsPage, {
+        paginationOpts: { numItems: TARGETS_PAGE, cursor },
+      });
+    for (const target of page.targets) {
+      let user: UserToNotify | null;
+      try {
+        user = await ctx.runQuery(internal.notifications.findEventsForUser, target);
+      } catch (err) {
+        console.error(`[emails] No se pudieron calcular los avisos de ${target.clerkUserId}:`, err);
+        continue;
       }
+      if (user) await fn(user);
+    }
+    if (page.isDone) return;
+    cursor = page.continueCursor;
+  }
+}
 
-      if (events.length > 0) {
-        result.push({
-          clerkUserId: s.clerkUserId,
-          email: s.email as string,
-          events,
+/** Todo lo que saldría hoy, junto. Para los tests y para mirarlo a mano. */
+export const findEventsNeedingEmail = internalAction({
+  args: {},
+  handler: async (ctx): Promise<UserToNotify[]> => {
+    const users: UserToNotify[] = [];
+    await forEachUserToNotify(ctx, async (user) => {
+      users.push(user);
+    });
+    return users;
+  },
+});
+
+export const findEventsForUser = internalQuery({
+  args: { clerkUserId: v.string(), email: v.string(), leadDays: v.array(v.number()) },
+  handler: async (ctx, s): Promise<UserToNotify | null> => {
+    const { leadDays } = s;
+    // Sus fichas y las que le han compartido: quien tiene acceso a una ficha
+    // recibe los avisos de sus fechas con sus propios ajustes, en el mismo
+    // correo del día que los de las suyas (docs/email-notifications.md,
+    // «Fichas compartidas»).
+    const people = await peopleWithAccess(ctx, s.clerkUserId);
+
+    const events: EventToNotify[] = [];
+    for (const person of people) {
+      const dates = await ctx.db
+        .query("importantDates")
+        .withIndex("by_person", (q) => q.eq("personId", person._id))
+        .collect();
+      for (const date of dates) {
+        const next = nextOccurrence(date);
+        if (next === null) continue;
+        if (!leadDays.includes(next.daysUntil)) continue;
+
+        // Dedupe por destinatario y (dateId, year, leadDays). El aviso que
+        // recibió la dueña no tapa el del invitado, y uno a 14 días no
+        // bloquea el de 7 para la misma ocurrencia. `first` y no `unique`:
+        // una fila repetida no debe tumbar el cron de todos.
+        const already = await ctx.db
+          .query("emailNotifications")
+          .withIndex("by_user_date_year_lead", (q) =>
+            q
+              .eq("clerkUserId", s.clerkUserId)
+              .eq("importantDateId", date._id)
+              .eq("occurrenceYear", next.occurrenceYear)
+              .eq("leadDays", next.daysUntil),
+          )
+          .first();
+        if (already) continue;
+
+        // Solo las cifras, y solo de las listas que este usuario asoció a la
+        // persona, cada una por su permiso: si la abuela guarda en la ficha
+        // de Lucía la lista de Lucía, cuenta esa y no la propia de Marta.
+        // Quien lleva una lista a cargo suma además la suya, la que asoció a
+        // esa ficha (`managedLists.personId`). El correo nunca lleva títulos
+        // de la lista de nadie.
+        const listUnclaimed =
+          (await countUnclaimedForReader(ctx, person._id, s.clerkUserId)) +
+          (await countUnclaimedForManager(ctx, person._id, s.clerkUserId));
+        const listMine =
+          (await countMarkedByReader(ctx, person._id, s.clerkUserId)) +
+          (await countMarkedByManager(ctx, person._id, s.clerkUserId));
+
+        events.push({
+          dateId: date._id,
+          personId: person._id,
+          occurrenceYear: next.occurrenceYear,
+          label: date.label,
+          personName: person.name,
+          personAvatarUrl: person.avatarUrl,
+          month: date.month,
+          day: date.day,
+          daysUntil: next.daysUntil,
+          ...(listUnclaimed > 0 ? { listUnclaimed } : {}),
+          ...(listMine > 0 ? { listMine } : {}),
         });
       }
     }
 
-    return result;
+    if (events.length === 0) return null;
+    return { clerkUserId: s.clerkUserId, email: s.email, events };
   },
 });
 

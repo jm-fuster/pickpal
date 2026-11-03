@@ -8,7 +8,7 @@
 
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { INVITE_LOOKUP_DAILY_LIMIT } from "./personShares";
 import schema from "./schema";
@@ -317,6 +317,45 @@ describe("qué se comparte y qué no", () => {
     await generar(t, CAROL, personId, "Idea de Carol");
     await t.withIdentity(CAROL).mutation(api.account.deleteMyAccount, {});
     expect(await autoresDeTandas(t)).toEqual([BOB.subject]);
+  });
+
+  test("la migración borra las tandas que quedaron de quien ya no tiene la ficha", async () => {
+    const t = convexTest(schema, modules);
+    const personId = await crearYCompartir(t);
+    await generar(t, ALICE, personId, "Idea de Alice");
+    await generar(t, BOB, personId, "Idea privada de Bob");
+    // Como quedaba antes del 4-nov-2026: Bob se desligó y su tanda se quedó.
+    await t.run(async (ctx) => {
+      for (const s of await ctx.db.query("personShares").collect()) await ctx.db.delete(s._id);
+    });
+
+    const prueba = await t.mutation(internal.migrations.purgeOrphanRecommendations, { dryRun: true });
+    expect(prueba).toMatchObject({ checked: 2, orphans: 1, isDone: true });
+    expect(await autoresDeTandas(t)).toEqual([ALICE.subject, BOB.subject]);
+
+    await t.mutation(internal.migrations.purgeOrphanRecommendations, { dryRun: false });
+    expect(await autoresDeTandas(t)).toEqual([ALICE.subject]);
+  });
+
+  test("renombrar un evento mueve las tandas de todos, no solo las de quien renombra", async () => {
+    const t = convexTest(schema, modules);
+    const personId = await crearYCompartir(t);
+    const id = await t.withIdentity(ALICE).mutation(api.importantDates.create, {
+      personId,
+      label: "Cumpleaños",
+      month: 9,
+      day: 10,
+    });
+    await generar(t, ALICE, personId, "Idea de Alice");
+    await generar(t, BOB, personId, "Idea privada de Bob");
+
+    await t.withIdentity(BOB).mutation(api.importantDates.update, { id, label: "Cumple" });
+
+    const key = { personId, occasionLabel: "Cumple", giftType: "fisica" };
+    const deAlice = await t.withIdentity(ALICE).query(api.recommendations.getByPersonOccasion, key);
+    const deBob = await t.withIdentity(BOB).query(api.recommendations.getByPersonOccasion, key);
+    expect(deAlice?.ideas.map((i) => i.title)).toEqual(["Idea de Alice"]);
+    expect(deBob?.ideas.map((i) => i.title)).toEqual(["Idea privada de Bob"]);
   });
 
   test("las ideas guardadas sí se comparten, con autoría", async () => {

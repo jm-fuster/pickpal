@@ -15,6 +15,20 @@ describe("shareTargetFragment", () => {
     expect(read(f)).toEqual({ title: "Vela de higo", url: "https://tienda.example.com/vela-higo" });
   });
 
+  it("deja fuera del enlace la puntuación de la frase", () => {
+    expect(read(shareTargetFragment({ text: "Mira esto: https://amzn.eu/d/abc123." }))).toEqual({
+      title: "Mira esto",
+      url: "https://amzn.eu/d/abc123",
+    });
+    expect(
+      read(shareTargetFragment({ text: "Vestido (https://www.zara.com/es/es/vestido-midi-p0123.html)" })),
+    ).toEqual({ title: "Vestido", url: "https://www.zara.com/es/es/vestido-midi-p0123.html" });
+    expect(read(shareTargetFragment({ text: "Vela https://tienda.example.com/vela, mira qué bonita" }))).toEqual({
+      title: "Vela mira qué bonita",
+      url: "https://tienda.example.com/vela",
+    });
+  });
+
   it("sin título y con solo el enlace, deja que la página sugiera el nombre", () => {
     const f = shareTargetFragment({ text: "https://tienda.example.com/vela-higo" });
     expect(read(f)).toEqual({ url: "https://tienda.example.com/vela-higo" });

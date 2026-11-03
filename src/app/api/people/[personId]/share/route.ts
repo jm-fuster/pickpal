@@ -51,7 +51,9 @@ export async function GET(
   try {
     const client = await clerkClient();
     const ids = [members.ownerClerkUserId, ...members.invitees.map((i) => i.clerkUserId)];
-    const { data } = await client.users.getUserList({ userId: ids });
+    // `limit` explícito: sin él Clerk devuelve 10, y una ficha la tienen
+    // su dueño y hasta 20 invitados.
+    const { data } = await client.users.getUserList({ userId: ids, limit: ids.length });
     const byId = new Map(data.map((u) => [u.id, u.primaryEmailAddress?.emailAddress ?? null]));
     ownerEmail = byId.get(members.ownerClerkUserId) ?? null;
     for (const inv of members.invitees) {

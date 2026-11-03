@@ -414,3 +414,54 @@ export function prepareListLink(raw: string): PreparedLink {
   if (suggestedTitle !== undefined) prepared.suggestedTitle = suggestedTitle;
   return prepared;
 }
+
+function count(text: string, char: string): number {
+  return text.split(char).length - 1;
+}
+
+/**
+ * Quita la puntuación que se pega al final de un enlace dentro de una frase.
+ * Un «)» final solo se quita si no tiene pareja dentro del enlace.
+ */
+export function trimUrlEnd(url: string): string {
+  let end = url.length;
+  const open = count(url, "(");
+  let close = count(url, ")");
+  const openSquare = count(url, "[");
+  let closeSquare = count(url, "]");
+  while (end > 0) {
+    const last = url[end - 1];
+    if (".,;:!?'\"»…".includes(last)) {
+      end--;
+    } else if (last === ")" && open < close) {
+      end--;
+      close--;
+    } else if (last === "]" && openSquare < closeSquare) {
+      end--;
+      closeSquare--;
+    } else {
+      break;
+    }
+  }
+  return url.slice(0, end);
+}
+
+const URL_IN_TEXT = /https?:\/\/[^\s<>"«»]+/i;
+
+/**
+ * «Vela de higo https://…», como lo comparten muchas apps de tienda: el texto
+ * y el enlace por separado, sin la puntuación de la frase pegada al enlace
+ * («…abc123.» o «(…vestido.html)»). `null` si no lleva un enlace http(s).
+ */
+export function splitTextAndLink(text: string): { text: string; link: string } | null {
+  const match = URL_IN_TEXT.exec(text);
+  if (!match) return null;
+  const link = trimUrlEnd(match[0]);
+  const rest = `${text.slice(0, match.index)} ${text.slice(match.index + match[0].length)}`
+    .replace(/\s+/g, " ")
+    .trim()
+    // Lo que abría el enlace o lo presentaba («Mira esto:», «Vela (») se va con él.
+    .replace(/\s*[(\[:–—-]+$/, "")
+    .trim();
+  return { text: rest, link };
+}

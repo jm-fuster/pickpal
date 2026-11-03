@@ -112,6 +112,7 @@ Cada tarjeta tiene dos botones en la esquina superior derecha: pulgar arriba y p
 |---|---|
 | Cierra el toast manualmente | `removeIdea` se llama en `onDismiss` |
 | Navega fuera de la pantalla | El `useEffect` de cleanup llama `removeIdea` por cada pendiente |
+| Cierra o recarga la pestaña | Lo mismo, desde `pagehide` (desde el 4-nov-2026; antes se perdían) |
 | Regenera | Los pendientes se confirman antes de la nueva tirada |
 | Pulsa "Deshacer" | La idea vuelve a su posición; `removeIdea` **no** se llama |
 
@@ -433,7 +434,7 @@ La variable de entorno `GOOGLE_GENERATIVE_AI_API_KEY` debe configurarse en Verce
 **Condiciones de datos.** Según los [términos adicionales](https://ai.google.dev/gemini-api/terms) (en vigor desde el 23-mar-2026), a quien usa la API desde el EEE Google le aplica sus reglas de datos de pago: no entrena con los datos, los trata como encargado y los registra 55 días solo para detectar abusos (ver [`privacy.md`](privacy.md) §4.1). Todo lo que `/privacidad` dice de Google depende de esas reglas, así que cuando Google publique una versión nueva de los términos hay que comprobar que siguen ahí.
 
 1. Crear la API key en [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
-2. Los límites de `gemini-3.5-flash` (RPM/RPD) se aplican **al proyecto entero**, así que el techo real lo marca el número de usuarios activos: el rate limit interno de 10 generaciones/usuario/día acota lo que gasta cada uno, no la suma. Con el uso actual sobra, pero es la cifra que hay que vigilar según crezca. El *thinking* se deja activo a propósito (desactivarlo degradaba el structured output), y `maxRetries: 2` da margen ante una tanda que no valide. Ver [`route.ts`](../src/app/api/recommendations/route.ts).
+2. Los límites de `gemini-3.5-flash` (RPM/RPD) se aplican **al proyecto entero**, así que el techo real lo marca el número de usuarios activos: el rate limit interno de 10 generaciones/usuario/día acota lo que gasta cada uno, no la suma. Con el uso actual sobra, pero es la cifra que hay que vigilar según crezca. El *thinking* se deja activo a propósito (desactivarlo degradaba el structured output), y `maxRetries: 2` repite la llamada si falla la red o el proveedor; una tanda que no valide contra el schema no se reintenta (va al `catch` y devuelve la unidad), y lo que el schema deja pasar pero `upsert` rechazaría (tiendas repetidas, categorías en blanco, precios fuera de tope o al revés) lo arregla `sanitizeIdeas` antes de guardar. Ver [`route.ts`](../src/app/api/recommendations/route.ts).
 3. **Proyecto de Google Cloud dedicado.** La [doc de Google](https://ai.google.dev/gemini-api/docs/rate-limits) dice literalmente que los rate limits "se aplican por proyecto, no por API key": crear una segunda key dentro del mismo proyecto **no** separa la cuota. Si el proyecto se comparte con otra app, esa app puede agotar el RPD del día y PickPal se queda sin generar. PickPal debe tener su propio proyecto.
 
 ### Qué ve el usuario cuando falla el proveedor

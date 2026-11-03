@@ -59,23 +59,26 @@ async function assertLabelUnique(
  * huérfanas bajo la etiqueta vieja (invisibles y nunca limpiadas). Como la clave
  * es exacta, migramos siempre que cambie el string literal (incluido un cambio
  * solo de mayúsculas/espacios).
+ *
+ * Las de todos los que tienen la ficha, no solo las de quien renombra: cada
+ * uno tiene sus tandas (privadas), pero el evento es de todos. Hasta el
+ * 4-nov-2026 solo se movían las de quien renombraba, y los demás perdían las
+ * suyas de vista y tenían que gastar cuota en generarlas otra vez.
  */
 async function migrateRecommendationLabel(
   ctx: MutationCtx,
-  clerkUserId: string,
   personId: Id<"people">,
   oldLabel: string,
   newLabel: string,
 ) {
-  const recs = await ctx.db
-    .query("recommendations")
-    .withIndex("by_user_person_occasion_type", (q) =>
-      q
-        .eq("clerkUserId", clerkUserId)
-        .eq("personId", personId)
-        .eq("occasionLabel", oldLabel),
-    )
-    .collect();
+  // Una ficha la tienen como mucho su dueño y 20 invitados, con una tanda
+  // por ocasión y tipo cada uno: leer las de la persona y filtrar es poco.
+  const recs = (
+    await ctx.db
+      .query("recommendations")
+      .withIndex("by_person", (q) => q.eq("personId", personId))
+      .collect()
+  ).filter((rec) => rec.occasionLabel === oldLabel);
   for (const rec of recs) {
     // Una rec huérfana previa bajo (newLabel, mismo giftType) rompería el
     // `.unique()` de getByPersonOccasion: la eliminamos antes de migrar.
@@ -83,7 +86,7 @@ async function migrateRecommendationLabel(
       .query("recommendations")
       .withIndex("by_user_person_occasion_type", (q) =>
         q
-          .eq("clerkUserId", clerkUserId)
+          .eq("clerkUserId", rec.clerkUserId)
           .eq("personId", personId)
           .eq("occasionLabel", newLabel)
           .eq("giftType", rec.giftType),
@@ -230,7 +233,6 @@ export const update = mutation({
       if (patch.label !== existing.label) {
         await migrateRecommendationLabel(
           ctx,
-          clerkUserId,
           existing.personId,
           existing.label,
           patch.label,

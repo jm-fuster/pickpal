@@ -57,7 +57,7 @@ async function fichaCompartida(t: T) {
 }
 
 const avisos = (t: T) =>
-  t.query(internal.notifications.findEventsNeedingEmail, {});
+  t.action(internal.notifications.findEventsNeedingEmail, {});
 
 const avisosDe = async (t: T, clerkUserId: string) =>
   (await avisos(t)).find((u) => u.clerkUserId === clerkUserId);
@@ -229,5 +229,32 @@ describe("el correo del día", () => {
     });
     await t.action(internal.emails.runDailyEmailNotifications, {});
     expect(calls.map((c) => c.to)).toEqual([ALICE.email, BOB.email]);
+  });
+});
+
+describe("con muchos usuarios", () => {
+  test("cada uno va en su propia consulta: juntos no tumban el aviso de nadie", async () => {
+    // Un tope de consultas por transacción muy bajo hace aquí de las miles de
+    // lecturas de producción. Con todo en una sola consulta, 12 usuarios con
+    // 3 fichas cada uno lo pasaban y el cron fallaba para todos.
+    const t = convexTest({ schema, modules, transactionLimits: { databaseQueries: 60 } });
+    const users = Array.from({ length: 12 }, (_, i) => ({
+      subject: `user_${i}`,
+      issuer: ISSUER,
+      email: `user${i}@example.com`,
+    }));
+    for (const user of users) {
+      const u = t.withIdentity(user);
+      await u.mutation(api.settings.setMine, { emailNotificationsEnabled: true, emailNotifyDaysBefore: [7] });
+      for (const name of ["Marta", "Luis", "Ana"]) {
+        const personId = await u.mutation(api.people.create, { name, relationship: "family", interests: [] });
+        await u.mutation(api.importantDates.create, { personId, label: "Cumpleaños", month: 10, day: 17 });
+      }
+    }
+    const calls = mockResend();
+
+    await t.action(internal.emails.runDailyEmailNotifications, {});
+
+    expect(calls.map((c) => c.to).sort()).toEqual(users.map((u) => u.email).sort());
   });
 });

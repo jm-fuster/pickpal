@@ -108,3 +108,47 @@ export const giftRecommendationsSchemaMixed = z.object({
 });
 
 export type GiftRecommendation = z.infer<typeof giftRecommendationSchema>;
+
+// Espejo de MAX_IDEA_PRICE_EUROS en convex/validators.ts — si cambia allí, cambiar aquí.
+const MAX_IDEA_PRICE_EUROS = 100_000;
+
+/** Decode \\uXXXX sequences that Gemini sometimes emits literally instead of actual chars. */
+function decodeEscapes(s: string): string {
+  return s.replace(/\\u([0-9a-fA-F]{4})/gi, (_, h) =>
+    String.fromCharCode(parseInt(h, 16)),
+  );
+}
+
+/**
+ * Arregla lo que el schema de generación deja pasar y `upsert` rechaza: una
+ * sola idea así tiraba la tanda entera, y `maxRetries` no reintenta (solo
+ * repite la llamada si falla la red o el proveedor, no si el objeto no
+ * cuadra). Tiendas repetidas, categorías en blanco, precios fuera del tope de
+ * `validateRecommendationIdeas` o un rango al revés.
+ */
+export function repairGeneratedIdeas(
+  ideas: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+  return ideas.map((idea) => {
+    const out: Record<string, unknown> = { ...idea };
+    for (const key of ["title", "description", "amazonQuery"] as const) {
+      if (typeof out[key] === "string") out[key] = decodeEscapes(out[key] as string);
+    }
+    if (Array.isArray(out.category)) {
+      const categories = (out.category as unknown[])
+        .map((c) => (typeof c === "string" ? decodeEscapes(c).trim() : ""))
+        .filter((c) => c.length > 0);
+      out.category = categories.length > 0 ? categories : ["Regalo"];
+    }
+    if (Array.isArray(out.suggestedStores)) {
+      out.suggestedStores = [...new Set(out.suggestedStores as unknown[])];
+    }
+    const clamp = (n: unknown) =>
+      typeof n === "number" && Number.isFinite(n) ? Math.min(Math.max(n, 0), MAX_IDEA_PRICE_EUROS) : 0;
+    const a = clamp(out.priceMinEuros);
+    const b = clamp(out.priceMaxEuros);
+    out.priceMinEuros = Math.min(a, b);
+    out.priceMaxEuros = Math.max(a, b);
+    return out;
+  });
+}

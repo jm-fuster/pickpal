@@ -12,6 +12,7 @@ import {
   giftRecommendationsSchemaMixed,
   giftRecommendationsSchemaNoStores,
   GIFT_TYPES,
+  repairGeneratedIdeas,
   type GiftType,
 } from "@/lib/gifts";
 import { RELATIONSHIPS, REACTIONS } from "@/lib/schemas";
@@ -181,13 +182,6 @@ ${typeRules[giftType]}${brandsRule}
 - "priceMinEuros" y "priceMaxEuros" en euros, valores enteros razonables.
 - Responde en español. IMPORTANTE: escribe todos los textos con caracteres Unicode directos (á, é, í, ó, ú, ñ, ü, etc.). No uses secuencias de escape como \\u00e9; escribe directamente el carácter.`;
 };
-
-/** Decode \\uXXXX sequences that Gemini sometimes emits literally instead of actual chars. */
-function decodeEscapes(s: string): string {
-  return s.replace(/\\u([0-9a-fA-F]{4})/gi, (_, h) =>
-    String.fromCharCode(parseInt(h, 16)),
-  );
-}
 
 type PexelsPhoto = {
   src?: { medium?: string };
@@ -384,23 +378,6 @@ async function attachBrandStores(
   });
 }
 
-function sanitizeIdeas(
-  ideas: Array<Record<string, unknown>>,
-): Array<Record<string, unknown>> {
-  return ideas.map((idea) => {
-    const out: Record<string, unknown> = { ...idea };
-    for (const key of ["title", "description", "amazonQuery"] as const) {
-      if (typeof out[key] === "string") out[key] = decodeEscapes(out[key] as string);
-    }
-    if (Array.isArray(out.category)) {
-      out.category = (out.category as unknown[]).map((c) =>
-        typeof c === "string" ? decodeEscapes(c) : c,
-      );
-    }
-    return out;
-  });
-}
-
 export async function POST(req: NextRequest) {
   const { getToken } = await auth();
   const token = await getToken({ template: "convex" });
@@ -542,15 +519,17 @@ export async function POST(req: NextRequest) {
       // desactivarlo con `thinkingBudget: 0` degradaba la fiabilidad del
       // structured output (9 objetos con enums/arrays) y provocaba "response did
       // not match schema"; no hay motivo para tocarlo ahora.
-      // `maxRetries: 2` da margen ante una tanda que no valide. El coste extra de
-      // tokens es asumible con el tope de 10 generaciones/día.
+      // `maxRetries: 2` repite la llamada si falla la red o el proveedor (un
+      // 503, un 429 por minuto). No repite una tanda que no valide contra el
+      // schema: esa va directa al `catch`. Lo que el schema deja pasar y
+      // `upsert` rechazaría lo arregla `repairGeneratedIdeas`.
       maxRetries: 2,
     });
 
     // La cuota ya quedó reservada antes de llamar a Gemini; aquí solo
     // persistimos. Sin `consume` posterior no existe el caso "ideas
     // guardadas pero el usuario ve un error".
-    const cleanIdeas = sanitizeIdeas(object.ideas as Array<Record<string, unknown>>);
+    const cleanIdeas = repairGeneratedIdeas(object.ideas as Array<Record<string, unknown>>);
     // La UI y removeIdea usan el título como clave: si Gemini repite un
     // título, conservamos solo la primera aparición.
     const seenTitles = new Set<string>();

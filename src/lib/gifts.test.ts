@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { giftRecommendationsSchema, giftRecommendationsSchemaMixed } from "./gifts";
+import { giftRecommendationsSchema, giftRecommendationsSchemaMixed, repairGeneratedIdeas } from "./gifts";
+import { validateRecommendationIdeas } from "../../convex/validators";
 
 describe("giftRecommendationsSchema", () => {
   const validIdea = {
@@ -121,5 +122,43 @@ describe("giftRecommendationsSchemaMixed", () => {
 
   it("no acepta «sorprendeme» como tipo de una idea", () => {
     expect(giftRecommendationsSchemaMixed.safeParse({ ideas: six({ giftType: "sorprendeme" }) }).success).toBe(false);
+  });
+});
+
+describe("repairGeneratedIdeas", () => {
+  const idea = {
+    title: "Auriculares",
+    description: "Para el tren",
+    priceMinEuros: 40,
+    priceMaxEuros: 80,
+    category: ["Música"],
+    amazonQuery: "auriculares",
+    suggestedStores: ["amazon"],
+    giftType: "fisica",
+  };
+
+  // Cada una pasa el schema de generación y antes tiraba la tanda entera en `upsert`.
+  it("arregla lo que el schema deja pasar y Convex rechazaría", () => {
+    const rotas = [
+      { ...idea, suggestedStores: ["amazon", "decathlon", "amazon"] },
+      { ...idea, category: ["Música", " "] },
+      { ...idea, category: ["  "] },
+      { ...idea, priceMinEuros: 90_000, priceMaxEuros: 150_000 },
+      { ...idea, priceMinEuros: 120, priceMaxEuros: 40 },
+    ];
+    expect(() => validateRecommendationIdeas(rotas as never)).toThrow();
+
+    const arregladas = repairGeneratedIdeas(rotas);
+    expect(() => validateRecommendationIdeas(arregladas as never)).not.toThrow();
+    expect(arregladas.map((i) => i.suggestedStores)[0]).toEqual(["amazon", "decathlon"]);
+    expect(arregladas[1].category).toEqual(["Música"]);
+    expect(arregladas[2].category).toEqual(["Regalo"]);
+    expect(arregladas[3]).toMatchObject({ priceMinEuros: 90_000, priceMaxEuros: 100_000 });
+    expect(arregladas[4]).toMatchObject({ priceMinEuros: 40, priceMaxEuros: 120 });
+  });
+
+  it("decodifica los \\u que Gemini escribe a veces literalmente", () => {
+    const [arreglada] = repairGeneratedIdeas([{ ...idea, title: "Caf\\u00e9 de especialidad" }]);
+    expect(arreglada.title).toBe("Café de especialidad");
   });
 });

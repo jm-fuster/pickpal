@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { findEventByLabel } from "./eventLabels";
+import { personHasAccess } from "./personShares";
 
 const remapMapValidator = v.array(
   v.object({ oldClerkUserId: v.string(), newClerkUserId: v.string() }),
@@ -342,5 +343,44 @@ export const linkSavedIdeasToEvents = internalMutation({
     }
 
     return { dryRun, total: ideas.length, ...counts, duplicatePairs };
+  },
+});
+
+/**
+ * Borra las tandas de la IA (`recommendations`) de quien ya no tiene la
+ * ficha: cuentas borradas cuya ficha pasó a otro, invitados que se
+ * desligaron, fichas que ya no existen. Hasta el 4-nov-2026 ni borrar la
+ * cuenta ni desligarse las borraban, y la exportación del dueño las sacaba
+ * (son privadas de quien las pidió). Desde ese día ya no se crean más.
+ *
+ * Uso (dry run primero, siempre; por páginas, repitiendo con el
+ * `continueCursor` que devuelve hasta que `isDone` sea true):
+ *   npx convex run migrations:purgeOrphanRecommendations '{"dryRun":true}'
+ *   npx convex run migrations:purgeOrphanRecommendations '{"dryRun":true,"cursor":"..."}'
+ *   npx convex run migrations:purgeOrphanRecommendations '{"dryRun":false}'
+ *   (añade --prod para el deployment de producción)
+ *
+ * Idempotente: una tanda de alguien con acceso no se toca nunca.
+ */
+export const purgeOrphanRecommendations = internalMutation({
+  args: { dryRun: v.boolean(), cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, { dryRun, cursor }) => {
+    const page = await ctx.db
+      .query("recommendations")
+      .paginate({ numItems: 200, cursor: cursor ?? null });
+    let orphans = 0;
+    for (const rec of page.page) {
+      const person = await ctx.db.get(rec.personId);
+      if (await personHasAccess(ctx, person, rec.clerkUserId)) continue;
+      orphans++;
+      if (!dryRun) await ctx.db.delete(rec._id);
+    }
+    return {
+      dryRun,
+      checked: page.page.length,
+      orphans,
+      isDone: page.isDone,
+      continueCursor: page.continueCursor,
+    };
   },
 });

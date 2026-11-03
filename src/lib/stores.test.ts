@@ -182,6 +182,12 @@ describe("padPriceRange", () => {
     expect(padPriceRange(-5, 50)).toEqual({ lowEuros: 0, highEuros: 0 });
     expect(padPriceRange(50, 30)).toEqual({ lowEuros: 0, highEuros: 0 });
   });
+
+  it("con un rango inválido la búsqueda va sin filtro, no entre 0 y 0 €", () => {
+    expect(generateStoreSearchUrl("amazon", "auriculares", { minEuros: 120, maxEuros: 40 })).toBe(
+      "https://www.amazon.es/s?k=auriculares",
+    );
+  });
 });
 
 describe("isStoreId", () => {

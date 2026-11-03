@@ -9,10 +9,11 @@
  * Nada de aquí abre el enlace: solo lee la cadena.
  */
 
+import { splitTextAndLink } from "./links";
+
 // Lo que manda una app al compartir cabe de sobra; lo demás se recorta antes
 // de mirarlo, para no trabajar con entradas enormes que cualquiera puede mandar.
 const MAX_FIELD = 4000;
-const URL_IN_TEXT = /https?:\/\/[^\s<>"«»]+/i;
 
 export type SharedFields = { title?: string | null; text?: string | null; url?: string | null };
 
@@ -26,10 +27,15 @@ export function shareTargetFragment(shared: SharedFields): string {
   const text = field(shared.text);
   const url = field(shared.url);
 
-  const link = /^https?:\/\//i.test(url) ? url : (URL_IN_TEXT.exec(text)?.[0] ?? "");
+  // El enlace dentro del texto, sin la puntuación de la frase pegada al final.
+  const inText = splitTextAndLink(text);
+  const fromField = /^https?:\/\//i.test(url);
+  const link = fromField ? url : (inText?.link ?? "");
   // Sin título, el texto sin el enlace («Mira esto») no sirve de nombre, pero
   // el de una app que comparte «Nombre del producto https://…» sí.
-  const rest = link ? text.replace(link, " ").replace(/\s+/g, " ").trim() : text;
+  const rest = fromField
+    ? text.replace(url, " ").replace(/\s+/g, " ").trim()
+    : (inText?.text ?? text);
   const name = title || (rest.length > 0 && rest.length <= 200 ? rest : "");
 
   const params = new URLSearchParams();

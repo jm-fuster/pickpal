@@ -93,6 +93,13 @@ export function GiftsPanel({
   // usuario (presupuestos distintos).
   const occasion =
     occasionChoice || (events && events.length === 1 ? events[0].label : "");
+  // La ocasión elegida ahora. El selector sigue activo mientras se genera: si
+  // cambia, la respuesta es de la anterior y no se pinta bajo la nueva (se
+  // guardaba como suya y los descartes no encontraban la idea).
+  const occasionRef = useRef(occasion);
+  useEffect(() => {
+    occasionRef.current = occasion;
+  });
   const [occasionInvalid, setOccasionInvalid] = useState(false);
   // Una tanda mezclada por ocasión; el tipo filtra después (IDEA_KINDS).
   const giftType = MIXED_GIFT_TYPE;
@@ -123,6 +130,7 @@ export function GiftsPanel({
         idea: GiftRecommendation;
         insertAt: number;
         args: Parameters<typeof removeIdea>[0];
+        toastId?: string | number;
       }
     >
   >(new Map());
@@ -153,22 +161,33 @@ export function GiftsPanel({
     if (saved) removeSavedIdea({ id: saved._id }).catch(() => {});
   };
 
+  // Al salir, o al cerrar la pestaña, se confirma lo descartado y lo quitado,
+  // y se cierran sus avisos: un «Deshacer» que ya no puede deshacer nada
+  // engañaría. Sin `pagehide`, cerrar o recargar con descartes pendientes los
+  // perdía (el aviso del descarte no caduca solo), y la siguiente tanda podía
+  // repetirlos.
   useEffect(() => {
+    const discards = pendingDiscards.current;
     const unsaving = pendingUnsaves.current;
-    return () => {
-      pendingDiscards.current.forEach(({ args }) => {
+    const flush = () => {
+      const pending = [...discards.values()];
+      discards.clear();
+      for (const { args, toastId } of pending) {
         removeIdea(args).catch(() => {});
         discardSavedIdea(args.ideaTitle, args.occasionLabel);
-      });
-      pendingDiscards.current.clear();
-      // Al salir se confirma lo quitado y se cierra su aviso: un «Deshacer»
-      // que ya no puede deshacer nada engañaría.
+        if (toastId !== undefined) toast.dismiss(toastId);
+      }
       const unsaves = [...unsaving.values()];
       unsaving.clear();
       for (const { id, toastId } of unsaves) {
         removeSavedIdea({ id }).catch(() => {});
         toast.dismiss(toastId);
       }
+    };
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      flush();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -267,11 +286,12 @@ export function GiftsPanel({
         }),
       );
     }
+    const requested = occasion;
     try {
       const res = await fetch("/api/recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ personId, occasionLabel: occasion, giftType }),
+        body: JSON.stringify({ personId, occasionLabel: requested, giftType }),
       });
       if (!res.ok) {
         // `error` viene ya saneado por nuestra API route; nunca enseñamos
@@ -288,7 +308,8 @@ export function GiftsPanel({
         ideas: GiftRecommendation[];
         remaining?: number;
       };
-      setIdeas(data.ideas);
+      // La tanda ya está guardada para su ocasión: al volver a ella, sale.
+      if (occasionRef.current === requested) setIdeas(data.ideas);
       if (typeof data.remaining === "number") setRemaining(data.remaining);
     } catch {
       toast.error("No se pudieron generar ideas, inténtalo de nuevo");
@@ -436,7 +457,7 @@ export function GiftsPanel({
     if (leaving) leaving.finished.then(remove, remove);
     else remove();
 
-    toast("Descartada. Las próximas ideas evitarán otras parecidas.", {
+    const toastId = toast("Descartada. Las próximas ideas evitarán otras parecidas.", {
       duration: Infinity,
       action: {
         label: "Deshacer",
@@ -462,6 +483,8 @@ export function GiftsPanel({
         discardSavedIdea(idea.title, occasion);
       },
     });
+    const entry = pendingDiscards.current.get(idea.title);
+    if (entry) entry.toastId = toastId;
   };
 
   // El filtro por tipo, sobre la tanda ya generada: no gasta otra generación.
