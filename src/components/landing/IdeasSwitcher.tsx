@@ -3,7 +3,9 @@ import { Check } from "lucide-react";
 import { IdeaExampleCard } from "@/components/landing/IdeaExampleCard";
 import { reveal } from "@/components/landing/motion";
 import { IDEAS, OCCASION } from "@/components/landing/sample";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { IDEA_KINDS, MIXED_GIFT_TYPE } from "@/lib/giftCatalog";
+import { cn } from "@/lib/utils";
 
 // El filtro por tipo de GiftsPanel, sin JS: radios nativos y una lista por
 // filtro, todas en el HTML. src/app/landing.css enseña la del radio marcado
@@ -34,9 +36,14 @@ export function IdeasSwitcher() {
         <legend className="mb-2 text-sm font-medium">Prueba a filtrarlas por tipo</legend>
         <div className="flex flex-wrap gap-1">
           {FILTERS.map((f) => (
+            // El botón `sm` del panel: `ghost` en reposo y, marcado, el borde y
+            // el fondo de `outline`. Trae la zona táctil de 44 px.
             <label
               key={f.value}
-              className="group/pill relative inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border border-transparent px-3 text-sm font-medium text-muted-foreground transition-[border-color,color] duration-(--dur-micro) hover:text-foreground has-[:checked]:border-border has-[:checked]:text-foreground has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring sm:min-h-8"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "sm" }),
+                "group/pill cursor-pointer text-muted-foreground has-[:checked]:border-input has-[:checked]:bg-background has-[:checked]:text-foreground dark:has-[:checked]:bg-input/30 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
+              )}
             >
               <input
                 type="radio"
@@ -45,7 +52,7 @@ export function IdeasSwitcher() {
                 defaultChecked={f.value === MIXED_GIFT_TYPE}
                 className="sr-only"
               />
-              <Check aria-hidden className="hidden size-4 group-has-[:checked]/pill:block" />
+              <Check aria-hidden className="hidden group-has-[:checked]/pill:block" />
               {f.label}
             </label>
           ))}

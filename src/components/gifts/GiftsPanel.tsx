@@ -636,7 +636,7 @@ export function GiftsPanel({
                     onClick={() => setKindFilter(f.value)}
                     className={cn("shrink-0", !selected && "text-muted-foreground")}
                   >
-                    {selected && <Check className="size-4" aria-hidden />}
+                    {selected && <Check aria-hidden />}
                     {f.label} · {f.count}
                   </Button>
                 );
