@@ -12,6 +12,7 @@ import {
   ALL_STORES,
   STORE_ICONS,
   STORE_LABELS,
+  generateCompareUrl,
   generateStoreSearchUrl,
   pickEffectiveStores,
   type StoreId,
@@ -107,7 +108,7 @@ export function GiftRecommendationCard({
       ? ALL_STORES.filter((s) => favoriteStores.includes(s))
       : [...ALL_STORES];
 
-  const { stores: storesToRender, isFallback } = pickEffectiveStores(
+  const { stores: storesToRender, noneFit } = pickEffectiveStores(
     userFavorites,
     idea.suggestedStores ?? undefined,
   );
@@ -278,39 +279,50 @@ export function GiftRecommendationCard({
                   {matchedBrands.length > 0 && (
                     <p className={STORE_SECTION_LABEL_CLASS}>Buscar en tiendas</p>
                   )}
-                  <div className="grid grid-cols-2 gap-2">
-                    {storesToRender.map((store, i) => {
-                      const isLastOdd =
-                        storesToRender.length % 2 === 1 &&
-                        i === storesToRender.length - 1;
-                      return (
-                        <a
-                          key={store}
-                          href={generateStoreSearchUrl(store, idea.amazonQuery, {
-                            minEuros: idea.priceMinEuros,
-                            maxEuros: idea.priceMaxEuros,
-                          })}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`Buscar ${idea.title} en ${STORE_LABELS[store]} (abre en una pestaña nueva)`}
-                          className={cn(
-                            buttonVariants({ size: "default", variant: "outline" }),
-                            "min-w-0",
-                            isLastOdd && "col-span-2",
-                          )}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={STORE_ICONS[store]} alt="" className="size-4 shrink-0 rounded-sm object-contain bg-white p-px" aria-hidden />
-                          <span className="truncate">{STORE_LABELS[store]}</span>
-                          <ExternalLink className="size-3.5 shrink-0" aria-hidden />
-                        </a>
-                      );
-                    })}
-                  </div>
-                  {isFallback && (
-                    <p className="text-2xs text-muted-foreground">
-                      Búsqueda genérica. Esta idea encaja mejor en otras tiendas.
-                    </p>
+                  {/* Ninguna de las tiendas del usuario lo vende: comparar en
+                      idealo, como «Otras tiendas» en la lista de otra persona,
+                      antes que una búsqueda que no lleva a nada. */}
+                  {noneFit ? (
+                    <a
+                      href={generateCompareUrl(idea.amazonQuery)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Comparar precios de ${idea.title} en idealo.es (abre en una pestaña nueva)`}
+                      className={cn(buttonVariants({ size: "default", variant: "outline" }), "w-full")}
+                    >
+                      Comparar precios en idealo
+                      <ExternalLink className="size-3.5 shrink-0" aria-hidden />
+                    </a>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {storesToRender.map((store, i) => {
+                        const isLastOdd =
+                          storesToRender.length % 2 === 1 &&
+                          i === storesToRender.length - 1;
+                        return (
+                          <a
+                            key={store}
+                            href={generateStoreSearchUrl(store, idea.amazonQuery, {
+                              minEuros: idea.priceMinEuros,
+                              maxEuros: idea.priceMaxEuros,
+                            })}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Buscar ${idea.title} en ${STORE_LABELS[store]} (abre en una pestaña nueva)`}
+                            className={cn(
+                              buttonVariants({ size: "default", variant: "outline" }),
+                              "min-w-0",
+                              isLastOdd && "col-span-2",
+                            )}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={STORE_ICONS[store]} alt="" className="size-4 shrink-0 rounded-sm object-contain bg-white p-px" aria-hidden />
+                            <span className="truncate">{STORE_LABELS[store]}</span>
+                            <ExternalLink className="size-3.5 shrink-0" aria-hidden />
+                          </a>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </div>

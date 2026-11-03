@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Gift, NotebookPen, Trash2, X } from "lucide-react";
+import { Check, ExternalLink, Gift, NotebookPen, Trash2, X } from "lucide-react";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import type { FunctionReturnType } from "convex/server";
@@ -15,7 +15,7 @@ import { listItemImageKey } from "@/lib/listItemImage";
 import type { GiftType } from "@/lib/gifts";
 import { formatApproxPrice } from "@/lib/price";
 import { formatEventDate, moveDestinations } from "@/lib/savedIdeaGroups";
-import { generateStoreSearchUrl, sanitizeFavoriteStores, STORE_ICONS, STORE_LABELS, type StoreId } from "@/lib/stores";
+import { generateCompareUrl, generateStoreSearchUrl, sanitizeFavoriteStores, STORE_ICONS, STORE_LABELS, type StoreId } from "@/lib/stores";
 import { cn } from "@/lib/utils";
 
 export type SavedIdea = NonNullable<FunctionReturnType<typeof api.savedIdeas.getByPerson>>[number];
@@ -105,12 +105,16 @@ export function IdeaStores({
   if (isOwnIdea(idea) || !idea.amazonQuery) return null;
   const physical = !idea.giftType || idea.giftType === "fisica";
   if (!physical) return null;
+  // Las tiendas se congelan al guardar, las mismas que enseñó la tarjeta. Sin
+  // el campo (ideas antiguas), las del usuario; vacío, ninguna de sus tiendas
+  // lo vendía y se ofrece idealo, como en la tarjeta del generador.
   const stores =
-    idea.suggestedStores && idea.suggestedStores.length > 0
-      ? sanitizeFavoriteStores(idea.suggestedStores)
-      : favoriteStores;
+    idea.suggestedStores === undefined
+      ? favoriteStores
+      : sanitizeFavoriteStores(idea.suggestedStores);
+  const noneFit = idea.suggestedStores !== undefined && stores.length === 0;
   const brands = matchFavoriteBrands(idea, favoriteBrands);
-  if (stores.length === 0 && brands.length === 0) return null;
+  if (stores.length === 0 && brands.length === 0 && !noneFit) return null;
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {brands.map((brand) => (
@@ -140,6 +144,18 @@ export function IdeaStores({
           <img src={STORE_ICONS[store]} alt="" aria-hidden className="size-4 rounded-sm bg-white object-contain p-px" />
         </a>
       ))}
+      {noneFit && (
+        <a
+          href={generateCompareUrl(idea.amazonQuery)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Comparar precios de ${idea.title} en idealo.es (abre en una pestaña nueva)`}
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+        >
+          Comparar precios en idealo
+          <ExternalLink className="size-3 shrink-0" aria-hidden />
+        </a>
+      )}
     </div>
   );
 }

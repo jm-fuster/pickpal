@@ -173,34 +173,27 @@ export function sanitizeFavoriteStores(stores: readonly string[]): StoreId[] {
 }
 
 /**
- * Decide qué tiendas mostrar en una tarjeta de regalo físico, dada la lista
- * de tiendas favoritas del usuario y las tiendas sugeridas por la IA.
+ * Decide qué tiendas mostrar en una tarjeta de regalo físico, dadas las
+ * tiendas que el usuario eligió en Ajustes y las que sugirió la IA.
  *
- * - Si la IA no sugiere nada (campo ausente o vacío), mostramos todas las
- *   favoritas (comportamiento previo a v2).
- * - Si la IA sugiere algo y hay intersección con las favoritas, mostramos
- *   solo esa intersección.
- * - Si la IA sugiere algo pero ninguna favorita encaja, hacemos fallback
- *   a todas las favoritas y marcamos `isFallback: true` para que la UI
- *   pueda indicar que es una búsqueda genérica.
+ * - Sin sugerencia (campo ausente: ideas anteriores a `suggestedStores`),
+ *   todas las del usuario.
+ * - Con sugerencia, solo las del usuario que coinciden.
+ * - Si no coincide ninguna, `noneFit` y ninguna tienda. Hasta el 3-nov-2026 se
+ *   enseñaban igualmente todas las del usuario con «Búsqueda genérica», y eso
+ *   mandaba a buscar un perfume en Decathlon: un enlace que no lleva a nada.
+ *   Ahora la tarjeta ofrece comparar precios en idealo.
  */
 export function pickEffectiveStores(
   favoriteStores: readonly StoreId[],
   suggestedStores: readonly string[] | undefined,
-): { stores: StoreId[]; isFallback: boolean } {
-  const sanitizedSuggested = suggestedStores
-    ? sanitizeFavoriteStores(suggestedStores)
-    : [];
-  if (sanitizedSuggested.length === 0) {
-    return { stores: [...favoriteStores], isFallback: false };
+): { stores: StoreId[]; noneFit: boolean } {
+  if (suggestedStores === undefined) {
+    return { stores: [...favoriteStores], noneFit: false };
   }
-  const intersection = favoriteStores.filter((s) =>
-    sanitizedSuggested.includes(s),
-  );
-  if (intersection.length > 0) {
-    return { stores: intersection, isFallback: false };
-  }
-  return { stores: [...favoriteStores], isFallback: true };
+  const suggested = sanitizeFavoriteStores(suggestedStores);
+  const stores = favoriteStores.filter((s) => suggested.includes(s));
+  return { stores, noneFit: stores.length === 0 };
 }
 
 /**

@@ -191,15 +191,15 @@ describe("pickEffectiveStores", () => {
     );
     expect(result).toEqual({
       stores: ["amazon", "miravia"],
-      isFallback: false,
+      noneFit: false,
     });
   });
 
-  it("devuelve todas las favoritas cuando suggestedStores está vacío", () => {
+  it("no devuelve ninguna cuando suggestedStores está vacío: la IA dice que no la vende ninguna", () => {
     const result = pickEffectiveStores(["amazon", "miravia"], []);
     expect(result).toEqual({
-      stores: ["amazon", "miravia"],
-      isFallback: false,
+      stores: [],
+      noneFit: true,
     });
   });
 
@@ -210,18 +210,18 @@ describe("pickEffectiveStores", () => {
     );
     expect(result).toEqual({
       stores: ["amazon", "elcorteingles"],
-      isFallback: false,
+      noneFit: false,
     });
   });
 
-  it("hace fallback a todas las favoritas si no hay intersección", () => {
+  it("no enseña tiendas que no venden la idea si no hay intersección", () => {
     const result = pickEffectiveStores(
       ["aliexpress", "miravia"],
       ["amazon", "elcorteingles"],
     );
     expect(result).toEqual({
-      stores: ["aliexpress", "miravia"],
-      isFallback: true,
+      stores: [],
+      noneFit: true,
     });
   });
 
@@ -232,18 +232,18 @@ describe("pickEffectiveStores", () => {
     );
     expect(result).toEqual({
       stores: ["amazon"],
-      isFallback: false,
+      noneFit: false,
     });
   });
 
-  it("trata sugerencias con solo tiendas inválidas como ausencia de sugerencia", () => {
+  it("trata sugerencias con solo tiendas inválidas como que no encaja ninguna", () => {
     const result = pickEffectiveStores(
       ["amazon", "miravia"],
       ["etsy", "carrefour"],
     );
     expect(result).toEqual({
-      stores: ["amazon", "miravia"],
-      isFallback: false,
+      stores: [],
+      noneFit: true,
     });
   });
 

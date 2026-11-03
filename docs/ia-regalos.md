@@ -362,11 +362,15 @@ Para evitar mostrar chips a tiendas que claramente no tienen el producto (miel a
 
 `pickEffectiveStores(favoriteStores, suggestedStores)` en [`src/lib/stores.ts`](../src/lib/stores.ts) decide qué chips mostrar. Es pura y testeada en `stores.test.ts`.
 
-| Caso | `stores` devuelto | `isFallback` | UI |
+| Caso | `stores` devuelto | `noneFit` | UI |
 |---|---|---|---|
-| `suggestedStores` ausente o vacío (idea cacheada pre-v2 o tipo no físico) | Todas las favoritas | `false` | Chips sin hint |
-| Hay intersección entre sugeridas y favoritas | Solo la intersección | `false` | Chips sin hint |
-| Hay sugeridas pero ninguna coincide con favoritas | Todas las favoritas | `true` | Chips + texto "Búsqueda genérica — esta idea encaja mejor en otras tiendas" |
+| `suggestedStores` ausente (idea cacheada pre-v2 o tipo no físico) | Todas las favoritas | `false` | Chips |
+| Hay intersección entre sugeridas y favoritas | Solo la intersección | `false` | Chips |
+| Sugeridas vacías, solo inválidas o ninguna coincide con favoritas | Ninguna | `true` | Un solo botón «Comparar precios en idealo» a ancho completo (`generateCompareUrl`) |
+
+**Hasta el 3-nov-2026, el último caso enseñaba todas las favoritas** con el texto «Búsqueda genérica. Esta idea encaja mejor en otras tiendas.», y un vacío contaba como «sin sugerencia». Eso mandaba a buscar, por ejemplo, un perfume en Decathlon: un enlace que no lleva a nada. Ahora la tarjeta ofrece idealo, el mismo comparador que «Otras tiendas» en la lista de otra persona. Al guardar se congela lo que se vio: una idea guardada sin tiendas (`suggestedStores: []`) enseña en la ficha el enlace «Comparar precios en idealo» (`IdeaStores`), y una sin el campo, las favoritas como antes.
+
+**La IA todavía no recibe las tiendas del usuario**: elige entre las 11 y la tarjeta filtra después. Pasárselas haría que propusiera regalos que se venden donde el usuario compra, pero sería un dato nuevo para Google (ver [`privacy.md`](privacy.md) §4.1 y §11) y está sin decidir.
 
 El orden de los chips es siempre el canónico de `ALL_STORES` (Amazon, AliExpress, Miravia, El Corte Inglés), sin importar el orden en que llegan los inputs.
 

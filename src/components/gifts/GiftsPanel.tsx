@@ -381,9 +381,10 @@ export function GiftsPanel({
     if (isSaved(idea.title) || savingTitles.current.has(idea.title)) return;
     savingTitles.current.add(idea.title);
     try {
-      // Congelamos las tiendas EFECTIVAS que mostró la card (con el fallback a
-      // favoritas), no las crudas de la IA, para que la idea guardada enseñe
-      // exactamente lo mismo que se vio. Solo las físicas muestran tiendas.
+      // Congelamos las tiendas EFECTIVAS que mostró la card, no las crudas de
+      // la IA, para que la idea guardada enseñe exactamente lo mismo que se
+      // vio: vacío si no encajaba ninguna de las del usuario (la guardada
+      // ofrece idealo, como la card). Solo las físicas muestran tiendas.
       const effectiveStores =
         giftType === "fisica"
           ? pickEffectiveStores(favoriteStores, idea.suggestedStores).stores
