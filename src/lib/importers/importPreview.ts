@@ -112,6 +112,25 @@ function rowsOf(list: PastedList, group: number): PreviewRow[] {
 }
 
 /**
+ * Lo que se dice cuando lo pegado no da para una vista previa. Lo usan «Pegar
+ * una lista» y la línea de «Apuntar algo» cuando se le pegan varias líneas.
+ */
+export function pasteProblem(list: PastedList): string | null {
+  switch (list.kind) {
+    case "too-large":
+      return "Es demasiado largo para leerlo de una vez. Pega la lista por partes.";
+    case "empty":
+      return "No hay nada que apuntar en lo que has pegado.";
+    case "noisy":
+      return "Esto no parece una lista. Copia solo los nombres, uno por línea, y vuelve a pegar.";
+    case "whole-list-link":
+      return "Eso es el enlace de la lista entera, y PickPal no abre enlaces. Ábrela en tu navegador, copia su texto y pégalo aquí.";
+    default:
+      return null;
+  }
+}
+
+/**
  * La vista previa de una o varias listas pegadas. `existing` es lo que ya hay
  * en «Mi lista»; `capacity`, cuánto cabe aún (100 menos lo que hay).
  */

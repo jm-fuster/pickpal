@@ -28,7 +28,6 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { AddRowButton } from "@/components/layout/AddRowButton";
 import { Count } from "@/components/layout/Count";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { useFlip } from "@/components/layout/useFlip";
@@ -38,6 +37,7 @@ import { itemVisual } from "@/components/people/ideaParts";
 import { ListReaders } from "@/components/lista/ListReaders";
 import { AboutNote } from "@/components/lista/AboutNote";
 import { OwnerBirthday } from "@/components/lista/OwnerBirthday";
+import { QuickAddItem } from "@/components/lista/QuickAddItem";
 import {
   AddPhotoButton,
   FavoriteToggle,
@@ -58,9 +58,10 @@ import { userErrorMessage } from "@/lib/errors";
 import { ITEMS_COUNTER_FROM, MAX_LIST_FAVORITES, MAX_LIST_ITEMS } from "@/lib/listLimits";
 import { cn } from "@/lib/utils";
 
-// El formulario (react-hook-form + zod) solo aparece al apuntar o editar algo.
-// Va en su propio chunk, que se pide al montar: llega mucho antes de que la
-// lista cargue, así que el botón lo abre sin esperas.
+// El formulario (react-hook-form + zod) solo aparece al editar algo; lo nuevo
+// se apunta en la línea de `QuickAddItem`. Va en su propio chunk, que se pide
+// al montar: llega mucho antes de que la lista cargue, así que «Editar» lo
+// abre sin esperas.
 const loadListItemForm = () => import("@/components/lista/ListItemForm");
 const ListItemForm = dynamic(() => loadListItemForm().then((m) => m.ListItemForm));
 
@@ -139,6 +140,9 @@ export function OwnerListView({
   const [editingBirthday, setEditingBirthday] = useState(false);
   const [editingNote, setEditingNote] = useState(false);
   const [highlightId, setHighlightId] = useState<Id<"listItems"> | null>(null);
+  // Lo apuntado en la línea se señala sin mover la página: quien apunta sigue
+  // escribiendo arriba, con el teclado abierto en el móvil.
+  const quietHighlight = useRef(false);
   const [giving, setGiving] = useState<{ claimId: Id<"listClaims">; title: string } | null>(null);
   // La hoja guarda su cosa al cerrarse, para que no se vacíe mientras baja.
   const [sheet, setSheet] = useState<{ id: Id<"listItems">; open: boolean } | null>(null);
@@ -240,8 +244,10 @@ export function OwnerListView({
 
   useEffect(() => {
     if (!highlightId) return;
+    const quiet = quietHighlight.current;
+    quietHighlight.current = false;
     const el = document.getElementById(`elemento-${highlightId}`);
-    if (el) {
+    if (el && !quiet) {
       const rect = el.getBoundingClientRect();
       if (rect.top < 0 || rect.bottom > window.innerHeight) {
         const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -446,18 +452,19 @@ export function OwnerListView({
               onEditingChange={setEditingBirthday}
             />
 
-            {adding ? (
-              <ListItemForm
-                listId={listId}
-                onDone={(addedId) => {
-                  setAdding(false);
-                  if (addedId) setHighlightId(addedId);
-                }}
-              />
-            ) : full ? (
+            {full ? (
               <p className="rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground">{t.full}</p>
             ) : (
-              <AddRowButton onClick={() => setAdding(true)}>Apuntar algo</AddRowButton>
+              <QuickAddItem
+                listId={listId}
+                existing={items}
+                autoFocus={adding}
+                onAdded={(addedId) => {
+                  quietHighlight.current = true;
+                  setHighlightId(addedId);
+                }}
+                onPhoto={upload}
+              />
             )}
 
             {favorites.length > 0 && (

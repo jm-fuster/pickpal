@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { listItemSchema, type ListItemFormValues } from "@/lib/schemas";
-import { looksLikeUrl, normalizeLinkInput, prepareListLink, type PreparedLink } from "@/lib/links";
+import { linkHint, looksLikeUrl, normalizeLinkInput, prepareListLink } from "@/lib/links";
 import { userErrorMessage } from "@/lib/errors";
 import { parsePriceInput, priceInputValue } from "@/lib/price";
 import { Button } from "@/components/ui/button";
@@ -27,16 +27,10 @@ type Item = {
 /** Lo que llega ya escrito al apuntar algo nuevo (el botón «Apuntar en PickPal»). */
 export type ListItemDraft = { title?: string; url?: string; priceCents?: number };
 
-/** Lo que se dice bajo «Enlace» después de limpiarlo. Ninguna pista es un error. */
-export function linkHint(link: PreparedLink): string | null {
-  if (link.wishlistCom) return "Ese enlace lleva a wishlist.com, no a la tienda. Pega el de la tienda.";
-  if (link.foreignAmazon) return "Es Amazon de otro país; quizá prefieras el enlace de amazon.es.";
-  if (link.shortened) return "Enlace acortado: lleva a la misma página.";
-  return null;
-}
-
 /**
- * Apuntar algo en «Mi lista», o editarlo en su sitio si llega `item`. Mismo
+ * Editar algo de «Mi lista» en su sitio (`item`), o apuntarlo desde el
+ * marcador de la tienda (`initial`); en la lista, lo nuevo se apunta con
+ * `QuickAddItem`. Mismo
  * registro que los formularios en línea de la ficha (eventos, historial):
  * caja punteada, sin diálogo ni navegación.
  *

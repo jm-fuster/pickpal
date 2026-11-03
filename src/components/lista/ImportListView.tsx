@@ -14,12 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { BackLink } from "@/components/layout/BackLink";
 import { ListItemLink } from "@/components/lista/ListItemLink";
-import { parsePastedList, type PastedList } from "@/lib/importers/pastedList";
+import { parsePastedList } from "@/lib/importers/pastedList";
 import { readListFile } from "@/lib/importers/fileImport";
 import {
   addPastedList,
   createPreview,
   dedupeKey,
+  pasteProblem as problemFor,
   remaining,
   selectedItems,
   summary,
@@ -32,22 +33,6 @@ import {
 import { listItemSchema } from "@/lib/schemas";
 import { userErrorMessage } from "@/lib/errors";
 import { MAX_LIST_ITEMS } from "@/lib/listLimits";
-
-/** Lo que se dice cuando lo pegado no da para una vista previa. */
-function problemFor(list: PastedList): string | null {
-  switch (list.kind) {
-    case "too-large":
-      return "Es demasiado largo para leerlo de una vez. Pega la lista por partes.";
-    case "empty":
-      return "No hay nada que apuntar en lo que has pegado.";
-    case "noisy":
-      return "Esto no parece una lista. Copia solo los nombres, uno por línea, y vuelve a pegar.";
-    case "whole-list-link":
-      return "Eso es el enlace de la lista entera, y PickPal no abre enlaces. Ábrela en tu navegador, copia su texto y pégalo aquí.";
-    default:
-      return null;
-  }
-}
 
 const things = (n: number) => (n === 1 ? "1 cosa" : `${n} cosas`);
 

@@ -496,3 +496,34 @@ beta, y las listas para niños tienen su propio encargo,
 | Cumpleaños, quien lee | Su cumpleaños: 14 de marzo · Añadir a su ficha · Cumpleaños añadido a su ficha |
 | Bloquear | No quiero más listas suyas · ¿No quieres más listas de {nombre}? · Y no quiero más listas de {nombre}. · No te llegarán más listas de {nombre} · Listas que no quieres recibir · Deshacer |
 | Ocasión | Para qué ocasión… · Sin ocasión · Lo regalas tú · para {fecha} |
+
+## Anexo: apuntar en una línea (3-nov-2026)
+
+Pedido por Jorge el 3-nov-2026 («que anotar ideas en tu lista sea súper
+cómodo»), probado en el Playground del Figma y aprobado el mismo día. Las
+medidas están en `docs/design-system.md`, «Apuntar en una línea».
+
+1. **La fila «Apuntar algo» ya es un campo** (`QuickAddItem`). Se escribe, se
+   apunta con Intro y el foco se queda para la siguiente cosa. Los cuatro
+   campos de antes van plegados en «Más detalles». Editar sigue con
+   `ListItemForm`.
+2. **Lo que se pega decide qué pasa**, todo en el navegador. Un enlace se
+   limpia como siempre y el servidor sigue sin abrirlo (decisión 3). Varias
+   líneas pasan por el analizador de «Pegar una lista» y se apuntan con
+   `lists.importItems`, que las vuelve a validar. Una imagen se queda como la
+   foto y se sube con la preparación de la fase 3.
+3. **Un precio al final del título pasa al precio** («Vela de higo 25 €»). Solo
+   con «€» o «euros»: un número suelto se queda en el título.
+4. **«Pegar» lee el portapapeles solo con el toque.** Es la vía rápida en el
+   iPhone, que no admite el destino de «Compartir» (fase 3, punto 5).
+
+No cambia qué datos se guardan ni quién los ve: ni `/privacidad` ni el aviso
+`2026-10-mi-lista` necesitan tocarse.
+
+| Dónde | Texto |
+| --- | --- |
+| Línea | Apuntar algo · Apuntar otra cosa · ¿Qué es? · Pegar · Apuntar · Apuntando… · Apuntado: {título} |
+| Chips | unos 25 € · Quitar el enlace · Foto · Quitar la foto · Más detalles · Menos detalles |
+| Pegar | Título sacado del enlace: escribe encima si quieres. · No hay nada copiado. · No se ha podido leer lo copiado. Pégalo en el campo. |
+| Varias líneas | ¿Apuntar esto? · ¿Apuntar estas {n} cosas? · Y {n} cosas más. · {n} cosas no se apuntan: ya estaban, no cabe o no parece de la lista. · Cancelar · Apuntarlo · Apuntar las {n} · Todo eso ya está en la lista. · Ya no cabe nada más en la lista. |
+| Más detalles | Enlace · Pega el enlace de la tienda · Precio aproximado · Foto · Añadir una foto · Cambiar la foto · Quitarla · Nota |

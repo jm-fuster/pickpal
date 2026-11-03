@@ -1,5 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
-import { ChevronRight, Ellipsis, Gift, Heart, Plus } from "lucide-react";
+import { ChevronRight, ClipboardPaste, Ellipsis, Gift, Heart, Plus } from "lucide-react";
 import { Count } from "@/components/layout/Count";
 import { badgeVariants } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { listItemImageKey } from "@/lib/listItemImage";
 import { cn } from "@/lib/utils";
 
 // La lista de Marta por sus dos lados, «Escaparate y libreta» (2-nov-2026).
-// ListOwnerMock copia OwnerListView (con AboutNote y AddRowButton);
+// ListOwnerMock copia OwnerListView (con AboutNote y QuickAddItem en reposo);
 // ListReaderMock, SharedListSection dentro de MoreIdeasCard. Las piezas copian
 // las clases de ShowcaseTile, ItemRow, GiftToggle y FavoriteToggle
 // (src/components/lista/ListParts.tsx), sin fotos ni enlaces. Si cambian los
@@ -106,9 +106,13 @@ export function ListOwnerMock(props: MockProps) {
             <FakeIconButton icon={Ellipsis} />
           </div>
 
-          <div className="flex w-full items-center gap-2 rounded-lg border border-dashed border-input/50 p-3 text-sm text-muted-foreground">
+          <div className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-dashed border-input/50 py-1 pr-1 pl-3 text-sm text-muted-foreground">
             <Plus className="size-4" />
-            Apuntar algo
+            <span className="flex-1">Apuntar algo</span>
+            <span className="inline-flex h-7 items-center gap-1 rounded-[min(var(--radius-md),12px)] bg-muted px-3 text-[0.8rem] font-medium text-foreground">
+              <ClipboardPaste className="size-3.5" />
+              Pegar
+            </span>
           </div>
 
           <div className="space-y-3">

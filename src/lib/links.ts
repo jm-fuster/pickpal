@@ -377,6 +377,18 @@ export function looksLikeUrl(text: string): boolean {
 }
 
 /**
+ * Lo que se dice bajo un enlace después de limpiarlo. Ninguna pista es un
+ * error. Vive aquí y no en el formulario para que la línea de «Apuntar algo»,
+ * que se carga siempre, no arrastre el formulario entero.
+ */
+export function linkHint(link: PreparedLink): string | null {
+  if (link.wishlistCom) return "Ese enlace lleva a wishlist.com, no a la tienda. Pega el de la tienda.";
+  if (link.foreignAmazon) return "Es Amazon de otro país; quizá prefieras el enlace de amazon.es.";
+  if (link.shortened) return "Enlace acortado: lleva a la misma página.";
+  return null;
+}
+
+/**
  * Lo que se pega en «Enlace» o en una lista, listo para guardar: se
  * desenvuelve, se saca el título de la ruta, se recorta el rastreo y se
  * vuelve a comprobar que es http(s). Lo que no pasa se queda sin enlace.

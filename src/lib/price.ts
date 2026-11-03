@@ -59,6 +59,26 @@ export function parsePriceInput(raw: string | undefined): number | null | "inval
   return parsePriceCents(s) ?? "invalid";
 }
 
+// Un importe con su moneda al final de lo escrito: «25 €», «25€», «€25»,
+// «25 euros», «unos 25 €», «(25 €)» o «- 25 €». Sin «€» o «euros» no se toca:
+// «Zapatillas talla 43» o «iPhone 15» no llevan precio.
+const TRAILING_PRICE =
+  /[\s,;:–—-]*\(?\s*(?:(?:unos|aprox\.?|aproximadamente|sobre|~)\s*)?(?:€\s*(\d[\d.,]{0,12})|(\d[\d.,]{0,12})\s*(?:€|eur(?:os)?\b\.?))\s*\)?$/i;
+
+/**
+ * «Vela de higo 25 €» → «Vela de higo» y 2500 céntimos: lo que se escribe en
+ * la línea de «Apuntar algo» puede llevar el precio al final. Si no hay un
+ * importe con moneda, o quitarlo dejaría el título vacío, se queda como está.
+ */
+export function splitTrailingPrice(text: string): { title: string; priceCents?: number } {
+  const match = TRAILING_PRICE.exec(text);
+  if (!match) return { title: text };
+  const cents = parsePriceCents(match[1] ?? match[2]);
+  const title = text.slice(0, match.index).trim();
+  if (cents === undefined || title.length === 0) return { title: text };
+  return { title, priceCents: cents };
+}
+
 /** «40» o «39,99», para volver a ponerlo en el campo al editar. */
 export function priceInputValue(cents: number | null | undefined): string {
   if (cents === null || cents === undefined) return "";

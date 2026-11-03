@@ -1,5 +1,37 @@
 import { describe, expect, it } from "vitest";
-import { budgetTarget, fitsBudget, formatApproxPrice, parsePriceInput, priceInputValue } from "./price";
+import { budgetTarget, fitsBudget, formatApproxPrice, parsePriceInput, priceInputValue, splitTrailingPrice } from "./price";
+
+describe("splitTrailingPrice", () => {
+  it("separa el importe con moneda del final", () => {
+    expect(splitTrailingPrice("Vela de higo 25 €")).toEqual({ title: "Vela de higo", priceCents: 2500 });
+    expect(splitTrailingPrice("Vela de higo 25€")).toEqual({ title: "Vela de higo", priceCents: 2500 });
+    expect(splitTrailingPrice("Vela de higo €25")).toEqual({ title: "Vela de higo", priceCents: 2500 });
+    expect(splitTrailingPrice("Vela de higo 25 euros")).toEqual({ title: "Vela de higo", priceCents: 2500 });
+    expect(splitTrailingPrice("Vela de higo 24,90 €")).toEqual({ title: "Vela de higo", priceCents: 2490 });
+    expect(splitTrailingPrice("Bicicleta 1.299 €")).toEqual({ title: "Bicicleta", priceCents: 129900 });
+  });
+
+  it("quita el separador y las palabras de aproximación de delante", () => {
+    expect(splitTrailingPrice("Vela de higo - 25 €")).toEqual({ title: "Vela de higo", priceCents: 2500 });
+    expect(splitTrailingPrice("Vela de higo, unos 25 €")).toEqual({ title: "Vela de higo", priceCents: 2500 });
+    expect(splitTrailingPrice("Vela de higo (25 €)")).toEqual({ title: "Vela de higo", priceCents: 2500 });
+    expect(splitTrailingPrice("Vela de higo aprox. 25€")).toEqual({ title: "Vela de higo", priceCents: 2500 });
+  });
+
+  it("no toca números sin moneda ni lo que dejaría el título vacío", () => {
+    expect(splitTrailingPrice("Zapatillas talla 43")).toEqual({ title: "Zapatillas talla 43" });
+    expect(splitTrailingPrice("iPhone 15")).toEqual({ title: "iPhone 15" });
+    expect(splitTrailingPrice("25 €")).toEqual({ title: "25 €" });
+    expect(splitTrailingPrice("Cheque regalo de 50 € para la librería")).toEqual({
+      title: "Cheque regalo de 50 € para la librería",
+    });
+  });
+
+  it("no inventa un precio que no se entiende o se sale del tope", () => {
+    expect(splitTrailingPrice("Algo 1,2,3 €")).toEqual({ title: "Algo 1,2,3 €" });
+    expect(splitTrailingPrice("Coche 20.000 €")).toEqual({ title: "Coche 20.000 €" });
+  });
+});
 
 describe("parsePriceInput", () => {
   it("lee euros enteros y con decimales en los dos formatos", () => {
