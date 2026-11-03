@@ -107,22 +107,30 @@ const buildPrompt = (
   Incluye SIEMPRE al menos una tienda generalista ("amazon" o "elcorteingles"), excepto si el producto es claramente nicho (artesanal, gourmet local, hecho a medida) — en ese caso indica solo las que realmente encajen.
   Para productos muy específicos (deporte → "decathlon"; muebles → "ikea"; tech serio → "pccomponentes" + "amazon"; electrónica mainstream → "mediamarkt" + "amazon"; libros y cultura → "amazon" + "elcorteingles"; moda/calzado → "zalando" + "elcorteingles"; belleza/perfumería → "druni" + "elcorteingles"; ultra-low-cost → "aliexpress" + "temu"), incluye la tienda especialista junto a la generalista para dar al usuario más opciones de calidad-precio.`;
 
+  // La ficha no guarda dónde vive la persona. Con ciudades en los ejemplos, la
+  // IA metía una en la búsqueda y alguien de Valencia acababa buscando en
+  // Madrid; sin ella, Google ya ordena por la ubicación de quien busca.
+  const placeRule = `- No pongas ciudad ni lugar en "amazonQuery": Google ya enseña lo que hay cerca de quien busca. Solo si las notas dicen dónde vive o dónde quiere hacerlo, inclúyelo.`;
+
   const typeRules: Record<GiftType, string> = {
     fisica: `- Todas las ideas deben ser productos físicos comprables online.
 - "amazonQuery" debe ser una búsqueda específica de 3-6 palabras útil para encontrar el producto en cualquier tienda online.
 - Si la idea es ropa o calzado y conoces la talla, inclúyela en "amazonQuery" (ej: "zapatillas running hombre talla 42", "camiseta algodón mujer talla M").
 ${storesGuide}`,
     experiencia: `- Todas las ideas deben ser experiencias (cenas, talleres, escapadas, conciertos, actividades…). No productos físicos.
-- "amazonQuery" debe ser una búsqueda de 3-6 palabras para encontrar esa experiencia en Google (ej. "cata de vinos Madrid", "taller cerámica Barcelona").
+- "amazonQuery" debe ser una búsqueda de 3-6 palabras para encontrar esa experiencia en Google (ej. "cata de vinos", "taller de cerámica para adultos").
+${placeRule}
 - Omite "suggestedStores" en este tipo de ideas (no aplica).
 - "category" debe referenciar los intereses concretos de la persona que motivan la experiencia (ej: ["Fotografía"], ["Cocina"], ["Senderismo"]). Si la experiencia no encaja con ningún interés definido, usa una etiqueta específica a la actividad (ej: ["Escape Room"], no ["Aventura"]).`,
     "tiempo-juntos": `- Todas las ideas deben ser planes gratuitos o caseros: actividades para hacer juntos, recetas, rutas, vales artesanales, etc.
 - "amazonQuery" debe ser una frase descriptiva de 3-5 palabras para buscar inspiración en Google (ej. "ruta senderismo fácil", "receta cena especial").
+${placeRule}
 - Los precios deben ser bajos o cero (experiencias sin coste o materiales mínimos).
 - Omite "suggestedStores" en este tipo de ideas (no aplica).
 - "category" debe referenciar los intereses concretos de la persona que motivan el plan (ej: ["Leer"], ["Cocina"]). Si el plan no encaja con ningún interés definido, usa una etiqueta específica al plan (ej: ["Paseo al atardecer"], no ["Romántico"]).`,
     sorprendeme: `- Mezcla libremente productos físicos, experiencias y planes juntos. Varía el tipo entre las 9 ideas.
 - Para productos: "amazonQuery" útil para buscar online y rellena "suggestedStores" siguiendo los criterios. Para experiencias/planes: "amazonQuery" útil para Google y omite "suggestedStores".
+${placeRule}
 - Si la idea es ropa o calzado y conoces la talla, inclúyela en "amazonQuery".
 ${storesGuide}`,
   };

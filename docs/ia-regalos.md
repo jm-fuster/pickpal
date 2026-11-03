@@ -53,6 +53,8 @@ Cuatro opciones mutuamente excluyentes definidas en `src/lib/giftCatalog.ts`:
 | `tiempo-juntos` | `Heart` | Tiempo juntos | Planes sin coste o caseros | Planes gratuitos o caseros. Precios bajos o cero. |
 | `sorprendeme` | `Shuffle` | Sorpréndeme | Mezcla de los tres tipos | Mezcla libre de los tres tipos anteriores. |
 
+**Sin ciudad en la búsqueda (3-nov-2026).** La ficha no guarda dónde vive la persona, y los ejemplos del prompt para experiencias llevaban ciudad («cata de vinos Madrid», «taller cerámica Barcelona»), así que la IA metía una en `amazonQuery` y alguien de Valencia acababa buscando en Madrid. Ahora experiencias, planes y «Sorpréndeme» llevan la regla de no poner ciudad ni lugar, salvo que las notas digan dónde vive o dónde quiere hacerlo: Google ya ordena los resultados por la ubicación de quien busca. Si algún día hace falta precisión (alguien que regala a otra ciudad sin decirlo en las notas), lo que falta es un campo, no un ejemplo.
+
 Se muestran como tarjetas en grid 2×2 (4×1 en `sm+`) con icono, nombre y descripción corta. Sin emojis — se usan iconos de lucide-react para coherencia con el resto de la UI. Cambiar el tipo limpia las ideas en pantalla (`ideas = null`).
 
 ---
