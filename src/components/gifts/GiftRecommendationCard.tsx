@@ -304,11 +304,13 @@ export function GiftRecommendationCard({
                     </a>
                   ) : (
                     <>
-                      <div className="grid grid-cols-2 gap-2">
-                        {shownStores.map((store, i) => {
-                          const isLastOdd =
-                            shownStores.length % 2 === 1 &&
-                            i === shownStores.length - 1;
+                      {/* Fila que salta de línea, no rejilla de dos mitades: cada
+                          botón mide lo que su nombre y crece hasta llenar su
+                          fila. Con la rejilla, a 1024 px quedaban 17 px para el
+                          nombre y ni a 1440 cabía «El Corte Inglés». min-w-0 y
+                          truncate solo cortan un botón que no quepa ni solo. */}
+                      <div className="flex flex-wrap gap-2">
+                        {shownStores.map((store) => {
                           return (
                             <a
                               key={store}
@@ -323,8 +325,7 @@ export function GiftRecommendationCard({
                               aria-label={`Buscar ${idea.title} en ${STORE_LABELS[store]} (abre en una pestaña nueva)`}
                               className={cn(
                                 buttonVariants({ size: "default", variant: "outline" }),
-                                "min-w-0",
-                                isLastOdd && "col-span-2",
+                                "min-w-0 flex-auto",
                               )}
                             >
                               {/* eslint-disable-next-line @next/next/no-img-element */}
