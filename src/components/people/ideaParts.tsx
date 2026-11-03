@@ -130,10 +130,12 @@ export function IdeaStores({
       {stores.map((store) => (
         <a
           key={store}
-          href={generateStoreSearchUrl(store, idea.amazonQuery, {
-            minEuros: idea.priceMinEuros,
-            maxEuros: idea.priceMaxEuros,
-          })}
+          href={generateStoreSearchUrl(
+            store,
+            idea.amazonQuery,
+            { minEuros: idea.priceMinEuros, maxEuros: idea.priceMaxEuros },
+            { byRating: true },
+          )}
           target="_blank"
           rel="noopener noreferrer"
           title={STORE_LABELS[store]}

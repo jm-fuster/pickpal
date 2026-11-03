@@ -92,7 +92,43 @@ export const STORES_WITH_PRICE_FILTER: readonly StoreId[] = [
   "aliexpress",
 ];
 
+/**
+ * Orden «mejor valorados» de cada tienda, solo donde pesa también el número de
+ * reseñas. Comprobado a mano el 3-nov-2026 cargando cada URL: el selector de
+ * orden de la tienda quedaba en esa opción, y en Amazon junto al filtro de
+ * precio. Decathlon (`sort=rating`) e IKEA (`sort=RATING`) también lo aceptan,
+ * pero hacen la media sin más y suben productos con dos o seis reseñas (o un
+ * recambio de 2,99 €) por encima del más vendido con miles: ahí ordenar empeora
+ * la búsqueda. AliExpress, Zalando y Miravia no tienen ese orden; Druni y Temu
+ * no se pudieron comprobar.
+ */
+export const STORE_RATING_SORT: Partial<Record<StoreId, string>> = {
+  amazon: "s=review-rank",
+  elcorteingles: "sorting=ratingDesc",
+  pccomponentes: "sort=top_rated",
+  mediamarkt: "sort=customerrating+desc",
+};
+
+/**
+ * Búsqueda en una tienda. `byRating` la ordena de mejor a peor valorado donde
+ * la tienda lo hace bien (`STORE_RATING_SORT`): lo piden las ideas, que son un
+ * tipo de regalo y no un producto, para que «calidad-precio» sea «dentro del
+ * presupuesto, lo mejor valorado primero». No lo pide la lista de otra persona,
+ * que busca el producto exacto que pidió y necesita la relevancia de la tienda.
+ */
 export function generateStoreSearchUrl(
+  store: StoreId,
+  query: string,
+  priceRange?: PriceRange,
+  { byRating = false }: { byRating?: boolean } = {},
+): string {
+  const url = storeSearchUrl(store, query, priceRange);
+  const sort = byRating ? STORE_RATING_SORT[store] : undefined;
+  if (!sort) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}${sort}`;
+}
+
+function storeSearchUrl(
   store: StoreId,
   query: string,
   priceRange?: PriceRange,
@@ -132,7 +168,9 @@ export function generateStoreSearchUrl(
     case "mediamarkt":
       return `https://www.mediamarkt.es/es/search.html?query=${q}`;
     case "zalando":
-      return `https://www.zalando.es/catalog/?q=${q}`;
+      // `/catalogo/`, en español. `/catalog/` daba «La página no existe»
+      // (comprobado el 3-nov-2026): todos los botones de Zalando llevaban ahí.
+      return `https://www.zalando.es/catalogo/?q=${q}`;
     case "druni":
       // Druni usa Magento (catalogsearch/result/?q=).
       return `https://www.druni.es/catalogsearch/result/?q=${q}`;

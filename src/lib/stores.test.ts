@@ -106,6 +106,54 @@ describe("generateStoreSearchUrl", () => {
       "https://es.aliexpress.com/w/wholesale-auriculares.html",
     );
   });
+
+  it("busca en Zalando por /catalogo/, no por /catalog/ (que no existe)", () => {
+    expect(generateStoreSearchUrl("zalando", "zapatillas running")).toBe(
+      "https://www.zalando.es/catalogo/?q=zapatillas%20running",
+    );
+  });
+
+  it("ordena de mejor a peor valorado donde la tienda pondera las reseñas", () => {
+    const byRating = { byRating: true };
+    expect(generateStoreSearchUrl("elcorteingles", "vino tinto", undefined, byRating)).toBe(
+      "https://www.elcorteingles.es/search/?s=vino%20tinto&sorting=ratingDesc",
+    );
+    expect(generateStoreSearchUrl("pccomponentes", "teclado", undefined, byRating)).toBe(
+      "https://www.pccomponentes.com/search/?query=teclado&sort=top_rated",
+    );
+    expect(generateStoreSearchUrl("mediamarkt", "auriculares", undefined, byRating)).toBe(
+      "https://www.mediamarkt.es/es/search.html?query=auriculares&sort=customerrating+desc",
+    );
+  });
+
+  it("en Amazon junta el filtro de presupuesto y el orden por valoración", () => {
+    expect(
+      generateStoreSearchUrl("amazon", "auriculares", { minEuros: 30, maxEuros: 50 }, { byRating: true }),
+    ).toBe(
+      "https://www.amazon.es/s?k=auriculares&low-price=24&high-price=65&s=review-rank",
+    );
+  });
+
+  it("no ordena donde la valoración es una media sin peso (Decathlon, IKEA) ni donde no existe", () => {
+    const byRating = { byRating: true };
+    expect(generateStoreSearchUrl("decathlon", "bastones", undefined, byRating)).toBe(
+      "https://www.decathlon.es/es/search?Ntt=bastones",
+    );
+    expect(generateStoreSearchUrl("ikea", "lámpara", undefined, byRating)).toBe(
+      "https://www.ikea.com/es/es/search/?q=l%C3%A1mpara",
+    );
+    expect(
+      generateStoreSearchUrl("aliexpress", "auriculares", { minEuros: 30, maxEuros: 50 }, byRating),
+    ).toBe(
+      "https://es.aliexpress.com/w/wholesale-auriculares.html?minPrice=24&maxPrice=65",
+    );
+  });
+
+  it("sin byRating conserva el orden de la tienda (la lista de otra persona busca el producto exacto)", () => {
+    expect(generateStoreSearchUrl("pccomponentes", "teclado")).toBe(
+      "https://www.pccomponentes.com/search/?query=teclado",
+    );
+  });
 });
 
 describe("padPriceRange", () => {

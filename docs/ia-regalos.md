@@ -293,7 +293,7 @@ Definidas en [`src/lib/stores.ts`](../src/lib/stores.ts). Lista cerrada con allo
 | `ikea` | IKEA | `https://www.ikea.com/es/es/search/?q={query}` | Hogar, muebles, decoración, textil hogar, organización, iluminación |
 | `pccomponentes` | PcComponentes | `https://www.pccomponentes.com/search/?query={query}` | Tech especializada: componentes PC, periféricos, gaming, monitores |
 | `mediamarkt` | MediaMarkt | `https://www.mediamarkt.es/es/search.html?query={query}` | Electrónica mainstream: TV, audio, electrodomésticos, móviles, gaming consolas |
-| `zalando` | Zalando | `https://www.zalando.es/catalog/?q={query}` | Moda y calzado: ropa, zapatos, deportivas, complementos de marca |
+| `zalando` | Zalando | `https://www.zalando.es/catalogo/?q={query}` | Moda y calzado: ropa, zapatos, deportivas, complementos de marca. Hasta el 3-nov-2026 era `/catalog/`, que da «La página no existe» |
 | `druni` | Druni | `https://www.druni.es/catalogsearch/result/?q={query}` | Perfumería y cosmética: perfumes, maquillaje, skincare, sets de belleza |
 
 Las URLs se construyen con `encodeURIComponent` sobre la query, así que cualquier carácter especial queda escapado correctamente. Los enlaces siempre llevan `target="_blank" rel="noopener noreferrer"`.
@@ -323,6 +323,22 @@ En las tiendas que NO soportan filtro fiable, el chip enlaza a la búsqueda sin 
 **Padding de la franja**: `padPriceRange(min, max)` ensancha `[min × 0.8, max × 1.3]` antes de pasarla al filtro. Motivo: la IA estima precios y suele subestimarlos un poco; un filtro estricto sobre una estimación deja la página vacía con frecuencia. Ejemplos: `[30, 50] → [24, 65]`, `[10, 15] → [8, 20]`, `[30, 30] → [24, 39]`.
 
 El padding solo afecta a la URL del filtro. La etiqueta de precio en la card sigue mostrando los valores originales que devolvió Gemini.
+
+### Orden por valoración (`byRating`)
+
+PickPal no sabe precios ni abre las tiendas, así que «la mejor calidad-precio» se aproxima con lo que cada tienda ya sabe hacer: buscar dentro del presupuesto y ordenar de mejor a peor valorado. Desde el 3-nov-2026, los enlaces de las ideas (la tarjeta del generador y las ideas guardadas de la ficha) piden `generateStoreSearchUrl(..., { byRating: true })`, que añade el orden de `STORE_RATING_SORT`:
+
+| Tienda | Orden | Por qué sí o no |
+|---|---|---|
+| `amazon` | `&s=review-rank` | Pesa también el número de reseñas. Convive con el filtro de precio |
+| `elcorteingles` | `&sorting=ratingDesc` | Sobrevive a la redirección `/search/` → `/search-nwx/` |
+| `pccomponentes` | `&sort=top_rated` | Arriba, productos con miles de opiniones |
+| `mediamarkt` | `&sort=customerrating+desc` | Arriba, productos con miles de reseñas |
+| `decathlon`, `ikea` | — | Aceptan `sort=rating` / `sort=RATING`, pero hacen la media sin más: suben productos con 2-17 reseñas (o un recambio de 2,99 €) por encima del más vendido con miles |
+| `aliexpress`, `zalando`, `miravia` | — | No tienen orden por valoración. AliExpress tiene un filtro de 4 estrellas, pero con el de precio deja dos resultados |
+| `druni`, `temu` | — | Sin comprobar: Druni devuelve 406 a la búsqueda cargada directamente y Temu pide iniciar sesión |
+
+Cada orden se comprobó cargando la URL y mirando que el selector de la tienda quedara en esa opción. La lista de otra persona («Otras tiendas») no lo pide: busca el producto exacto que pidió, y ahí manda la relevancia de la tienda.
 
 Notas:
 

@@ -302,10 +302,12 @@ export function GiftRecommendationCard({
                         return (
                           <a
                             key={store}
-                            href={generateStoreSearchUrl(store, idea.amazonQuery, {
-                              minEuros: idea.priceMinEuros,
-                              maxEuros: idea.priceMaxEuros,
-                            })}
+                            href={generateStoreSearchUrl(
+                              store,
+                              idea.amazonQuery,
+                              { minEuros: idea.priceMinEuros, maxEuros: idea.priceMaxEuros },
+                              { byRating: true },
+                            )}
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label={`Buscar ${idea.title} en ${STORE_LABELS[store]} (abre en una pestaña nueva)`}
