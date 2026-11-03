@@ -1,8 +1,20 @@
 import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireUser } from "./auth";
+import { checkAndIncrement } from "./rateLimit";
 
 const DAILY_LIMIT = 10;
+
+/**
+ * Intentos al día, cuenten o no. `refund` devuelve la unidad cuando la
+ * generación falla, también si Gemini devuelve algo que no valida, y eso
+ * depende en parte de lo que hay en la ficha: unas notas que le pidan «solo
+ * tres ideas» harían fallar cada intento y salir gratis. Este cubo no se
+ * devuelve nunca, así que acota las llamadas a Gemini de una cuenta aunque
+ * todas fallen. Con margen para quien reintenta durante una caída del
+ * proveedor: 10 que salen y 20 que no.
+ */
+const ATTEMPT_DAILY_LIMIT = 30;
 
 const todayUTC = (): string => {
   const now = new Date();
@@ -99,6 +111,7 @@ export const reserve = mutation({
         `Has alcanzado el límite diario de ${DAILY_LIMIT} recomendaciones. Vuelve mañana.`,
       );
     }
+    await checkAndIncrement(ctx, clerkUserId, "generate_ideas_attempt", ATTEMPT_DAILY_LIMIT);
 
     if (existing) {
       await ctx.db.patch(existing._id, { count: count + 1 });
@@ -122,9 +135,9 @@ export const reserve = mutation({
 
 /**
  * Devuelve una unidad reservada con `reserve`. Solo se llama desde la API
- * route cuando el proveedor falla de forma retriable (503/timeout) y no se
- * generó nada: el usuario no pierde cuota por una caída ajena. Nunca baja
- * el contador de 0.
+ * route cuando la generación falla y no se guardó nada: el usuario no pierde
+ * cuota por una caída ajena. Nunca baja el contador de 0, y no devuelve el
+ * intento (`ATTEMPT_DAILY_LIMIT`).
  */
 export const refund = mutation({
   // `day` es el bucket que devolvió `reserve`. Opcional por compatibilidad: si

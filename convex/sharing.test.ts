@@ -9,6 +9,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 import { INVITE_LOOKUP_DAILY_LIMIT } from "./personShares";
 import schema from "./schema";
 
@@ -33,6 +34,38 @@ async function crearYCompartir(t: ReturnType<typeof convexTest>) {
   });
   return personId;
 }
+
+/** Una tanda de la IA de `who` para Marta, con una sola idea. */
+async function generar(
+  t: ReturnType<typeof convexTest>,
+  who: typeof ALICE,
+  personId: Id<"people">,
+  title: string,
+) {
+  await t.withIdentity(who).mutation(api.recommendations.upsert, {
+    personId,
+    occasionLabel: "Cumpleaños",
+    giftType: "fisica",
+    ideas: [
+      {
+        title,
+        description: "Para su taller",
+        priceMinEuros: 30,
+        priceMaxEuros: 45,
+        category: "ceramica",
+        amazonQuery: "rodillo ceramica",
+      },
+    ],
+  });
+}
+
+const titulosGenerados = (tandas: { ideas: { title: string }[] }[]) =>
+  tandas.flatMap((tanda) => tanda.ideas.map((i) => i.title));
+
+const autoresDeTandas = (t: ReturnType<typeof convexTest>) =>
+  t.run(async (ctx) =>
+    (await ctx.db.query("recommendations").collect()).map((r) => r.clerkUserId).sort(),
+  );
 
 describe("ver la ficha", () => {
   test("el invitado la ve entera", async () => {
@@ -233,6 +266,57 @@ describe("qué se comparte y qué no", () => {
       .query(api.recommendations.getByPersonOccasion, key);
     // La de Alice no se ha visto tocada por que Bob genere la suya.
     expect(deAliceTrasBob?.ideas.map((i) => i.title)).toEqual(["Rodillo de cerámica"]);
+  });
+
+  test("la exportación lleva solo tus tandas, también las de fichas que te comparten", async () => {
+    const t = convexTest(schema, modules);
+    const personId = await crearYCompartir(t);
+    await generar(t, ALICE, personId, "Idea de Alice");
+    await generar(t, BOB, personId, "Idea privada de Bob");
+
+    const deAlice = await t.withIdentity(ALICE).query(api.exportData.mine, {});
+    expect(titulosGenerados(deAlice.seresQueridos[0].ideasGeneradasPorLaIA)).toEqual(["Idea de Alice"]);
+
+    const deBob = await t.withIdentity(BOB).query(api.exportData.mine, {});
+    expect(deBob.seresQueridos).toHaveLength(0);
+    expect(titulosGenerados(deBob.fichasQueTeComparten[0].ideasGeneradasPorLaIA)).toEqual([
+      "Idea privada de Bob",
+    ]);
+  });
+
+  test("desligarte borra tus tandas de esa ficha y deja las del resto", async () => {
+    const t = convexTest(schema, modules);
+    const personId = await crearYCompartir(t);
+    await generar(t, ALICE, personId, "Idea de Alice");
+    await generar(t, BOB, personId, "Idea privada de Bob");
+
+    await t.withIdentity(BOB).mutation(api.personShares.leave, { personId });
+
+    expect(await autoresDeTandas(t)).toEqual([ALICE.subject]);
+  });
+
+  test("borrar la cuenta se lleva tus tandas, también de la ficha que pasa a otro", async () => {
+    const t = convexTest(schema, modules);
+    const personId = await crearYCompartir(t);
+    await generar(t, ALICE, personId, "Idea de Alice");
+    await generar(t, BOB, personId, "Idea privada de Bob");
+
+    // Alice se va: Marta pasa a Bob, pero las ideas que pidió Alice no.
+    await t.withIdentity(ALICE).mutation(api.account.deleteMyAccount, {});
+    expect(await autoresDeTandas(t)).toEqual([BOB.subject]);
+    const deBob = await t.withIdentity(BOB).query(api.exportData.mine, {});
+    expect(titulosGenerados(deBob.seresQueridos[0].ideasGeneradasPorLaIA)).toEqual([
+      "Idea privada de Bob",
+    ]);
+
+    // Y si la invitada se va, igual con las suyas en la ficha de otro.
+    await t.withIdentity(BOB).mutation(api.personShares.invite, {
+      personId,
+      clerkUserId: CAROL.subject,
+    });
+    await generar(t, CAROL, personId, "Idea de Carol");
+    await t.withIdentity(CAROL).mutation(api.account.deleteMyAccount, {});
+    expect(await autoresDeTandas(t)).toEqual([BOB.subject]);
   });
 
   test("las ideas guardadas sí se comparten, con autoría", async () => {

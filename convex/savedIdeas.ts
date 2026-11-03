@@ -6,7 +6,7 @@ import { checkAndIncrement } from "./rateLimit";
 import { validateOwnIdeaInput, validateSavedIdeaInput } from "./validators";
 import { assertPersonAccess, personHasAccess } from "./personShares";
 import { findEventByLabel } from "./eventLabels";
-import { deleteSavedIdea, IDEA_PHOTO_REJECTED, ideaPhotoUrl, isUsableIdeaPhoto } from "./ideaPhotos";
+import { deleteSavedIdea, IDEA_PHOTO_REJECTED, ideaPhotoUrl, isUsablePhoto } from "./ideaPhotos";
 
 /**
  * El evento en el que entra una idea al guardarla. Con id, tiene que ser de la
@@ -46,8 +46,16 @@ export const getByPerson = query({
       .withIndex("by_person", (q) => q.eq("personId", personId))
       .order("desc")
       .take(200);
-    // `photoUrl`: la foto que pegaste en una idea propia, o `null`.
-    return Promise.all(ideas.map(async (idea) => ({ ...idea, photoUrl: await ideaPhotoUrl(ctx, idea) })));
+    // `photoUrl`: la foto que pegaste en una idea propia, o `null`. El id del
+    // archivo no sale: lo ve todo el que tiene la ficha, y no le sirve a nadie
+    // más que para intentar reutilizarlo (`isUsablePhoto`).
+    return Promise.all(
+      ideas.map(async (idea) => {
+        const { photoStorageId, ...rest } = idea;
+        void photoStorageId;
+        return { ...rest, photoUrl: await ideaPhotoUrl(ctx, idea) };
+      }),
+    );
   },
 });
 
@@ -162,7 +170,7 @@ export const addOwn = mutation({
     if (existing.some((s) => s.title === title)) {
       throw new ConvexError("Ya tienes una idea con ese nombre.");
     }
-    if (args.photoStorageId !== undefined && !(await isUsableIdeaPhoto(ctx, args.photoStorageId))) {
+    if (args.photoStorageId !== undefined && !(await isUsablePhoto(ctx, args.photoStorageId))) {
       // El archivo rechazado se queda sin dueño y lo recoge el barrido de
       // fotos huérfanas (`lists.sweepOrphanPhotos`).
       throw new ConvexError(IDEA_PHOTO_REJECTED);

@@ -14,6 +14,9 @@ import {
 
 const CREATE_PERSON_DAILY_LIMIT = 50;
 
+/** Los textos opcionales de la ficha que se pueden vaciar al editar. */
+const CLEARABLE_PERSON_FIELDS = ["notes", "shoeSize", "clothingSize", "allergies", "dislikes"] as const;
+
 /**
  * Borra todos los recursos anidados de una persona (fechas, historial,
  * recomendaciones, ideas guardadas y a quién se le había compartido) y
@@ -142,6 +145,13 @@ export const update = mutation({
     // ineditable, aunque la edición no toque ese campo (pasó a punto de
     // ocurrir con `AVATAR_FORBIDDEN`). Si alguna vez una regla necesita mirar
     // dos campos a la vez, esa sí tendrá que leer `existing`.
+    // Un texto en blanco es «bórralo». El cliente no puede mandar `undefined`:
+    // el de Convex quita esas claves antes de enviar, y vaciar un campo no
+    // llegaba nunca (la ficha decía «Guardado» y el dato seguía, también en el
+    // prompt de la IA). Una clave con `undefined` en `db.patch` borra el campo.
+    for (const key of CLEARABLE_PERSON_FIELDS) {
+      if (patch[key]?.trim() === "") patch[key] = undefined;
+    }
     validatePersonInput(patch);
     await ctx.db.patch(id, patch);
   },

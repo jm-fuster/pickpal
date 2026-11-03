@@ -276,7 +276,10 @@ export const invite = mutation({
 });
 
 /** Desligarse: deja de ver una ficha que te han compartido. No es borrado —
- * el dueño y el resto de invitados la conservan igual (decisión 1). */
+ * el dueño y el resto de invitados la conservan igual (decisión 1). Sí se
+ * borran las ideas que le pediste a la IA para ella: son solo tuyas
+ * (decisión 7), ya no puedes verlas, y si se quedaran saldrían en la
+ * exportación del dueño. */
 export const leave = mutation({
   args: { personId: v.id("people") },
   handler: async (ctx, { personId }) => {
@@ -291,5 +294,12 @@ export const leave = mutation({
       throw new ConvexError("No tienes esta ficha compartida contigo.");
     }
     await ctx.db.delete(share._id);
+    const recs = await ctx.db
+      .query("recommendations")
+      .withIndex("by_user_person_occasion_type", (q) =>
+        q.eq("clerkUserId", clerkUserId).eq("personId", personId),
+      )
+      .collect();
+    for (const r of recs) await ctx.db.delete(r._id);
   },
 });

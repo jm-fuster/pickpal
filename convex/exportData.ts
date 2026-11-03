@@ -79,9 +79,13 @@ export const mine = query({
           .query("savedIdeas")
           .withIndex("by_person", (q) => q.eq("personId", person._id))
           .collect(),
+        // Solo las tuyas: las que otros con acceso a la ficha le pidieron a la
+        // IA son privadas suyas (decisión 7), aunque la ficha sea tuya.
         ctx.db
           .query("recommendations")
-          .withIndex("by_person", (q) => q.eq("personId", person._id))
+          .withIndex("by_user_person_occasion_type", (q) =>
+            q.eq("clerkUserId", clerkUserId).eq("personId", person._id),
+          )
           .collect(),
         // Con quién compartes esta ficha (convex/personShares.ts). Se lista
         // aquí en vez de con `limpiar`: para esta tabla el propio
@@ -106,15 +110,28 @@ export const mine = query({
     }
 
     // Fichas que OTROS han compartido contigo: no son tuyas (no se exporta su
-    // ficha completa), pero que tengas acceso a ellas sí es un dato tuyo.
+    // ficha completa), pero que tengas acceso a ellas sí es un dato tuyo, y
+    // también las ideas que le pediste a la IA para ellas.
     const misAccesosCompartidos = await ctx.db
       .query("personShares")
       .withIndex("by_user", (q) => q.eq("clerkUserId", clerkUserId))
       .collect();
     const fichasQueTeComparten = await Promise.all(
       misAccesosCompartidos.map(async (s) => {
-        const persona = await ctx.db.get(s.personId);
-        return { nombre: persona?.name ?? null, desde: s._creationTime };
+        const [persona, ideasGeneradas] = await Promise.all([
+          ctx.db.get(s.personId),
+          ctx.db
+            .query("recommendations")
+            .withIndex("by_user_person_occasion_type", (q) =>
+              q.eq("clerkUserId", clerkUserId).eq("personId", s.personId),
+            )
+            .collect(),
+        ]);
+        return {
+          nombre: persona?.name ?? null,
+          desde: s._creationTime,
+          ideasGeneradasPorLaIA: ideasGeneradas.map(limpiar),
+        };
       }),
     );
 
@@ -347,7 +364,10 @@ export const mine = query({
         "1970 y los presupuestos en céntimos. Cada ser querido lleva un " +
         "\"compartidoCon\" con quién más tiene acceso a su ficha; " +
         "\"fichasQueTeComparten\" son las de otros a las que tú tienes acceso " +
-        "(no se incluye su contenido completo, solo que las ves). " +
+        "(no se incluye su contenido completo, solo que las ves y las ideas " +
+        "que le pediste a la IA para ellas). \"ideasGeneradasPorLaIA\" son " +
+        "solo las que pediste tú: las de los demás con acceso a una ficha son " +
+        "suyas. " +
         "\"miLista\" es lo que has apuntado que te haría ilusión y con quién " +
         "la compartes; no incluye qué ha marcado nadie para regalarte. " +
         "\"loQueMasIlusionTeHaria\" dice si lo pusiste en ese grupo; " +

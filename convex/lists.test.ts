@@ -1507,6 +1507,38 @@ describe("foto de cada cosa", () => {
     });
   });
 
+  test("no vale la foto de una idea guardada de una ficha que te comparten, ni se ve su id", async () => {
+    const t = convexTest(schema, modules);
+    const alex = t.withIdentity(ALEX);
+    const laura = t.withIdentity(LAURA);
+    const personId = await alex.mutation(api.people.create, {
+      name: "Mamá",
+      relationship: "family",
+      interests: ["cerámica"],
+    });
+    await alex.mutation(api.personShares.invite, { personId, clerkUserId: LAURA.subject });
+    const foto = await subir(t, "image/jpeg");
+    await alex.mutation(api.savedIdeas.addOwn, {
+      personId,
+      importantDateId: null,
+      title: "Taza de cerámica",
+      photoStorageId: foto,
+    });
+    const vela = await laura.mutation(api.lists.addItem, { title: "Vela de cera" });
+
+    // Si valiera, quitarla de la vela borraría el archivo de la idea de Alex.
+    await expect(
+      laura.mutation(api.lists.setItemPhoto, { id: vela, storageId: foto }),
+    ).rejects.toMatchObject({
+      data: "Esa foto no vale: tiene que ser JPG, PNG o WebP de menos de 1,5 MB.",
+    });
+    expect(await existe(t, foto)).toBe(true);
+
+    const [idea] = await laura.query(api.savedIdeas.getByPerson, { personId });
+    expect(idea).not.toHaveProperty("photoStorageId");
+    expect(idea.photoUrl).toMatch(/^https:\/\//);
+  });
+
   test("solo la dueña pone o quita fotos", async () => {
     const t = convexTest(schema, modules);
     const { laura, alex, vela } = await escenario(t);

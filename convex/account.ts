@@ -21,6 +21,10 @@ import { deleteSavedIdea } from "./ideaPhotos";
  * - `personShares` donde eres tú el invitado (fichas de otros que te habían
  *   compartido): te desliga de todas, igual que `personShares.leave` pero en
  *   bloque.
+ * - `recommendations` que generaste, en cualquier ficha: las de las fichas
+ *   que pasan a otro y las de las fichas ajenas. Son privadas de quien las
+ *   pidió (decisión 7), así que no forman parte del historial conjunto: si se
+ *   quedaran, el heredero o el dueño las vería en su exportación.
  * - `savedIdeas` que autoraste y cuya persona ya no existe (de antes de que
  *   la cascada las cubriera), vía índice `by_user`. Ojo: "autoraste" no es
  *   "eras dueño" — si la persona sigue existiendo (p. ej. se transfirió más
@@ -58,6 +62,12 @@ export const deleteMyAccount = mutation({
 
     // Fichas ajenas que te habían compartido: te desligas de todas.
     await deleteSharesForUser(ctx, clerkUserId);
+
+    const recs = await ctx.db
+      .query("recommendations")
+      .withIndex("by_user_person_occasion_type", (q) => q.eq("clerkUserId", clerkUserId))
+      .collect();
+    for (const r of recs) await ctx.db.delete(r._id);
 
     await deleteListDataForUser(ctx, clerkUserId);
 

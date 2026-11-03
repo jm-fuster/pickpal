@@ -10,13 +10,13 @@ import { Doc, Id } from "./_generated/dataModel";
 import { requireUser } from "./auth";
 import { checkAndIncrement } from "./rateLimit";
 import {
-  isAllowedListPhoto,
   normalizeManagedListName,
   validateBirthday,
   validateListItemInput,
   validateListItemPrice,
 } from "./validators";
 import { INVITE_LOOKUP_DAILY_LIMIT, personHasAccess } from "./personShares";
+import { isUsablePhoto } from "./ideaPhotos";
 import { internal } from "./_generated/api";
 
 /**
@@ -1160,9 +1160,12 @@ export const generatePhotoUploadUrl = mutation({
  * navegador, que vuelve a codificar la imagen antes de subirla; aquí no se
  * puede comprobar.
  *
- * Un archivo que ya es la foto de otro elemento no vale: compartirlo haría que
- * quitar la foto de uno borrase la del otro, y la dirección de una foto la ven
- * los lectores. Si el archivo no vale, el error deshace la mutation entera,
+ * Un archivo que ya es la foto de otro elemento o de una idea guardada no
+ * vale: compartirlo haría que quitar la foto de uno borrase la del otro, y la
+ * dirección de una foto la ven los lectores. Las ideas de una ficha compartida
+ * las ven todos los que la tienen, así que sin mirar también `savedIdeas` uno
+ * de ellos podía poner en su lista la foto de la idea de otro y, al quitarla,
+ * borrarle el archivo. Si el archivo no vale, el error deshace la mutation entera,
  * también cualquier borrado, así que el archivo rechazado se queda sin dueño
  * y lo recoge `sweepOrphanPhotos`.
  *
@@ -1175,13 +1178,7 @@ export const setItemPhoto = mutation({
     const clerkUserId = await requireUser(ctx);
     const item = await assertOwnItem(ctx, id, clerkUserId);
     if (item.photoStorageId === storageId) return;
-
-    const meta = await ctx.db.system.get("_storage", storageId);
-    const enUso = await ctx.db
-      .query("listItems")
-      .withIndex("by_photo", (q) => q.eq("photoStorageId", storageId))
-      .first();
-    if (!meta || !isAllowedListPhoto(meta) || enUso) {
+    if (!(await isUsablePhoto(ctx, storageId))) {
       throw new ConvexError(PHOTO_REJECTED);
     }
 

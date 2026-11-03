@@ -345,12 +345,14 @@ export function EditImportantDateInline({
 
   const onSubmit = async (values: ImportantDateFormValues) => {
     try {
-      const { budgetMinEuros, budgetMaxEuros, ...rest } = values;
+      const { budgetMinEuros, budgetMaxEuros, year, ...rest } = values;
+      // `null` borra el año o el presupuesto; `undefined` no llegaría al servidor.
       await update({
         id: date._id,
         ...rest,
-        budgetMin: budgetMinEuros !== undefined ? Math.round(budgetMinEuros * 100) : undefined,
-        budgetMax: budgetMaxEuros !== undefined ? Math.round(budgetMaxEuros * 100) : undefined,
+        year: year ?? null,
+        budgetMin: budgetMinEuros !== undefined ? Math.round(budgetMinEuros * 100) : null,
+        budgetMax: budgetMaxEuros !== undefined ? Math.round(budgetMaxEuros * 100) : null,
       });
       toast.success("Evento actualizado");
       onClose();

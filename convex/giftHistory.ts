@@ -111,7 +111,16 @@ export const update = mutation({
       }
     }
 
-    await ctx.db.patch(id, { ...fields, giftName: name, occasionLabel: occasion });
+    // El formulario manda la entrada entera: un año o unas notas que no llegan
+    // se han vaciado (el cliente de Convex quita las claves con `undefined`),
+    // así que se ponen explícitas para que `db.patch` los borre.
+    await ctx.db.patch(id, {
+      giftName: name,
+      occasionLabel: occasion,
+      reaction: fields.reaction,
+      year: fields.year,
+      notes: fields.notes,
+    });
   },
 });
 

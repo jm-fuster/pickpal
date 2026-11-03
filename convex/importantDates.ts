@@ -187,35 +187,37 @@ export const update = mutation({
     label: v.optional(v.string()),
     month: v.optional(v.number()),
     day: v.optional(v.number()),
-    year: v.optional(v.number()),
+    // `null` es «quítalo»: el año al apagar «Incluir año», el presupuesto al
+    // vaciarlo. `undefined` no sirve, el cliente de Convex quita esas claves.
+    year: v.optional(v.union(v.number(), v.null())),
     recurring: v.optional(v.boolean()),
-    budgetMin: v.optional(v.number()),
-    budgetMax: v.optional(v.number()),
+    budgetMin: v.optional(v.union(v.number(), v.null())),
+    budgetMax: v.optional(v.union(v.number(), v.null())),
   },
-  handler: async (ctx, { id, ...patch }) => {
+  handler: async (ctx, { id, year, budgetMin, budgetMax, ...rest }) => {
     const clerkUserId = await requireUser(ctx);
     const existing = await ctx.db.get(id);
     if (!existing) throw new ConvexError("Fecha no encontrada.");
     await assertPersonAccess(ctx, existing.personId, clerkUserId);
+    // Una clave con `undefined` en `db.patch` borra el campo; una ausente no lo toca.
+    const patch: Partial<Doc<"importantDates">> = { ...rest };
+    if (year !== undefined) patch.year = year ?? undefined;
+    if (budgetMin !== undefined) patch.budgetMin = budgetMin ?? undefined;
+    if (budgetMax !== undefined) patch.budgetMax = budgetMax ?? undefined;
+    const merged = { ...existing, ...patch };
     if (
       patch.month !== undefined ||
       patch.day !== undefined ||
-      patch.year !== undefined
+      year !== undefined
     ) {
-      assertValidDate(
-        patch.month ?? existing.month,
-        patch.day ?? existing.day,
-        patch.year ?? existing.year,
-      );
+      assertValidDate(merged.month, merged.day, merged.year);
     }
-    const mergedRecurring = patch.recurring ?? existing.recurring;
-    const mergedYear = patch.year ?? existing.year;
     validateDateInput({
-      label: patch.label ?? existing.label,
-      year: mergedYear,
-      recurring: mergedRecurring,
-      budgetMin: patch.budgetMin ?? existing.budgetMin,
-      budgetMax: patch.budgetMax ?? existing.budgetMax,
+      label: merged.label,
+      year: merged.year,
+      recurring: merged.recurring,
+      budgetMin: merged.budgetMin,
+      budgetMax: merged.budgetMax,
     });
     if (patch.label !== undefined) {
       // Unicidad solo si la etiqueta normalizada cambia: reguardar el mismo

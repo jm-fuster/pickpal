@@ -13,11 +13,12 @@ import { isAllowedListPhoto } from "./validators";
 export const IDEA_PHOTO_REJECTED = "Esa foto no vale: tiene que ser JPG, PNG o WebP de menos de 1,5 MB.";
 
 /**
- * ¿Puede este archivo ser la foto de una idea? Tiene que existir, ser una foto
- * válida y no ser ya la foto de un elemento de una lista o de otra idea:
- * compartirlo haría que quitar una borrase la otra.
+ * ¿Puede este archivo ser la foto de una idea o de un elemento de una lista?
+ * Tiene que existir, ser una foto válida y no ser ya la foto de ninguna de las
+ * dos cosas: compartirlo haría que quitar una borrase la otra, y la otra puede
+ * ser de otra persona (las ideas de una ficha compartida las ven todos).
  */
-export async function isUsableIdeaPhoto(ctx: MutationCtx, storageId: Id<"_storage">): Promise<boolean> {
+export async function isUsablePhoto(ctx: MutationCtx, storageId: Id<"_storage">): Promise<boolean> {
   const meta = await ctx.db.system.get("_storage", storageId);
   if (!meta || !isAllowedListPhoto(meta)) return false;
   const inList = await ctx.db

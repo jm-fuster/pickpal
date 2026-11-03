@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { PencilLine } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,24 @@ type BlockProps = {
   onDone: () => void;
   save: (fields: AboutFields) => void;
 };
+
+type TextField = "notes" | "shoeSize" | "clothingSize" | "allergies" | "dislikes";
+
+/**
+ * Guarda un texto al salir de su campo, solo si ha cambiado desde lo último
+ * guardado. Vacío va como "" y el servidor lo borra: `undefined` no llegaría,
+ * el cliente de Convex quita esas claves. Sin comparar, salir de un campo sin
+ * tocarlo mandaba el valor copiado al abrir el bloque y pisaba lo que otra
+ * persona con acceso a la ficha hubiera cambiado entretanto.
+ */
+function useSaveText(save: BlockProps["save"], initial: AboutFields) {
+  const saved = useRef(initial);
+  return (field: TextField, value: string) => {
+    if (value === (saved.current[field] ?? "")) return;
+    saved.current = { ...saved.current, [field]: value };
+    save({ [field]: value });
+  };
+}
 
 // Los botones de la cabecera de un bloque: 36 px en el móvil, para el dedo;
 // 28 desde sm, como el resto de botones pequeños.
@@ -169,6 +187,7 @@ export function TastesCard({
   const [interests, setInterests] = useState<string[]>(initial.interests);
   const [brands, setBrands] = useState<string[]>(initial.favoriteBrands ?? []);
   const [notes, setNotes] = useState(initial.notes ?? "");
+  const saveText = useSaveText(save, initial);
   // Con «Editar», el cursor entra en el primer campo; con el atajo, en el suyo.
   const focus = editing?.field ?? "interests";
 
@@ -210,7 +229,7 @@ export function TastesCard({
               autoFocus={focus === "notes"}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              onBlur={() => save({ notes: notes || undefined })}
+              onBlur={() => saveText("notes", notes)}
               rows={3}
               placeholder="Lo que la hace especial, lo que no le pegaría…"
             />
@@ -252,6 +271,7 @@ export function CareCard({ initial, editing, onEdit, onDone, save }: BlockProps 
   const [clothingSize, setClothingSize] = useState(initial.clothingSize ?? "");
   const [allergies, setAllergies] = useState(initial.allergies ?? "");
   const [dislikes, setDislikes] = useState(initial.dislikes ?? "");
+  const saveText = useSaveText(save, initial);
   const focus = editing?.field ?? "shoeSize";
 
   const rows = [
@@ -274,7 +294,7 @@ export function CareCard({ initial, editing, onEdit, onDone, save }: BlockProps 
                 autoFocus={focus === "shoeSize"}
                 value={shoeSize}
                 onChange={(e) => setShoeSize(e.target.value)}
-                onBlur={() => save({ shoeSize: shoeSize || undefined })}
+                onBlur={() => saveText("shoeSize", shoeSize)}
                 placeholder="EU 42, 38…"
               />
             </Field>
@@ -284,7 +304,7 @@ export function CareCard({ initial, editing, onEdit, onDone, save }: BlockProps 
                 autoFocus={focus === "clothingSize"}
                 value={clothingSize}
                 onChange={(e) => setClothingSize(e.target.value)}
-                onBlur={() => save({ clothingSize: clothingSize || undefined })}
+                onBlur={() => saveText("clothingSize", clothingSize)}
                 placeholder="M, L, 38…"
               />
             </Field>
@@ -295,7 +315,7 @@ export function CareCard({ initial, editing, onEdit, onDone, save }: BlockProps 
               autoFocus={focus === "allergies"}
               value={allergies}
               onChange={(e) => setAllergies(e.target.value)}
-              onBlur={() => save({ allergies: allergies || undefined })}
+              onBlur={() => saveText("allergies", allergies)}
               placeholder="Frutos secos, gluten, látex…"
             />
           </Field>
@@ -305,7 +325,7 @@ export function CareCard({ initial, editing, onEdit, onDone, save }: BlockProps 
               autoFocus={focus === "dislikes"}
               value={dislikes}
               onChange={(e) => setDislikes(e.target.value)}
-              onBlur={() => save({ dislikes: dislikes || undefined })}
+              onBlur={() => saveText("dislikes", dislikes)}
               placeholder="Color amarillo, perfumes fuertes…"
             />
           </Field>

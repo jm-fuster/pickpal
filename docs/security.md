@@ -87,9 +87,13 @@ recomendaciones solo lee el historial.
 
 **Foto de una idea propia (14-oct-2026).** Usa las mismas subidas que «Mi lista»
 (`lists.generatePhotoUploadUrl`, cubo `list_photo_upload`). `addOwn` acepta un
-`photoStorageId` y lo comprueba con `isUsableIdeaPhoto` (`convex/ideaPhotos.ts`):
+`photoStorageId` y lo comprueba con `isUsablePhoto` (`convex/ideaPhotos.ts`):
 tipo y tamaño de `isAllowedListPhoto`, y que el archivo no sea ya la foto de un
-elemento de una lista ni de otra idea. Las ideas se borran siempre por
+elemento de una lista ni de otra idea. `lists.setItemPhoto` usa la misma
+comprobación (hasta el 4-nov-2026 solo miraba `listItems`, y quien compartía
+una ficha podía ponerse en su lista la foto de una idea de otro y, al quitarla,
+borrarle el archivo). `savedIdeas.getByPerson` devuelve `photoUrl`, nunca
+`photoStorageId`: las ideas las ve todo el que tiene la ficha. Las ideas se borran siempre por
 `deleteSavedIdea`, que borra también el archivo (quitar la idea, pasarla al
 historial, borrar la ficha, borrar la cuenta), y `lists.sweepOrphanPhotos`
 mira el índice `by_photo` de `savedIdeas` además del de `listItems`: sin eso,
@@ -108,6 +112,8 @@ Los validators viven en [`convex/validators.ts`](../convex/validators.ts) y espe
 3. Llama al validator desde `create` y `update`.
 
 En `update`, **valida el parche, no el documento fusionado**. Las comprobaciones son campo a campo e independientes, así que revalidar lo ya guardado no protege de nada y sí tiene un coste: una regla nueva más estricta deja ineditables las fichas antiguas que no la cumplen, aunque la edición ni toque ese campo. Estuvo a punto de pasar al añadir `AVATAR_FORBIDDEN` (ver §8). Si algún día una regla necesita mirar dos campos a la vez, esa sí tendrá que leer el documento guardado — y entonces conviene pensar qué pasa con las filas anteriores.
+
+**Vaciar un campo opcional no se hace con `undefined`.** El cliente de Convex quita las claves con `undefined` antes de mandar los argumentos, así que `{ allergies: undefined }` llega como `{}` y `db.patch` no toca nada: hasta el 4-nov-2026 la ficha decía «Guardado», el dato seguía y seguía yendo a Gemini. Cada `update` dice cómo se borra: `people.update` trata un texto en blanco como «bórralo» (`CLEARABLE_PERSON_FIELDS`); `importantDates.update` acepta `null` en el año y el presupuesto; `giftHistory.update` recibe la entrada entera y pone explícitas las claves opcionales, así que lo que no llega se borra. En el servidor, una clave presente con valor `undefined` en `db.patch` sí borra el campo. Tests en `convex/clearFields.test.ts`.
 
 Por qué importa: sin esto un usuario autenticado puede insertar `notes` de 100 MB, presupuestos negativos, o 10.000 intereses. Aparte de coste de almacenamiento, los campos de texto se concatenan al prompt de Gemini → amplifica prompt injection.
 
@@ -144,13 +150,15 @@ Aplícalo a cualquier mutation que:
 - Llame a APIs externas de pago (cuota).
 - Envíe notificaciones / emails.
 
-Buckets actuales: `create_person` (50/día), `create_date` (100/día), `save_idea` (50/día), `invite_person` (20/día — compartir una ficha, ver §9), `invite_lookup` (30/día — comprobar un email antes de invitar, ver §9; lo comparten las fichas y «Mi lista»), `create_list_item` (100/día), `import_list` (5/día — «Pegar una lista»: una unidad por importación, no por fila, porque fila a fila una lista de 100 gastaría el cupo entero de `create_list_item`; `lists.importItems` valida todas las filas antes de insertar ninguna, con el número de fila en el error, y comprueba el tope de 100 elementos antes que el cupo, así que ni una fila inválida ni una lista que no cabe gastan la unidad; ver §11), `claim_list_item` (100/día — marcar «Lo regalo yo»), `invite_list` (20/día — compartir tu lista, por email o de vuelta; ver §11; también se gasta cuando quien recibe te tiene bloqueado, ver §11), `list_photo_upload` (30/día — direcciones de subida de fotos de «Mi lista»; se gasta en `lists.generatePhotoUploadUrl`, antes de que el navegador suba nada, porque lo que ocupa almacenamiento es la subida y no el apunte), `create_managed_list` (10/día — empezar una lista a cargo, ver §11; `lists.createManagedList` comprueba antes el tope de 5 listas por adulto, así que llegar a él no gasta la unidad, y como borrar una lista no devuelve nada, crear y borrar en bucle se para en 10), `recommendationUsage` (10/día, tabla aparte por motivos históricos).
+Buckets actuales: `create_person` (50/día), `create_date` (100/día), `save_idea` (50/día), `invite_person` (20/día — compartir una ficha, ver §9), `invite_lookup` (30/día — comprobar un email antes de invitar, ver §9; lo comparten las fichas y «Mi lista»), `create_list_item` (100/día), `import_list` (5/día — «Pegar una lista»: una unidad por importación, no por fila, porque fila a fila una lista de 100 gastaría el cupo entero de `create_list_item`; `lists.importItems` valida todas las filas antes de insertar ninguna, con el número de fila en el error, y comprueba el tope de 100 elementos antes que el cupo, así que ni una fila inválida ni una lista que no cabe gastan la unidad; ver §11), `claim_list_item` (100/día — marcar «Lo regalo yo»), `invite_list` (20/día — compartir tu lista, por email o de vuelta; ver §11; también se gasta cuando quien recibe te tiene bloqueado, ver §11), `list_photo_upload` (30/día — direcciones de subida de fotos de «Mi lista»; se gasta en `lists.generatePhotoUploadUrl`, antes de que el navegador suba nada, porque lo que ocupa almacenamiento es la subida y no el apunte), `create_managed_list` (10/día — empezar una lista a cargo, ver §11; `lists.createManagedList` comprueba antes el tope de 5 listas por adulto, así que llegar a él no gasta la unidad, y como borrar una lista no devuelve nada, crear y borrar en bucle se para en 10), `generate_ideas_attempt` (30/día — cada `recommendationUsage.reserve` que pasa, salga o no la generación; ver abajo), `recommendationUsage` (10/día, tabla aparte por motivos históricos).
 
 Los cubos de «Mi lista» son **por persona, no por lista**: quien lleva listas a cargo comparte `create_list_item`, `import_list`, `invite_list`, `claim_list_item` y `list_photo_upload` entre la suya y las de sus hijos. Decidido así (docs/encargo-listas-ninos.md §5): con los topes de hoy no molesta, y un cubo por lista multiplicaría por seis lo que una cuenta puede crear al día.
 
 **Sin cubo, a propósito:** `lists.setAbout` («Una nota para quien te regala») no gasta cupo. Reescribe o borra siempre la misma fila de `listAbout` (como mucho una por usuario, con tope de 300 caracteres), así que repetirla no llena nada ni manda nada a nadie: no es superficie de DoS de almacenamiento. Si algún día avisara a los lectores al cambiarla, necesitaría cubo. Por lo mismo tampoco gastan cupo `lists.setBirthday` (la misma fila), `lists.moveItem` (reescribe `position` en dos filas que ya existen), `lists.setItemPhoto` y `lists.removeItemPhoto` (apuntan o quitan un archivo ya pagado con `list_photo_upload`), `lists.setClaimOccasion` (un campo de una marca propia), `lists.leaveAndBlock` y `lists.unblock` (como mucho una fila de `listBlocks` por pareja, y solo con un permiso recibido de por medio), y `lists.renameManagedList`, `lists.linkManagedListPerson` y `lists.deleteManagedList` (reescriben o borran filas que ya existen; no crean nada).
 
 **Cuota de recomendaciones = reserva atómica.** `api.recommendationUsage.reserve` (mutation) incrementa el contador **antes** de llamar a Gemini y lanza `ConvexError` si está agotado; al ser una transacción Convex, dos peticiones concurrentes en el límite no pueden superar las 10/día. Si la generación falla (saturación, timeout o validación del schema de Gemini), la API route llama a `refund` para devolver la unidad: como el `return` de éxito va tras el `upsert`, llegar al `catch` garantiza que no se persistió ninguna idea, así que un fallo de formato del proveedor no cuesta una generación. `refund` recibe el `day` UTC que devolvió `reserve` para devolver la unidad al bucket correcto aunque el fallo cruce la medianoche UTC. No existe un `consume` posterior al guardado: el patrón check-luego-consume tenía una carrera de coste y un caso "ideas guardadas pero el usuario ve error".
+
+**Devolver la unidad no puede salir gratis (4-nov-2026).** Como todo fallo devuelve la unidad, un fallo que dependa de lo que manda el usuario se puede repetir sin gastar nada, y cada vez paga Gemini. Dos cierres: (1) la ruta exige que `occasionLabel` sea uno de los eventos de la persona (`getByPersonAndLabel`) **antes** de reservar — una ocasión en blanco pasaba el zod, llegaba a Gemini y la rechazaba `upsert` después; (2) `reserve` gasta además una unidad de `generate_ideas_attempt` (30/día) que `refund` no devuelve, para los fallos que dependen de la ficha (unas notas que hagan que Gemini no valide). Con la cuota agotada `reserve` lanza antes de tocar ese cubo, así que insistir no lo gasta.
 
 **`reserve`/`refund` son server-only vía secreto compartido.** Modifican la cuota, así que solo deben invocarse desde la API route (`/api/recommendations`), nunca desde el navegador: sin protección, un usuario autenticado podría llamar a `api.recommendationUsage.refund` directamente y decrementar su propio contador, anulando el límite de 10/día (el único tope que impide que una sola cuenta agote la cuota diaria del proyecto en Google AI Studio). Siguen siendo mutations **públicas** porque la route las invoca con `fetchMutation`, que no alcanza funciones `internal*`; pero exigen `process.env.CONVEX_SERVER_SECRET` como argumento y lo verifican con `assertServerCaller` (fail-closed si no está configurado). El secreto debe valer lo mismo en el entorno de Convex y en el de Next (ver §8). **Patrón general:** una mutation que deba invocarse solo desde el servidor Next —no desde el navegador ni desde otra función Convex— se protege con este secreto compartido; `internalMutation` no sirve aquí porque `fetchMutation` solo alcanza el `api.*` público. `check` (query read-only de cuota restante) no necesita el secreto: leer el propio contador no es superficie de abuso.
 
@@ -220,7 +228,7 @@ Toda cuenta de PickPal se puede borrar desde [`/settings`](../src/app/(app)/sett
 
 Flujo:
 1. UI llama `POST /api/account/delete` ([`src/app/api/account/delete/route.ts`](../src/app/api/account/delete/route.ts)).
-2. La ruta valida el token Clerk y llama a `api.account.deleteMyAccount` ([`convex/account.ts`](../convex/account.ts)), que con `requireUser(ctx)` purga en cascada todo lo del usuario en Convex: `people` (con sus `importantDates`, `giftHistory`, `recommendations`, `savedIdeas`), `userSettings`, `emailNotifications`, `recommendationUsage`, `rateLimitBuckets`. Además barre `savedIdeas` huérfanas vía el índice `by_user` (filas cuya persona ya no existe).
+2. La ruta valida el token Clerk y llama a `api.account.deleteMyAccount` ([`convex/account.ts`](../convex/account.ts)), que con `requireUser(ctx)` purga en cascada todo lo del usuario en Convex: `people` (con sus `importantDates`, `giftHistory`, `recommendations`, `savedIdeas`), las `recommendations` que generó en cualquier ficha (también en las que pasan a un invitado y en las ajenas: son privadas, y si se quedaran saldrían en la exportación de otro), `userSettings`, `emailNotifications`, `recommendationUsage`, `rateLimitBuckets`. Además barre `savedIdeas` huérfanas vía el índice `by_user` (filas cuya persona ya no existe).
 3. Solo si el purge en Convex sale bien, se llama `clerkClient().users.deleteUser(userId)`.
 4. UI hace `signOut` y redirige a `/`.
 
@@ -280,7 +288,14 @@ cron de avisos por correo).
   acceso sin límite ni infle la ficha de gente.
 - **Desligarse (`personShares.leave`) es de cualquier invitado sobre su
   propia fila.** No hay forma de que el dueño expulse a un invitado sin que
-  el invitado se vaya solo — ver "Lo que NO está implementado todavía".
+  el invitado se vaya solo — ver "Lo que NO está implementado todavía". Al
+  irse se borran sus `recommendations` de esa ficha: ya no puede verlas y,
+  si se quedaran, saldrían en la exportación del dueño.
+- **Las tandas de la IA no salen en la exportación de otro.** `exportData.mine`
+  lee `recommendations` por `by_user_person_occasion_type` con el
+  `clerkUserId` de la sesión, tanto en tus fichas como en las que te
+  comparten (`fichasQueTeComparten[].ideasGeneradasPorLaIA`). Hasta el
+  4-nov-2026 leía por `by_person` y el dueño se llevaba las de sus invitados.
 - **Ownership check ampliado, no nuevo:** ver §2 (`assertPersonAccess`).
 - **Los avisos por correo también llegan al invitado (16-oct-2026)**, con sus
   propios ajustes. El cron no tiene sesión, así que decide por cada
@@ -527,11 +542,14 @@ a uno solo:
   ellos el GPS) los quita el navegador** al volver a codificar la imagen antes
   de subirla. El servidor no puede comprobarlo: un cliente modificado puede
   subir un JPG con su ubicación, pero solo la del propio dueño y solo en su
-  lista. Un archivo que ya es la foto de otro elemento no vale (índice
-  `by_photo`): si alguien llegara a conocer el id de un archivo ajeno (no se
-  devuelve a nadie, pero la dirección de la foto la ven los lectores y no
-  conviene fiarlo a que no se pueda sacar de ahí), podría apuntárselo a una
-  cosa suya y, al quitarlo, borrar la foto del otro. Cambiar la foto, quitarla
+  lista. Un archivo que ya es la foto de otro elemento o de una idea guardada
+  no vale (`isUsablePhoto`, índices `by_photo` de `listItems` y `savedIdeas`):
+  si alguien llegara a conocer el id de un archivo ajeno, podría apuntárselo a
+  una cosa suya y, al quitarlo, borrar la foto del otro. Pasó de verdad hasta
+  el 4-nov-2026 con las fotos de las ideas, cuyo id devolvía
+  `savedIdeas.getByPerson` a todos los que tenían la ficha; ahora no sale, y
+  la dirección de una foto la ven los lectores, así que no conviene fiarlo a
+  que no se pueda sacar de ahí. Cambiar la foto, quitarla
   (`removeItemPhoto`), borrar el elemento o la cuenta borran el archivo; la
   copia que guarda una marca al borrar un elemento nunca lleva foto. Ni poner
   ni quitar la foto ponen `editedAt`. La dirección (`photoUrl`) llega al dueño

@@ -474,6 +474,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // La ocasión tiene que ser uno de sus eventos, y se mira antes de reservar.
+  // Una etiqueta que no lo es (en blanco pasa el zod) llegaba a Gemini, la
+  // rechazaba `upsert` después y el `catch` devolvía la unidad: repetirla daba
+  // generaciones sin tope. Y un `?occasion=` de un evento ya renombrado o
+  // borrado generaba sin presupuesto, en una tanda que nadie volvería a ver.
+  if (!matchingDate) {
+    return NextResponse.json(
+      { error: "Esa ocasión ya no está en su ficha. Elige otra." },
+      { status: 404 },
+    );
+  }
+
   // Cuota: reserva atómica ANTES de llamar a Gemini. Dos peticiones
   // concurrentes en el límite no pueden pasar de 10/día; si el proveedor
   // falla de forma retriable se devuelve la unidad con `refund` en el catch.

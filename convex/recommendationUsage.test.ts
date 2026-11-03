@@ -186,4 +186,42 @@ describe("la cuota diaria", () => {
       alice.mutation(api.recommendationUsage.reserve, { secret: SECRET }),
     ).rejects.toThrow(/límite diario/i);
   });
+
+  test("los intentos devueltos también se acaban: 30 al día aunque fallen todos", async () => {
+    const t = convexTest(schema, modules);
+    const alice = t.withIdentity(ALICE);
+
+    // Una generación que falla siempre (algo en la ficha que hace que Gemini
+    // no valide) devuelve la unidad cada vez; sin este tope saldría gratis.
+    for (let i = 0; i < 30; i++) {
+      await alice.mutation(api.recommendationUsage.reserve, { secret: SECRET });
+      await alice.mutation(api.recommendationUsage.refund, { secret: SECRET });
+    }
+    expect((await alice.query(api.recommendationUsage.check, {})).count).toBe(0);
+    await expect(
+      alice.mutation(api.recommendationUsage.reserve, { secret: SECRET }),
+    ).rejects.toThrow(/límite diario/i);
+    // Y el de Bob no se ha tocado.
+    await t.withIdentity(BOB).mutation(api.recommendationUsage.reserve, { secret: SECRET });
+  });
+
+  test("un reserve con la cuota agotada no gasta intento", async () => {
+    const t = convexTest(schema, modules);
+    const alice = t.withIdentity(ALICE);
+
+    for (let i = 0; i < LIMIT; i++) {
+      await alice.mutation(api.recommendationUsage.reserve, { secret: SECRET });
+    }
+    for (let i = 0; i < 5; i++) {
+      await expect(
+        alice.mutation(api.recommendationUsage.reserve, { secret: SECRET }),
+      ).rejects.toThrow(/límite diario/i);
+    }
+    const intentos = await t.run(async (ctx) =>
+      (await ctx.db.query("rateLimitBuckets").collect()).find(
+        (b) => b.clerkUserId === ALICE.subject && b.bucket === "generate_ideas_attempt",
+      ),
+    );
+    expect(intentos?.count).toBe(LIMIT);
+  });
 });

@@ -74,7 +74,9 @@ de la propia app, no un tercero pasivo.
   dato de salud (art. 9 RGPD)— más su historial de regalos e ideas guardadas
   (con autoría de quien añadió cada entrada). **No** se comparten las tandas
   de recomendaciones generadas por la IA: cada usuario genera y ve las suyas,
-  vía el índice `by_user_person_occasion_type` de `recommendations`.
+  vía el índice `by_user_person_occasion_type` de `recommendations`. Tampoco
+  salen en la exportación de otro, y se borran al desligarse de la ficha o al
+  cerrar la cuenta, aunque la ficha pase a otra persona.
 - **Disclosure antes de compartir:** la pantalla de invitar enumera qué se va
   a compartir, con mención explícita a las alergias, antes de confirmar — no
   basta con que esté en esta página (ver `AiNotesNotice` para el mismo
