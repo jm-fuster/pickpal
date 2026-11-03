@@ -89,7 +89,7 @@ export default function PeoplePage() {
       <MyGiftsCard />
 
       {!isLoaded || people === undefined ? (
-        <div className={GRID} role="status">
+        <div className={GRID} role="status" data-loading>
           <span className="sr-only">Cargando seres queridos…</span>
           {Array.from({ length: 6 }).map((_, i) => (
             <div
@@ -136,7 +136,7 @@ export default function PeoplePage() {
           </div>
 
           {filteredPeople && filteredPeople.length > 0 ? (
-            <div className={GRID}>
+            <div className={`${GRID} motion-safe:animate-in motion-safe:fade-in motion-safe:duration-(--dur-swap)`}>
               {filteredPeople.map((p) => (
                 <PersonCard
                   key={p._id}

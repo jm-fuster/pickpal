@@ -31,6 +31,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AddRowButton } from "@/components/layout/AddRowButton";
 import { Count } from "@/components/layout/Count";
 import { EmptyState } from "@/components/layout/EmptyState";
+import { useFlip } from "@/components/layout/useFlip";
 import { ActionMenu, type MenuGroup } from "@/components/people/ActionMenu";
 import { AddToHistoryDialog, type HistoryValues } from "@/components/people/AddToHistoryDialog";
 import { itemVisual } from "@/components/people/ideaParts";
@@ -141,6 +142,9 @@ export function OwnerListView({
   const [giving, setGiving] = useState<{ claimId: Id<"listClaims">; title: string } | null>(null);
   // La hoja guarda su cosa al cerrarse, para que no se vacíe mientras baja.
   const [sheet, setSheet] = useState<{ id: Id<"listItems">; open: boolean } | null>(null);
+  // Lo que cambia de sitio (al escaparate, un puesto arriba, el hueco de lo
+  // quitado) se desliza: cada acción mide antes con `captureFlip()`.
+  const { ref: flipRef, capture: captureFlip } = useFlip<HTMLDivElement>();
 
   // Textos: la lista propia habla de ti; la que llevas, de esa persona.
   const t = managed
@@ -266,6 +270,7 @@ export function OwnerListView({
   };
 
   const handleRemove = (item: Item, reason: RemoveReason) => {
+    captureFlip();
     setHiddenIds((prev) => new Set(prev).add(item._id));
     const toastId = toast(reason === "got" ? t.removedGot : t.removed, {
       duration: UNDO_MS,
@@ -273,6 +278,7 @@ export function OwnerListView({
         label: "Deshacer",
         onClick: () => {
           pending.current.delete(item._id);
+          captureFlip();
           unhide(item._id);
         },
       },
@@ -319,7 +325,8 @@ export function OwnerListView({
       toast.error(`Ya hay ${MAX_LIST_FAVORITES} en lo que más ilusión. Saca una para pasar esta.`);
       return;
     }
-    void run(async () => {
+    captureFlip();
+    return run(async () => {
       await setFavorite({ id: item._id, favorite: !item.favorite });
       toast.success(t.moved(!item.favorite));
     }, "No se pudo guardar");
@@ -384,7 +391,7 @@ export function OwnerListView({
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       {items === undefined ? (
-        <div className="space-y-3" role="status">
+        <div className="space-y-3" role="status" data-loading>
           <span className="sr-only">Cargando la lista…</span>
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} aria-hidden className="h-16 rounded-2xl border border-dashed border-border/60 motion-safe:animate-pulse" />
@@ -410,8 +417,8 @@ export function OwnerListView({
           }
         />
       ) : (
-        <Card className="@container border-border/60 shadow-sm">
-          <CardContent className="space-y-5 p-5">
+        <Card className="@container border-border/60 shadow-sm motion-safe:animate-in motion-safe:fade-in motion-safe:duration-(--dur-swap)">
+          <CardContent ref={flipRef} className="space-y-5 p-5">
             <div className="flex items-start gap-2">
               {/* Dentro de la fila: suelto, el space-y le daría su margen aunque no se vea. */}
               <h2 className="sr-only">{t.heading}</h2>
@@ -455,7 +462,7 @@ export function OwnerListView({
 
             {favorites.length > 0 && (
               <section aria-labelledby={`${t.idPrefix}-mas-ilusion`} className="space-y-3">
-                <GroupTitle id={`${t.idPrefix}-mas-ilusion`}>
+                <GroupTitle id={`${t.idPrefix}-mas-ilusion`} flipKey="titulo-mas-ilusion">
                   {t.top}
                   <Count>
                     {favoriteCount} de {MAX_LIST_FAVORITES}
@@ -467,6 +474,7 @@ export function OwnerListView({
                     <li
                       key={item._id}
                       id={`elemento-${item._id}`}
+                      data-flip={item._id}
                       className={cn(SHOWCASE_ITEM, "rounded-xl transition-shadow duration-700", highlightId === item._id && "ring-4 ring-secondary/20")}
                     >
                       <ShowcaseTile
@@ -491,7 +499,7 @@ export function OwnerListView({
             {rest.length > 0 && (
               <section aria-labelledby={favorites.length > 0 ? `${t.idPrefix}-resto` : undefined} className="space-y-1">
                 {favorites.length > 0 && (
-                  <GroupTitle id={`${t.idPrefix}-resto`} muted>
+                  <GroupTitle id={`${t.idPrefix}-resto`} muted flipKey="titulo-resto">
                     El resto
                   </GroupTitle>
                 )}
@@ -503,6 +511,7 @@ export function OwnerListView({
                       <ItemRow
                         key={item._id}
                         id={`elemento-${item._id}`}
+                        flipKey={item._id}
                         highlighted={highlightId === item._id}
                         visual={itemVisual(item)}
                         title={item.title}
@@ -555,7 +564,10 @@ export function OwnerListView({
                   toast.success("Foto quitada");
                 }, "No se pudo quitar la foto")
               }
-              onMove={(direction) => run(() => moveItem({ id: sheetItem._id, direction }), "No se pudo mover")}
+              onMove={(direction) => {
+                captureFlip();
+                return run(() => moveItem({ id: sheetItem._id, direction }), "No se pudo mover");
+              }}
               onGot={() => handleRemove(sheetItem, "got")}
               onRemove={() => handleRemove(sheetItem, undefined)}
               onClaim={() => run(() => claim({ itemId: sheetItem._id }), "No se pudo marcar")}

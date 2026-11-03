@@ -50,7 +50,15 @@ interface GiftRecommendationCardProps {
   /** «Ya guardada en Navidad» cuando la idea ya está guardada en otra ocasión. */
   savedElsewhere?: string;
   onSave?: () => void;
+  /**
+   * Volver a tocar el marcador la quita de la ficha. Sin él, la guardada no se
+   * suelta desde aquí: lo está en otra ocasión y el generador no la toca
+   * (decisión 14 de docs/encargo-ocasiones.md).
+   */
+  onUnsave?: () => void;
   onDiscard?: () => void;
+  /** `data-flip` de useFlip: la rejilla cierra el hueco al descartar. */
+  flipKey?: string;
 }
 
 export function GiftRecommendationCard({
@@ -62,8 +70,19 @@ export function GiftRecommendationCard({
   saved = false,
   savedElsewhere,
   onSave,
+  onUnsave,
   onDiscard,
+  flipKey,
 }: GiftRecommendationCardProps) {
+  // El marcador cae como la cinta de una libreta cuando la idea pasa a
+  // guardada, no cuando llega ya guardada: se compara con el render anterior.
+  const [prevSaved, setPrevSaved] = useState(saved);
+  const [justSaved, setJustSaved] = useState(false);
+  if (saved !== prevSaved) {
+    setPrevSaved(saved);
+    setJustSaved(saved);
+  }
+
   const isPhysical = giftType === "fisica";
   const isSurprise = giftType === "sorprendeme";
 
@@ -107,7 +126,8 @@ export function GiftRecommendationCard({
 
   return (
     <Card
-      className="flex flex-col h-full border-border/60 shadow-sm transition-shadow hover:shadow-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 motion-safe:fill-mode-both"
+      data-flip={flipKey}
+      className="flex flex-col h-full border-border/60 shadow-sm transition-shadow hover:shadow-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 motion-safe:ease-(--ease-paper) motion-safe:fill-mode-both"
       style={{ animationDelay: `${index * 60}ms` }}
     >
       {/* Layout fijo desde arriba: título (2 líneas) + descripción (4 líneas)
@@ -154,16 +174,31 @@ export function GiftRecommendationCard({
               // con 22 px a 4 de distancia era fácil dar a «No me interesa».
               <div className="flex gap-1 pointer-coarse:gap-2 shrink-0">
                 {onSave && (
+                  // Un interruptor: el nombre dice qué es y no cambia; el estado
+                  // lo da aria-pressed (si cambiaba, el lector lo decía dos
+                  // veces). Guardada en otra ocasión, se queda puesta.
                   <button
                     type="button"
-                    onClick={onSave}
-                    disabled={saved}
-                    aria-label={saved ? "Idea guardada" : "Guardar idea"}
+                    onClick={saved ? onUnsave : onSave}
+                    aria-disabled={saved && !onUnsave ? true : undefined}
+                    aria-label="Guardar idea"
                     aria-pressed={saved}
-                    title={saved ? undefined : "Guardar idea"}
-                    className={cn(ICON_ACTION, "hover:text-foreground disabled:pointer-events-none", saved && "text-foreground")}
+                    title={!saved ? "Guardar idea" : onUnsave ? "Quitar de la ficha" : "Se quita desde su ficha"}
+                    className={cn(
+                      ICON_ACTION,
+                      "hover:text-foreground aria-disabled:cursor-default aria-disabled:hover:bg-transparent",
+                      saved && "text-foreground",
+                    )}
                   >
-                    <Bookmark className="size-3.5 pointer-coarse:size-4" aria-hidden fill={saved ? "currentColor" : "none"} />
+                    <Bookmark
+                      className={cn(
+                        "size-3.5 origin-top pointer-coarse:size-4",
+                        justSaved && "motion-safe:animate-ribbon",
+                      )}
+                      aria-hidden
+                      fill={saved ? "currentColor" : "none"}
+                      onAnimationEnd={() => setJustSaved(false)}
+                    />
                   </button>
                 )}
                 {onDiscard && (

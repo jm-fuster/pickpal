@@ -192,7 +192,7 @@ function PersonDetailContent({
   ];
 
   return (
-    <main className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8 w-full max-w-6xl">
+    <main className="flex flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8 w-full max-w-6xl motion-safe:animate-in motion-safe:fade-in motion-safe:duration-(--dur-swap)">
       <BackLink />
 
       {/* ── Cabecera: foto, nombre y relación, un bloque editable más ── */}

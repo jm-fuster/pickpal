@@ -136,6 +136,8 @@ await ctx.db.patch(existing._id, {
 2. El icono pasa a `fill="currentColor"` como confirmación visual.
 3. Toast: "Idea guardada en la ficha de [nombre]".
 
+Desde el 3-nov-2026 el marcador (antes pulgar) se puede soltar en la misma pantalla: volver a tocarlo quita la idea de la ficha con un toast «Quitada de la ficha de [nombre]» y «Deshacer». `api.savedIdeas.remove` no se llama hasta que el toast se cierra (o al salir del generador, o al regenerar), así que «Deshacer» no tiene que volver a guardarla. Solo vale para la guardada en la ocasión elegida: la de otra ocasión se queda puesta (decisión 14 de `docs/encargo-ocasiones.md`).
+
 La idea se persiste en la tabla `savedIdeas` vinculada a la persona y al evento elegido en «¿Para qué ocasión?» (`importantDateId`; el servidor comprueba que el evento es de esa persona).
 
 El estado relleno del pulgar **sobrevive a recargas**: se deriva de `savedTitles` (set local de la sesión) **unido** a las ideas que ya persisten en `savedIdeas.getByPerson` (`isSaved` en `GiftsPanel`). La clave de "guardada" espeja la dedupe del servidor: **misma persona y mismo título, sea cual sea la ocasión**. Si la idea está guardada en otra ocasión, la tarjeta lo dice bajo el título, «Ya guardada en Navidad» (o «Ya guardada» si está en «Sin ocasión»), y el pulgar no la duplica ni la mueve. Por eso `savedTitles` ya no se vacía al cambiar de ocasión.

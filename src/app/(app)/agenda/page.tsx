@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState, ViewTransition } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Coffee } from "lucide-react";
@@ -74,7 +74,7 @@ export default function DashboardPage() {
       <IncomingListsCard className="xl:max-w-[480px] xl:px-1" />
 
       {!ready || upcoming === undefined ? (
-        <div className="space-y-3" role="status">
+        <div className="space-y-3" role="status" data-loading>
           <span className="sr-only">Cargando agenda…</span>
           {Array.from({ length: 3 }).map((_, i) => (
             <div
@@ -116,30 +116,41 @@ export default function DashboardPage() {
         )
       ) : (
         <>
-          <div className="xl:max-w-[480px] xl:px-1 xl:pb-1">
+          <div className="xl:max-w-[480px] xl:px-1 xl:pb-1 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-(--dur-swap)">
             <DateGroupedList
               entries={filtered}
               onSelect={(entry) =>
-                setSelected({
-                  personId: entry.person._id,
-                  occasion: entry.date.label,
-                  dateId: entry.date._id,
-                })
+                startTransition(() =>
+                  setSelected({
+                    personId: entry.person._id,
+                    occasion: entry.date.label,
+                    dateId: entry.date._id,
+                  }),
+                )
               }
               selectedDateId={selected?.dateId}
             />
           </div>
 
+          {/* Otra fecha, otro panel: el viejo se apaga y el nuevo llega desde
+              su lado (clases panel-* de globals.css). En una transición para
+              que <ViewTransition> lo anime. */}
           {selected && (
-            <div className="hidden xl:flex flex-col fixed top-8 bottom-8 right-8 left-[48.5rem]">
-              <GiftsPanel
-                key={`${selected.personId}-${selected.occasion}`}
-                personId={selected.personId}
-                initialOccasion={selected.occasion}
-                embedded
-                onClose={() => setSelected(null)}
-              />
-            </div>
+            <ViewTransition
+              key={`${selected.personId}-${selected.occasion}`}
+              enter="panel-enter"
+              exit="panel-exit"
+              default="none"
+            >
+              <div className="hidden xl:flex flex-col fixed top-8 bottom-8 right-8 left-[48.5rem]">
+                <GiftsPanel
+                  personId={selected.personId}
+                  initialOccasion={selected.occasion}
+                  embedded
+                  onClose={() => startTransition(() => setSelected(null))}
+                />
+              </div>
+            </ViewTransition>
           )}
         </>
       )}

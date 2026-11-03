@@ -48,15 +48,41 @@
 }
 
 @theme {
-  /* La barra indeterminada de GenerationProgress: un tramo del 30 % que cruza
-     la pista de fuera a fuera (−100 % → 333 % de su propio ancho). */
-  --animate-indeterminate: indeterminate 1.6s ease-in-out infinite;
-  @keyframes indeterminate {
+  /* Las tarjetas fantasma mientras se generan las ideas: respiran una tras
+     otra (el retraso lo pone GiftsPanel), en vez de latir todas a la vez
+     durante 10-20 s. */
+  --animate-breathe: breathe 2.4s var(--ease-swap) infinite;
+  @keyframes breathe {
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  /* Respuestas a una acción (docs/design-system.md · Animaciones). Cada una
+     es el propio cambio de estado y la piden solo las utilidades motion-safe:. */
+  /* Guardar una idea: el marcador baja como la cinta de una libreta y se posa. */
+  --animate-ribbon: ribbon 420ms var(--ease-settle) both;
+  @keyframes ribbon {
     from {
-      transform: translateX(-100%);
+      transform: translateY(-40%) scaleY(0.6);
+    }
+  }
+  /* El corazón de «Mi lista» al encenderse: se estampa y se posa. */
+  --animate-stamp: stamp 360ms var(--ease-settle) both;
+  @keyframes stamp {
+    from {
+      transform: scale(0.6);
+    }
+  }
+  /* Un check que se escribe de un trazo, del palo corto al largo. Pide
+     stroke-dasharray: 23 (el largo del check de lucide, 22,6). */
+  --animate-draw: draw 360ms var(--ease-paper) both;
+  @keyframes draw {
+    from {
+      stroke-dashoffset: -23;
     }
     to {
-      transform: translateX(333%);
+      stroke-dashoffset: 0;
     }
   }
 
@@ -166,8 +192,8 @@
   --chart-5: oklch(0.4 0.04 50);
 }
 
-/* Movimiento. Hoy solo los usa la landing (src/app/landing.css); viven aquí
-   porque son tokens del sistema (docs/design-system.md · Animaciones). */
+/* Movimiento: tokens del sistema, para la landing (src/app/landing.css) y la
+   app (docs/design-system.md · Animaciones). */
 :root {
   --ease-paper: cubic-bezier(0.22, 1, 0.36, 1); /* entradas: bloques que suben, menús */
   --ease-settle: linear(0, 0.25 9%, 0.66 22%, 0.92 38%, 1.015 55%, 1.004 75%, 1); /* objetos que se posan, ~1,5 % de rebote */
@@ -178,6 +204,168 @@
   --dur-rise: 600ms;   /* bloques */
   --stagger-list: 60ms;   /* listas generadas (regla de la app) */
   --stagger-block: 120ms; /* bloques y pictogramas (regla de la landing) */
+  --dur-move: 320ms;      /* lo que cambia de sitio en una lista (useFlip) */
+}
+
+/* Cambios de página y del panel de la agenda: <ViewTransition> de React. Solo
+   se mueve lo que lleva clase; el resto (barra lateral, cabecera, avisos)
+   cambia al momento, como sin transición. Mientras dura, los clics pasan a la
+   página de verdad. */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-old(root) {
+  display: none;
+}
+::view-transition-new(root) {
+  animation: none;
+}
+/* La página que se va se apaga deprisa; la que llega espera ese instante y
+   sube 6 px mientras aparece: una sola página a la vez, nunca dos mezcladas. */
+::view-transition-old(.page-exit) {
+  animation: vt-fade-out 100ms var(--ease-swap) both;
+}
+::view-transition-new(.page-enter) {
+  animation:
+    vt-fade-in var(--dur-swap) var(--ease-paper) 60ms both,
+    vt-rise 280ms var(--ease-paper) both;
+}
+/* Otra fecha en el panel de la agenda: mismo sitio, otro contenido. Al
+   abrirse llega 12 px desde su lado. */
+::view-transition-old(.panel-exit) {
+  animation: vt-fade-out 120ms var(--ease-swap) both;
+}
+::view-transition-new(.panel-enter) {
+  --vt-from: 12px 0;
+  animation:
+    vt-fade-in var(--dur-swap) var(--ease-paper) 60ms both,
+    vt-rise var(--dur-move) var(--ease-paper) both;
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-rise {
+  from {
+    translate: var(--vt-from, 0 6px);
+  }
+}
+/* Con movimiento reducido, solo el fundido. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-new(.page-enter),
+  ::view-transition-new(.panel-enter) {
+    animation: vt-fade-in var(--dur-swap) var(--ease-paper) 60ms both;
+  }
+}
+
+/* Pantalla de arranque con la app instalada (LaunchSplash). Crema y marrón
+   literales: son los del manifiesto y los iconos, que no siguen al tema. Solo
+   existe con `data-launch` en <html> (launchScript.ts). */
+.launch {
+  display: none;
+}
+html[data-launch] .launch {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: #fbf7ee;
+  /* Red por si React no llega a arrancar: a los 8 s se aparta sola. */
+  animation: launch-failsafe 1ms 8s forwards;
+}
+.launch[data-state="leaving"] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-swap) var(--ease-swap);
+}
+/* El tamaño del icono en la pantalla de arranque de Android, a ojo: 128 px.
+   El canvas del lazo, en la misma celda, lo dibuja a ese mismo tamaño. */
+.launch-mark {
+  grid-area: 1 / 1;
+  width: 128px;
+  height: 128px;
+  overflow: visible;
+}
+.launch-lazo {
+  grid-area: 1 / 1;
+  opacity: 0;
+  pointer-events: none;
+}
+/* El lazo pinta su primer fotograma: entra en 150 ms y el logo quieto se
+   aparta. Al acabar, su último fotograma es el logo exacto y el cambio al SVG
+   no se ve. */
+html[data-lazo="on"] .launch-lazo {
+  opacity: 1;
+  transition: opacity 150ms var(--ease-swap);
+}
+html[data-lazo="on"] .launch-mark {
+  visibility: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* El iPhone arranca en crema liso: el logo entra. En Android ya estaba. Si
+     el lazo se está descargando, espera 300 ms por si llega antes. */
+  html[data-launch="ios"] .launch-mark {
+    animation: launch-mark-in var(--dur-swap) var(--ease-paper) both;
+  }
+  html[data-launch="ios"][data-lazo="wait"] .launch-mark {
+    animation-delay: 300ms;
+  }
+  /* El nudo que se ajusta: los dos cordones se separan un poco, se juntan
+     pasándose un pelo y se posan. Pieza a pieza (ver LOGO_PIECES). No con el
+     lazo esperando o en marcha: así, cuando acaba, empieza desde el reposo. */
+  html:not([data-lazo="wait"]):not([data-lazo="on"]) .launch-ink,
+  html:not([data-lazo="wait"]):not([data-lazo="on"]) .launch-coral {
+    animation: launch-tug 1.6s infinite;
+  }
+  .launch-ink {
+    --tug: -0.7px;
+  }
+  .launch-coral {
+    --tug: 0.7px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-launch="ios"] .launch-mark {
+    animation: vt-fade-in var(--dur-swap) var(--ease-paper) both;
+  }
+}
+@keyframes launch-tug {
+  0%,
+  20% {
+    transform: none;
+    animation-timing-function: var(--ease-swap);
+  }
+  42% {
+    transform: translateX(var(--tug));
+    animation-timing-function: var(--ease-paper);
+  }
+  64% {
+    transform: translateX(calc(var(--tug) * -0.3));
+    animation-timing-function: var(--ease-swap);
+  }
+  80%,
+  100% {
+    transform: none;
+  }
+}
+@keyframes launch-mark-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes launch-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 
 @layer base {

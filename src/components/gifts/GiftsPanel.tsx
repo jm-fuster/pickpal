@@ -34,9 +34,13 @@ import { GenerationProgress } from "@/components/gifts/GenerationProgress";
 import { BackLink } from "@/components/layout/BackLink";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { LoadingFallback } from "@/components/layout/LoadingFallback";
+import { flipExit, useFlip } from "@/components/layout/useFlip";
 import { GIFT_TYPES, type GiftType } from "@/lib/giftCatalog";
 import type { GiftRecommendation } from "@/lib/gifts";
 import { ALL_STORES, pickEffectiveStores, sanitizeFavoriteStores } from "@/lib/stores";
+
+/** Lo que dura el aviso con «Deshacer» al quitar una guardada, como en «Mi lista». */
+const UNDO_MS = 6000;
 
 const formatBudget = (min?: number, max?: number) => {
   const toEur = (v: number) => Math.round(v / 100);
@@ -105,8 +109,16 @@ export function GiftsPanel({
   const [loading, setLoading] = useState(false);
   const [showHeaderRegen, setShowHeaderRegen] = useState(false);
   const [savedTitles, setSavedTitles] = useState<Set<string>>(new Set());
+  // Quitar una guardada desde aquí no la borra al momento: el marcador se vacía
+  // y el borrado espera a que se cierre el aviso con «Deshacer», como el
+  // descarte de abajo y «Quitar» en «Mi lista».
+  const [unsavingTitles, setUnsavingTitles] = useState<ReadonlySet<string>>(() => new Set());
+  const pendingUnsaves = useRef(new Map<string, { id: Id<"savedIdeas">; toastId: string | number }>());
+  // Guardar en curso: dos toques antes de que conteste el servidor no guardan dos veces.
+  const savingTitles = useRef(new Set<string>());
   const controlsRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { ref: flipRef, capture: captureFlip, item: flipItem } = useFlip<HTMLDivElement>();
 
   const removeIdea = useMutation(api.recommendations.removeIdea);
   const saveIdea = useMutation(api.savedIdeas.save);
@@ -149,12 +161,21 @@ export function GiftsPanel({
   };
 
   useEffect(() => {
+    const unsaving = pendingUnsaves.current;
     return () => {
       pendingDiscards.current.forEach(({ args }) => {
         removeIdea(args).catch(() => {});
         discardSavedIdea(args.ideaTitle, args.occasionLabel);
       });
       pendingDiscards.current.clear();
+      // Al salir se confirma lo quitado y se cierra su aviso: un «Deshacer»
+      // que ya no puede deshacer nada engañaría.
+      const unsaves = [...unsaving.values()];
+      unsaving.clear();
+      for (const { id, toastId } of unsaves) {
+        removeSavedIdea({ id }).catch(() => {});
+        toast.dismiss(toastId);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -293,7 +314,7 @@ export function GiftsPanel({
   const selectedEvent = events?.find((e) => e.label === occasion);
   const persistedSaved = new Map((savedIdeasForPerson ?? []).map((s) => [s.title, s]));
   const isSaved = (title: string) =>
-    savedTitles.has(title) || persistedSaved.has(title);
+    !unsavingTitles.has(title) && (savedTitles.has(title) || persistedSaved.has(title));
   // Si la idea está guardada en otra ocasión, la card lo dice: «Ya guardada en
   // Navidad», o «Ya guardada» si está en «Sin ocasión». El generador no la
   // mueve; eso solo se hace desde la ficha.
@@ -304,11 +325,61 @@ export function GiftsPanel({
     return where ? `Ya guardada en ${where}` : "Ya guardada";
   };
 
+  // Se puede quitar desde aquí lo guardado en la ocasión elegida. Lo guardado
+  // en otra se queda puesto: el generador no lo toca (decisión 14).
+  const canUnsave = (title: string) => persistedSaved.has(title) && !savedElsewhere(title);
+
+  const without = (set: ReadonlySet<string>, title: string) => {
+    const next = new Set(set);
+    next.delete(title);
+    return next;
+  };
+
+  const undoUnsave = (title: string) => {
+    const pending = pendingUnsaves.current.get(title);
+    if (!pending) return;
+    pendingUnsaves.current.delete(title);
+    toast.dismiss(pending.toastId);
+    setUnsavingTitles((prev) => without(prev, title));
+  };
+
+  const commitUnsave = (title: string) => {
+    const pending = pendingUnsaves.current.get(title);
+    if (!pending) return;
+    pendingUnsaves.current.delete(title);
+    removeSavedIdea({ id: pending.id })
+      .then(() => {
+        setSavedTitles((prev) => without(prev, title));
+        setUnsavingTitles((prev) => without(prev, title));
+      })
+      .catch((err) => {
+        setUnsavingTitles((prev) => without(prev, title));
+        toast.error(userErrorMessage(err, "No se pudo quitar la idea"));
+      });
+  };
+
+  const handleUnsave = (idea: GiftRecommendation) => {
+    const saved = persistedSaved.get(idea.title);
+    if (!saved || pendingUnsaves.current.has(idea.title)) return;
+    setUnsavingTitles((prev) => new Set(prev).add(idea.title));
+    const toastId = toast(`Quitada de la ficha de ${person?.name ?? "esta persona"}`, {
+      duration: UNDO_MS,
+      action: { label: "Deshacer", onClick: () => undoUnsave(idea.title) },
+      onDismiss: () => commitUnsave(idea.title),
+      onAutoClose: () => commitUnsave(idea.title),
+    });
+    pendingUnsaves.current.set(idea.title, { id: saved._id, toastId });
+  };
+
   const handleSave = async (idea: GiftRecommendation) => {
     if (!occasion) return;
-    // Guard contra doble clic: el botón ya se deshabilita al guardar, pero
-    // dos clics antes del primer render no deben crear dos filas.
-    if (isSaved(idea.title)) return;
+    // Volver a marcarla con el «Deshacer» aún abierto es deshacer.
+    if (pendingUnsaves.current.has(idea.title)) {
+      undoUnsave(idea.title);
+      return;
+    }
+    if (isSaved(idea.title) || savingTitles.current.has(idea.title)) return;
+    savingTitles.current.add(idea.title);
     try {
       // Congelamos las tiendas EFECTIVAS que mostró la card (con el fallback a
       // favoritas), no las crudas de la IA, para que la idea guardada enseñe
@@ -340,15 +411,33 @@ export function GiftsPanel({
       toast.success(`Idea guardada en la ficha de ${person?.name ?? "esta persona"}`);
     } catch (err) {
       toast.error(userErrorMessage(err, "No se pudo guardar la idea"));
+    } finally {
+      savingTitles.current.delete(idea.title);
     }
   };
 
   const handleDiscard = (idea: GiftRecommendation, displayIndex: number) => {
-    setIdeas((prev) => (prev ?? showIdeas ?? []).filter((_, i) => i !== displayIndex));
-
+    if (pendingDiscards.current.has(idea.title)) return;
+    // Quitada de la ficha y ahora descartada: el borrado de la ficha se
+    // confirma ya, para que el del descarte no lo intente otra vez.
+    commitUnsave(idea.title);
     const ideaCategories = Array.isArray(idea.category) ? idea.category : [idea.category];
     const args = { personId, occasionLabel: occasion, giftType, ideaTitle: idea.title, ideaCategories };
     pendingDiscards.current.set(idea.title, { idea, insertAt: displayIndex, args });
+
+    // La tarjeta se apaga y después las demás cierran el hueco (useFlip). Se
+    // quita por título, no por posición: entre medias pueden irse otras.
+    const leaving = flipExit(flipItem(idea.title));
+    const remove = () => {
+      if (!pendingDiscards.current.has(idea.title)) {
+        leaving?.cancel(); // deshecha mientras se apagaba: vuelve a verse
+        return;
+      }
+      captureFlip();
+      setIdeas((prev) => (prev ?? showIdeas ?? []).filter((x) => x.title !== idea.title));
+    };
+    if (leaving) leaving.finished.then(remove, remove);
+    else remove();
 
     toast("Descartada. Las próximas ideas evitarán otras parecidas.", {
       duration: Infinity,
@@ -358,8 +447,11 @@ export function GiftsPanel({
           const pending = pendingDiscards.current.get(idea.title);
           if (!pending) return;
           pendingDiscards.current.delete(idea.title);
+          captureFlip();
           setIdeas((prev) => {
             const current = prev ?? [];
+            // Deshecha antes de acabar de apagarse: sigue en la lista.
+            if (current.some((x) => x.title === pending.idea.title)) return current;
             const next = [...current];
             next.splice(pending.insertAt, 0, pending.idea);
             return next;
@@ -534,21 +626,26 @@ export function GiftsPanel({
       {loading ? (
         <div className="flex flex-col gap-4">
           <GenerationProgress regenerate={hasCached} />
-          <div className={`grid gap-4 ${embedded ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3"}`} aria-hidden>
+          {/* Las mismas columnas que las tarjetas que vienen, y respirando una
+              tras otra en orden de lectura (animate-breathe, 120 ms entre
+              ellas): se repasan, no se van llenando, que fingiría progreso. */}
+          <div className={`grid gap-4 ${embedded ? "grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`} aria-hidden>
             {Array.from({ length: 9 }).map((_, i) => (
               <div
                 key={i}
-                className="h-80 rounded-2xl border border-dashed border-border/60 bg-muted/40 motion-safe:animate-pulse"
+                className="h-80 rounded-2xl border border-dashed border-border/60 bg-muted/40 motion-safe:animate-breathe"
+                style={{ animationDelay: `${i * 120}ms` }}
               />
             ))}
           </div>
         </div>
       ) : showIdeas && showIdeas.length > 0 ? (
         <div className="flex flex-col gap-3">
-          <div className={`grid gap-4 ${embedded ? "grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
+          <div ref={flipRef} className={`grid gap-4 ${embedded ? "grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
             {showIdeas.map((idea, i) => (
               <GiftRecommendationCard
                 key={idea.title}
+                flipKey={idea.title}
                 idea={idea}
                 index={i}
                 giftType={giftType}
@@ -557,6 +654,7 @@ export function GiftsPanel({
                 saved={isSaved(idea.title)}
                 savedElsewhere={savedElsewhere(idea.title)}
                 onSave={() => handleSave(idea)}
+                onUnsave={canUnsave(idea.title) ? () => handleUnsave(idea) : undefined}
                 onDiscard={() => handleDiscard(idea, i)}
               />
             ))}

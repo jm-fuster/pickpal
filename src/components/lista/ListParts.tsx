@@ -61,9 +61,20 @@ export const SHOWCASE_ITEM = "w-52 shrink-0 snap-start @xl:w-auto";
  * Sin icono delante: el ♡ repetía lo que dice el texto y, en «Mi lista», se
  * confundía con los corazones que sí se pulsan.
  */
-export function GroupTitle({ id, muted, children }: { id: string; muted?: boolean; children: ReactNode }) {
+export function GroupTitle({
+  id,
+  muted,
+  flipKey,
+  children,
+}: {
+  id: string;
+  muted?: boolean;
+  /** `data-flip` de useFlip: el rótulo baja con sus filas en vez de saltar. */
+  flipKey?: string;
+  children: ReactNode;
+}) {
   return (
-    <h3 id={id} className={cn("font-sans text-sm font-medium", muted && "text-muted-foreground")}>
+    <h3 id={id} data-flip={flipKey} className={cn("font-sans text-sm font-medium", muted && "text-muted-foreground")}>
       {children}
     </h3>
   );
@@ -142,6 +153,7 @@ export function AddPhotoButton({ title, onClick }: { title: string; onClick: () 
  */
 export function ItemRow({
   id,
+  flipKey,
   highlighted,
   visual,
   title,
@@ -154,6 +166,8 @@ export function ItemRow({
 }: {
   /** Para llevar la vista a lo que se acaba de apuntar. */
   id?: string;
+  /** `data-flip` de useFlip: la fila se desliza cuando cambia de sitio. */
+  flipKey?: string;
   /** Recién apuntado: se tiñe un momento. */
   highlighted?: boolean;
   visual: Visual;
@@ -181,7 +195,7 @@ export function ItemRow({
   );
   const bodyClass = "flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left";
   return (
-    <li id={id} className={cn("-mx-2 rounded-lg px-2 py-1.5 transition-[background-color] duration-700", highlighted && "bg-secondary/10")}>
+    <li id={id} data-flip={flipKey} className={cn("-mx-2 rounded-lg px-2 py-1.5 transition-[background-color] duration-700", highlighted && "bg-secondary/10")}>
       <div className="flex items-center gap-3">
         {onOpen ? (
           <button type="button" onClick={onOpen} className={cn(bodyClass, "-outline-offset-2")}>
@@ -205,6 +219,13 @@ export type GiftState = "free" | "mine" | "given";
  * pasarlo al historial merecen un paso más que marcar.
  */
 export function GiftToggle({ state, title, onClick }: { state: GiftState; title: string; onClick: () => void }) {
+  // Al marcarlo, el check se escribe de un trazo; si llega ya marcado, no.
+  const [prevState, setPrevState] = useState(state);
+  const [drawing, setDrawing] = useState(false);
+  if (state !== prevState) {
+    setPrevState(state);
+    setDrawing(prevState === "free" && state === "mine");
+  }
   const label =
     state === "free"
       ? `Lo regalo yo: ${title}`
@@ -224,7 +245,15 @@ export function GiftToggle({ state, title, onClick }: { state: GiftState; title:
         state === "given" && "border-border bg-muted text-muted-foreground",
       )}
     >
-      {state === "free" ? <Gift className="size-4" aria-hidden /> : <Check className="size-4" aria-hidden />}
+      {state === "free" ? (
+        <Gift className="size-4" aria-hidden />
+      ) : (
+        <Check
+          className={cn("size-4", drawing && "[stroke-dasharray:23] motion-safe:animate-draw")}
+          aria-hidden
+          onAnimationEnd={() => setDrawing(false)}
+        />
+      )}
     </button>
   );
 }
@@ -249,15 +278,28 @@ export function FavoriteToggle({
   label: string;
   /** Lo que hace al pulsarlo, para el tooltip: «Pasar a lo que más ilusión te haría». */
   hint: string;
-  onClick: () => void;
+  /** Sin promesa, es que no se ha hecho (el tope lleno) y el corazón no cambia. */
+  onClick: () => Promise<unknown> | void;
   /** Sobre la imagen de una tarjeta: lleva fondo para que se lea encima. */
   overlay?: boolean;
 }) {
+  // Responde al toque sin esperar al servidor: se llena (y se estampa) o se
+  // vacía al momento. Cuando contesta, manda lo suyo, y si falla, vuelve.
+  const [optimistic, setOptimistic] = useState<boolean | null>(null);
+  const [stamping, setStamping] = useState(false);
+  const shown = optimistic ?? on;
+  const press = () => {
+    const done = onClick();
+    if (!done) return;
+    setOptimistic(!shown);
+    setStamping(!shown);
+    void done.finally(() => setOptimistic(null));
+  };
   return (
     <button
       type="button"
-      onClick={onClick}
-      aria-pressed={on}
+      onClick={press}
+      aria-pressed={shown}
       aria-label={label}
       title={hint}
       className={cn(
@@ -266,8 +308,13 @@ export function FavoriteToggle({
       )}
     >
       <Heart
-        className={cn("size-4.5", on ? "fill-current text-brand-secondary" : "text-subtle-foreground")}
+        className={cn(
+          "size-4.5",
+          shown ? "fill-current text-brand-secondary" : "text-subtle-foreground",
+          stamping && "motion-safe:animate-stamp",
+        )}
         aria-hidden
+        onAnimationEnd={() => setStamping(false)}
       />
     </button>
   );

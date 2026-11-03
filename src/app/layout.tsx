@@ -5,6 +5,9 @@ import { esES } from "@clerk/localizations";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@/components/analytics";
+import { LaunchSplash } from "@/components/layout/LaunchSplash";
+import { LAUNCH_SCRIPT } from "@/components/layout/launchScript";
+import { IPHONE_SCREENS, launchImagePath } from "./launchImages";
 import "./globals.css";
 
 // Clerk's esES speaks in "usted"; the rest of the product speaks in "tú".
@@ -113,6 +116,15 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
+  // La pantalla de arranque del iPhone con la app instalada: crema lisa, la
+  // que continúa LaunchSplash. Sin ellas el iPhone arranca en otro color.
+  appleWebApp: {
+    title: "PickPal",
+    startupImage: IPHONE_SCREENS.map((screen) => ({
+      url: launchImagePath(screen),
+      media: `(device-width: ${screen.width}px) and (device-height: ${screen.height}px) and (-webkit-device-pixel-ratio: ${screen.ratio}) and (orientation: portrait)`,
+    })),
+  },
   openGraph: {
     title: "PickPal",
     description: DESCRIPTION,
@@ -145,6 +157,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${fraunces.variable} h-full antialiased`}
       >
         <body className="min-h-full flex flex-col">
+          {/* Antes de pintar nada: ¿app instalada? Entonces el relevo de la
+              pantalla de arranque del móvil (LaunchSplash). */}
+          <script dangerouslySetInnerHTML={{ __html: LAUNCH_SCRIPT }} />
+          <LaunchSplash />
           <ThemeProvider
             attribute="class"
             defaultTheme="light"
