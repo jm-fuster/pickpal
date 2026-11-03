@@ -258,8 +258,8 @@ export function GiftsPanel({
     setIdeas(null);
     setSavedTitles(new Set());
     // Persistimos los descartes pendientes ANTES de regenerar para que el prompt
-    // del servidor incluya las categorías recién descartadas (lee
-    // `dislikedCategories` de la recomendación). El toast de deshacer deja de
+    // del servidor incluya las ideas recién descartadas (lee
+    // `discardedTitles` de las tandas de la persona). El toast de deshacer deja de
     // aplicar una vez regeneramos. Limpiamos el mapa antes de cerrar los toasts
     // para que su `onDismiss` no vuelva a llamar a removeIdea.
     const pending = [...pendingDiscards.current.values()];
@@ -421,8 +421,7 @@ export function GiftsPanel({
     // Quitada de la ficha y ahora descartada: el borrado de la ficha se
     // confirma ya, para que el del descarte no lo intente otra vez.
     commitUnsave(idea.title);
-    const ideaCategories = Array.isArray(idea.category) ? idea.category : [idea.category];
-    const args = { personId, occasionLabel: occasion, giftType, ideaTitle: idea.title, ideaCategories };
+    const args = { personId, occasionLabel: occasion, giftType, ideaTitle: idea.title };
     pendingDiscards.current.set(idea.title, { idea, insertAt: displayIndex, args });
 
     // La tarjeta se apaga y después las demás cierran el hueco (useFlip). Se

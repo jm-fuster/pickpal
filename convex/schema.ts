@@ -120,7 +120,11 @@ export default defineSchema({
         ),
       }),
     ),
+    // Lo que quien regala descartó de esta tanda; va al prompt para no repetirlo.
     discardedTitles: v.optional(v.array(v.string())),
+    // Obsoleto desde el 3-nov-2026: nadie lo escribe ni lo lee. Vetaba las
+    // categorías de cada idea descartada, que son intereses de la persona. Sigue
+    // en el schema porque hay documentos que lo tienen; quitarlo pide migración.
     dislikedCategories: v.optional(v.array(v.string())),
   })
     .index("by_user_person_occasion_type", [

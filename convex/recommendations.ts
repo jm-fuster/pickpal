@@ -66,15 +66,56 @@ export const getByPersonOccasion = query({
   },
 });
 
+/** Títulos descartados que llegan al prompt como mucho, sumando todas las tandas. */
+const MAX_DISCARDED_TITLES = 40;
+
+/**
+ * Lo que quien regala ha descartado para esta persona, para que la siguiente
+ * tanda no lo repita. Junta todas sus tandas (cualquier ocasión y tipo): lo
+ * que no quiso para Navidad tampoco lo quiere para el cumpleaños. Primero la
+ * tanda que se va a regenerar y, dentro de cada una, lo más reciente, para que
+ * el tope corte lo menos relevante. Solo las del que llama: las tandas son
+ * privadas de cada usuario, así que los descartes de un invitado no se mezclan
+ * con los del dueño.
+ */
+export const getDiscardedTitles = query({
+  args: {
+    personId: v.id("people"),
+    occasionLabel: v.string(),
+    giftType: v.string(),
+  },
+  handler: async (ctx, { personId, occasionLabel, giftType }) => {
+    const clerkUserId = await requireUser(ctx);
+    const person = await ctx.db.get(personId);
+    if (!(await personHasAccess(ctx, person, clerkUserId))) return [];
+
+    // Una tanda por ocasión y tipo: 100 cubre 25 ocasiones con los 4 tipos.
+    const batches = await ctx.db
+      .query("recommendations")
+      .withIndex("by_user_person_occasion_type", (q) =>
+        q.eq("clerkUserId", clerkUserId).eq("personId", personId),
+      )
+      .take(100);
+    const isCurrent = (b: (typeof batches)[number]) =>
+      b.occasionLabel === occasionLabel && b.giftType === giftType;
+    const ordered = [...batches.filter(isCurrent), ...batches.filter((b) => !isCurrent(b))];
+    const titles = ordered.flatMap((b) => [...(b.discardedTitles ?? [])].reverse());
+    return [...new Set(titles)].slice(0, MAX_DISCARDED_TITLES);
+  },
+});
+
 export const removeIdea = mutation({
   args: {
     personId: v.id("people"),
     occasionLabel: v.string(),
     giftType: v.string(),
     ideaTitle: v.string(),
+    // Ya no se usa: descartar una idea vetaba sus categorías, que son los
+    // intereses de la persona. Se sigue aceptando para que una pestaña abierta
+    // con el cliente anterior no falle al descartar.
     ideaCategories: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { personId, occasionLabel, giftType, ideaTitle, ideaCategories }) => {
+  handler: async (ctx, { personId, occasionLabel, giftType, ideaTitle }) => {
     const clerkUserId = await requireUser(ctx);
     await assertPersonAccess(ctx, personId, clerkUserId, "No autorizado");
     // Caps espejo de los tamaños que genera la app; sin ellos un cliente
@@ -96,21 +137,16 @@ export const removeIdea = mutation({
           .eq("giftType", giftType),
       )
       .unique();
-    if (!existing) return;
+    // Solo se apunta lo que estaba en la tanda: el título acaba en el prompt,
+    // y así no entra texto que la IA no haya propuesto.
+    if (!existing || !existing.ideas.some((idea) => idea.title === ideaTitle)) return;
 
-    const MAX_DISLIKED = 100;
-    const newCats = (ideaCategories ?? []).filter((c) => c.trim().length > 0 && c.length <= 40);
-    const merged =
-      newCats.length > 0
-        ? [...new Set([...(existing.dislikedCategories ?? []), ...newCats])].slice(0, MAX_DISLIKED)
-        : existing.dislikedCategories;
-
+    const discarded = (existing.discardedTitles ?? []).filter((t) => t !== ideaTitle);
     await ctx.db.patch(existing._id, {
       ideas: existing.ideas.filter((idea) => idea.title !== ideaTitle),
       // Acotado a los últimos 200: evita que el array crezca sin límite
       // hacia el cap de tamaño de documento de Convex.
-      discardedTitles: [...(existing.discardedTitles ?? []), ideaTitle].slice(-200),
-      dislikedCategories: merged,
+      discardedTitles: [...discarded, ideaTitle].slice(-200),
     });
   },
 });

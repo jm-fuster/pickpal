@@ -111,20 +111,15 @@ Cada tarjeta tiene dos botones en la esquina superior derecha: pulgar arriba y p
 
 **Descartar una idea ya guardada también la des-guarda, si está guardada en esta ocasión.** Si la idea tenía 👍 y su evento es el elegido en el selector, al confirmarse el descarte se llama además a `api.savedIdeas.remove` — descartar = "no la quiero", así que no debe quedar en "Ideas guardadas" de la ficha. Se difiere junto a `removeIdea` (mismo `onDismiss` / cleanup / flush al regenerar), de modo que "Deshacer" la restaura sin necesidad de re-guardarla: hasta que el toast se cierra, nada se ha borrado. El `_id` a borrar se resuelve desde refs espejo de `savedIdeas.getByPerson` y de los eventos (`discardSavedIdea` en `GiftsPanel`), comparando por `importantDateId` y no por `occasionLabel`, que es una foto del nombre al guardar y no sigue a la idea cuando se mueve. **Una idea guardada en otra ocasión no se toca** desde el generador (decisión 14 de [`encargo-ocasiones.md`](encargo-ocasiones.md)): el descarte solo la quita de la tanda.
 
-#### Campos `discardedTitles` y `dislikedCategories`
+#### Qué aprende la siguiente tanda: `discardedTitles`
 
-`removeIdea` actualiza dos campos en el doc de `recommendations`:
+Descartar es «esta no», no «no le gusta el tema». `removeIdea` quita la idea de la tanda y apunta su título en `discardedTitles` (sin repetirlo y con tope de 200 por tanda). Solo apunta títulos que estaban en la tanda: el título acaba en el prompt, y así no entra texto que la IA no haya propuesto.
 
-```typescript
-await ctx.db.patch(existing._id, {
-  ideas: existing.ideas.filter((idea) => idea.title !== ideaTitle),
-  discardedTitles: [...(existing.discardedTitles ?? []), ideaTitle],
-  dislikedCategories: merged, // categorías acumuladas de todas las ideas descartadas
-});
-```
+Al generar, `recommendations.getDiscardedTitles` junta los descartes de **todas las tandas de esa persona** (cualquier ocasión y tipo): lo que no quiso para Navidad tampoco lo quiere para el cumpleaños. Va primero la tanda que se regenera y, dentro de cada una, lo más reciente; las demás siguen el orden del índice. Entran como mucho 40. Solo cuentan las tandas de quien genera: las tandas son privadas de cada usuario aunque la ficha esté compartida ([`encargo-compartir.md`](encargo-compartir.md)), así que los descartes de un invitado no se mezclan con los del dueño. El prompt los lista con la orden de no repetirlos ni proponer variantes casi iguales, y avisa de que descartar no dice nada de sus intereses.
 
-- `discardedTitles` — títulos exactos; evitan que el upsert los sobrescriba al regenerar.
-- `dislikedCategories` — categorías de ideas descartadas (deduplicadas, cap 100). Se inyectan en `buildPrompt` como sección "Tipos de regalos que NO encajan con esta persona", para que la siguiente generación los evite a nivel semántico.
+**Hasta el 3-nov-2026 se vetaban categorías (`dislikedCategories`).** Cada descarte añadía las categorías de la idea a «Tipos de regalos que NO encajan con esta persona». Pero el prompt pide que `category` sean los intereses del perfil, así que descartar unos auriculares con `["Música"]` prohibía la música en la siguiente tanda, y unos pocos descartes vaciaban el perfil. Además, el veto valía solo para esa ocasión y ese tipo, y `discardedTitles` se guardaba pero nadie lo leía, así que la misma idea podía volver. Ahora `dislikedCategories` no se escribe ni se lee; sigue en el schema porque hay documentos que lo tienen, y quitarlo pide migración. `removeIdea` sigue aceptando `ideaCategories` y lo ignora, para que una pestaña abierta con el cliente anterior no falle al descartar.
+
+Las ideas guardadas no entran en el prompt (la política de privacidad dice que no se envían); si una tanda nueva repite una guardada, la tarjeta lo marca con «Ya guardada».
 
 #### Por qué el descarte usa título (no índice)
 
@@ -175,11 +170,11 @@ Quitar un evento con ideas pide confirmación y sus ideas pasan a «Sin ocasión
 ```typescript
 // 1. Datos de contexto en paralelo. Si Convex lanza (personId malformado
 //    o de otro usuario), la API devuelve 404 — nunca un 500 genérico.
-const [person, matchingDate, history, existingRec] = await Promise.all([
+const [person, matchingDate, history, discardedTitles] = await Promise.all([
   fetchQuery(api.people.getById, { id: personId }, { token }),
   fetchQuery(api.importantDates.getByPersonAndLabel, { personId, label: occasionLabel }, { token }),
   fetchQuery(api.giftHistory.getByPerson, { personId }, { token }),
-  fetchQuery(api.recommendations.getByPersonOccasion, { personId, occasionLabel, giftType }, { token }),
+  fetchQuery(api.recommendations.getDiscardedTitles, { personId, occasionLabel, giftType }, { token }),
 ]);
 
 // 2. Reservar cuota atómicamente (lanza ConvexError si agotada → 429).
@@ -219,6 +214,7 @@ Persona:
 - Ocasión: {occasionLabel}
 [Talla de zapato / ropa / alergias / dislikes — solo si están definidos]
 [Historial de regalos anteriores — hasta 10 entradas, con reacción]
+[Ideas ya descartadas — hasta 40 títulos: no repetirlas; sus intereses siguen valiendo]
 
 Reglas:
 [según giftType: física / experiencia / tiempo-juntos / sorprendeme]

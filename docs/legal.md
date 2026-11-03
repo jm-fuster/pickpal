@@ -72,7 +72,7 @@ Las ideas de regalo se generan con un modelo de lenguaje (Google Gemini) a parti
 - Las sugerencias son **orientativas**: precios, disponibilidad y descripciones pueden no ser exactos.
 - Los enlaces a Amazon son búsquedas: no garantizan la existencia ni el precio del producto.
 - PickPal **no se hace responsable** de compras realizadas a partir de las recomendaciones.
-- Para generar las ideas se envía a Google (Gemini) la ficha completa de la persona: nombre de pila (nunca apellidos), relación, intereses, marcas, notas íntegras, tallas, alergias/restricciones, dislikes, presupuesto, ocasión, historial de regalos y categorías descartadas. Como el titular está en el EEE, Google aplica sus reglas de datos de pago: trata los datos como encargado, no entrena con ellos y los registra 55 días solo para detectar abusos. El detalle campo a campo está en la [política de privacidad](privacy.md) (§4.1). No basta con decir "los datos necesarios": el usuario tiene que poder saber que sus notas libres salen del sistema.
+- Para generar las ideas se envía a Google (Gemini) la ficha completa de la persona: nombre de pila (nunca apellidos), relación, intereses, marcas, notas íntegras, tallas, alergias/restricciones, dislikes, presupuesto, ocasión, historial de regalos y los títulos de las ideas descartadas. Como el titular está en el EEE, Google aplica sus reglas de datos de pago: trata los datos como encargado, no entrena con ellos y los registra 55 días solo para detectar abusos. El detalle campo a campo está en la [política de privacidad](privacy.md) (§4.1). No basta con decir "los datos necesarios": el usuario tiene que poder saber que sus notas libres salen del sistema.
 
 ---
 

@@ -51,7 +51,7 @@ const buildPrompt = (
   occasionLabel: string,
   giftType: GiftType,
   history: Array<{ giftName: string; occasionLabel: string; year?: number; reaction: string }>,
-  dislikedCategories: string[],
+  discardedTitles: string[],
 ) => {
   const relationshipLabel =
     RELATIONSHIPS.find((r) => r.value === person.relationship)?.label ??
@@ -127,9 +127,12 @@ ${storesGuide}`,
 ${storesGuide}`,
   };
 
-  const dislikedLine =
-    dislikedCategories.length > 0
-      ? `\nTipos de regalos que NO encajan con esta persona (no sugieras ideas de estas categorías):\n${dislikedCategories.map((c) => `- ${c}`).join("\n")}`
+  // Descartar es «esta no», no «no le gusta el tema»: hasta el 3-nov-2026 se
+  // vetaban las categorías de la idea, que son sus intereses, y unos auriculares
+  // descartados prohibían la música en la siguiente tanda.
+  const discardedLine =
+    discardedTitles.length > 0
+      ? `\nIdeas que ya se le propusieron y quien regala descartó. No las repitas ni propongas variantes casi iguales. Descartar una idea no dice nada de sus intereses: siguen valiendo todos.\n${discardedTitles.map((t) => `- ${t}`).join("\n")}`
       : "";
 
   const brandsRule =
@@ -146,7 +149,7 @@ Persona:
 ${brandsLine ? brandsLine + "\n" : ""}- Notas: ${notesText}
 - Presupuesto: ${budgetText}
 - Ocasión: ${occasionLabel}
-${practicalLines ? practicalLines + "\n" : ""}${historyLines}${dislikedLine}
+${practicalLines ? practicalLines + "\n" : ""}${historyLines}${discardedLine}
 
 Reglas:
 ${typeRules[giftType]}${brandsRule}
@@ -429,13 +432,13 @@ export async function POST(req: NextRequest) {
   // Un personId malformado o de otro usuario hace que Convex lance
   // (ArgumentValidationError / ownership): para el cliente ambos casos son
   // el mismo 404, sin distinguir "no existe" de "no es tuyo".
-  let person, matchingDate, history, existingRec;
+  let person, matchingDate, history, discardedTitles;
   try {
-    [person, matchingDate, history, existingRec] = await Promise.all([
+    [person, matchingDate, history, discardedTitles] = await Promise.all([
       fetchQuery(api.people.getById, { id: personId }, { token }),
       fetchQuery(api.importantDates.getByPersonAndLabel, { personId, label: occasionLabel }, { token }),
       fetchQuery(api.giftHistory.getByPerson, { personId }, { token }),
-      fetchQuery(api.recommendations.getByPersonOccasion, { personId, occasionLabel, giftType }, { token }),
+      fetchQuery(api.recommendations.getDiscardedTitles, { personId, occasionLabel, giftType }, { token }),
     ]);
   } catch (err) {
     console.error("[recommendations] context queries:", err);
@@ -475,8 +478,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const dislikedCategories = existingRec?.dislikedCategories ?? [];
-  const prompt = buildPrompt(person, matchingDate?.budgetMin, matchingDate?.budgetMax, occasionLabel, giftType, history, dislikedCategories);
+  const prompt = buildPrompt(person, matchingDate?.budgetMin, matchingDate?.budgetMax, occasionLabel, giftType, history, discardedTitles);
 
   const noStores = giftType === "experiencia" || giftType === "tiempo-juntos";
 

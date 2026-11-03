@@ -6,7 +6,7 @@
 
 > **Bloqueo resuelto (20-sep-2026):** `pickpal@jorgemolinafuster.com` ya entrega, vía Cloudflare Email Routing sobre el apex `jorgemolinafuster.com` (3 MX de Cloudflare + `v=spf1 include:_spf.mx.cloudflare.net ~all`, reenvío a buzón personal). Comprobado con un envío real desde fuera del dominio. El subdominio `pickpal.jorgemolinafuster.com` sigue siendo un CNAME a Vercel y **no puede** recibir correo; no intentes ponerle MX.
 
-Última actualización: `21 de octubre de 2026`
+Última actualización: `3 de noviembre de 2026`
 
 > Cuando se publique la app, este contenido debe servirse en `/privacy` (p. ej. `src/app/(legal)/privacy/page.tsx`) y enlazarse desde el footer y desde la pantalla de registro.
 
@@ -258,7 +258,7 @@ Cuando el usuario pide recomendaciones, `buildPrompt` ([`src/app/api/recommendat
 | Tallas (zapato, ropa), alergias / restricciones, cosas que no le gustan | Sí |
 | Presupuesto (min/max), ocasión | Sí |
 | Historial de regalos (hasta 10: nombre, ocasión, año, reacción) | Sí, incluidas las entradas que vienen de una lista compartida (§2.6) — las `notes` de cada entrada del historial **no** |
-| Categorías de ideas descartadas (`dislikedCategories`, las que el usuario ha ido rechazando) | Sí |
+| Ideas descartadas (`discardedTitles`: solo el título, hasta 40, de las que la IA propuso para esa persona y el usuario rechazó) | Sí. Hasta el 3-nov-2026 se enviaban sus categorías (`dislikedCategories`), que ya no se usan |
 | Fecha de nacimiento / edad | **No** (solo la etiqueta de la ocasión) |
 | Ideas guardadas, sugeridas o apuntadas a mano | **No** |
 

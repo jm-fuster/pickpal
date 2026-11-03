@@ -157,7 +157,7 @@ export default function PrivacyPage() {
               marcas favoritas, tus notas tal como las escribiste, las tallas,
               las alergias o restricciones, lo que no le gusta, el presupuesto,
               la ocasión, el historial de regalos anteriores con su reacción y
-              las categorías de ideas que hayas descartado. Google trata estos
+              el título de las ideas que te propuso y descartaste. Google trata estos
               datos como encargado: no los usa para entrenar ni mejorar sus modelos
               y solo los conserva hasta 55 días para detectar abusos de su
               servicio; únicamente si sus sistemas marcan un posible abuso
@@ -520,7 +520,7 @@ export default function PrivacyPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 21 de octubre de 2026.
+          Última actualización: 3 de noviembre de 2026.
         </p>
       </main>
 
