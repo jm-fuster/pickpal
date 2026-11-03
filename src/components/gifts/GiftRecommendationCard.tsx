@@ -173,7 +173,8 @@ export function GiftRecommendationCard({
         )}
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="text-base font-medium leading-snug line-clamp-2 min-h-[2.75rem]">
+            {/* Dos líneas justas (2lh), por lo mismo que la descripción. */}
+            <h3 className="text-base font-medium leading-snug line-clamp-2 min-h-[2lh]">
               {idea.title}
             </h3>
             {(onSave || onDiscard) && (
@@ -245,7 +246,9 @@ export function GiftRecommendationCard({
           </div>
         </div>
 
-        <p className="text-sm leading-relaxed text-muted-foreground min-h-[4.5rem] line-clamp-3">
+        {/* Tres líneas justas (3lh): con min-h-[4.5rem] sobraban 9 px y
+            asomaba la cuarta por debajo de los puntos suspensivos. */}
+        <p className="text-sm leading-relaxed text-muted-foreground min-h-[3lh] line-clamp-3">
           {idea.description}
         </p>
 
