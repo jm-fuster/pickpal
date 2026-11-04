@@ -125,7 +125,21 @@ export function nextDatePhrase(label: string, days: number, month: number, day: 
   if (days === 0) return `${label}, hoy`;
   if (days === 1) return `${label}, mañana`;
   if (days <= 30) return `${label}, en ${days} días`;
-  return `${label}, el ${formatDayMonth(month, day)}`;
+  return `${label}, el ${formatOccurrence(month, day, days)}`;
+}
+
+/**
+ * «28 de febrero»: el día en que cae de verdad la fecha que está a
+ * `daysUntil` días, el de la cuenta atrás. Solo cambia un 29 de febrero en un
+ * año que no es bisiesto, que se celebra el 28 (`occurrenceInYear`); decir
+ * «el 29 de febrero» con la cuenta apuntando al 28 no cuadraba.
+ */
+export function formatOccurrence(month: number, day: number, daysUntil: number): string {
+  if (month !== 2 || day !== 29) return formatDayMonth(month, day);
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + daysUntil);
+  return formatDayMonth(d.getMonth() + 1, d.getDate());
 }
 
 /**

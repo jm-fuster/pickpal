@@ -40,6 +40,10 @@ export function useNewSince(
     try {
       const stored = parseSeen(window.localStorage.getItem(key));
       if (latest > (stored ?? 0)) window.localStorage.setItem(key, String(latest));
+      // Vacía en la primera visita: se apunta igual que se ha visto (1, antes
+      // de cualquier alta), o lo primero que añada su dueño nunca saldría
+      // como «Nuevo».
+      else if (stored === null) window.localStorage.setItem(key, "1");
     } catch {
       // Igual que arriba.
     }

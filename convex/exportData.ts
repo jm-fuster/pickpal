@@ -1,4 +1,4 @@
-import { query } from "./_generated/server";
+import { query, QueryCtx } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { requireUser } from "./auth";
 import { personHasAccess } from "./personShares";
@@ -42,15 +42,19 @@ const limpiar = <T extends Record<string, unknown>>(row: T) => {
 /**
  * Una idea guardada con el nombre actual de su ocasión en vez del
  * `importantDateId`: `limpiar` quita el `_id` de las fechas, así que el id
- * exportado no llevaría a ninguna parte (docs/encargo-ocasiones.md).
+ * exportado no llevaría a ninguna parte (docs/encargo-ocasiones.md). La foto
+ * de una idea apuntada a mano, por su dirección (`fotoUrl`), como las de «Mi
+ * lista»: el id del archivo fuera de la base de datos no sirve de nada.
  */
-const conOcasion = (
+const conOcasion = async (
+  ctx: QueryCtx,
   idea: Doc<"savedIdeas">,
   fechas: Doc<"importantDates">[],
 ) => {
-  const { importantDateId, ...resto } = limpiar(idea);
+  const { importantDateId, photoStorageId, ...resto } = limpiar(idea);
   const ocasion = fechas.find((f) => f._id === importantDateId)?.label ?? "Sin ocasión";
-  return { ...resto, ocasion };
+  const fotoUrl = photoStorageId ? await ctx.storage.getUrl(photoStorageId) : null;
+  return { ...resto, ocasion, fotoUrl };
 };
 
 export const mine = query({
@@ -100,7 +104,7 @@ export const mine = query({
         ...limpiar(person),
         fechas: fechas.map(limpiar),
         historialDeRegalos: historial.map(limpiar),
-        ideasGuardadas: ideasGuardadas.map((idea) => conOcasion(idea, fechas)),
+        ideasGuardadas: await Promise.all(ideasGuardadas.map((idea) => conOcasion(ctx, idea, fechas))),
         ideasGeneradasPorLaIA: ideasGeneradas.map(limpiar),
         compartidoCon: compartidoCon.map((s) => ({
           clerkUserId: s.clerkUserId,
@@ -372,7 +376,8 @@ export const mine = query({
         "la compartes; no incluye qué ha marcado nadie para regalarte. " +
         "\"loQueMasIlusionTeHaria\" dice si lo pusiste en ese grupo; " +
         "\"precioAproximadoEuros\" va en euros, no en céntimos; " +
-        "\"fotoUrl\" es la dirección de la foto que subiste, que funciona " +
+        "\"fotoUrl\" es la dirección de la foto que subiste (a tu lista o a " +
+        "una idea que apuntaste), que funciona " +
         "mientras exista tu cuenta; " +
         "\"notaParaQuienTeRegala\" es la nota que ven quienes leen tu lista, y " +
         "\"miCumpleanos\" el día y el mes que les enseñas. " +
@@ -423,7 +428,7 @@ export const mine = query({
         desde: b._creationTime,
       })),
       // Su ficha ya no existe, y sus eventos tampoco.
-      ideasGuardadasDePersonasYaBorradas: huerfanas.map((idea) => conOcasion(idea, [])),
+      ideasGuardadasDePersonasYaBorradas: await Promise.all(huerfanas.map((idea) => conOcasion(ctx, idea, []))),
       avisosPorEmailEnviados: avisos.map(limpiar),
       // Contadores antiabuso. Se reinician cada día y no describen a nadie,
       // pero van igual: son filas asociadas a tu identificador.

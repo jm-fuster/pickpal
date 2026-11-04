@@ -258,3 +258,42 @@ describe("con muchos usuarios", () => {
     expect(calls.map((c) => c.to).sort()).toEqual(users.map((u) => u.email).sort());
   });
 });
+
+describe("al corregir una fecha", () => {
+  async function avisoA14Dias(t: T) {
+    const alice = t.withIdentity(ALICE);
+    await alice.mutation(api.settings.setMine, { emailNotificationsEnabled: true, emailNotifyDaysBefore: [14] });
+    const marta = await alice.mutation(api.people.create, { name: "Marta", relationship: "family", interests: [] });
+    // Hoy es 10-oct: el 24 cae a 14 días.
+    const fecha = await alice.mutation(api.importantDates.create, {
+      personId: marta,
+      label: "Cumpleaños",
+      month: 10,
+      day: 24,
+    });
+    const calls = mockResend();
+    await t.action(internal.emails.runDailyEmailNotifications, {});
+    expect(calls).toHaveLength(1);
+    return { alice, fecha, calls };
+  }
+
+  test("cambiar el día después del aviso deja que llegue el de la fecha buena", async () => {
+    const t = convexTest(schema, modules);
+    const { alice, fecha, calls } = await avisoA14Dias(t);
+
+    await alice.mutation(api.importantDates.update, { id: fecha, day: 31 });
+    // El 17-oct, el 31 cae a 14 días.
+    vi.setSystemTime(new Date("2026-10-17T08:00:00Z"));
+    await t.action(internal.emails.runDailyEmailNotifications, {});
+    expect(calls).toHaveLength(2);
+  });
+
+  test("cambiar solo el nombre no lo vuelve a mandar", async () => {
+    const t = convexTest(schema, modules);
+    const { alice, fecha, calls } = await avisoA14Dias(t);
+
+    await alice.mutation(api.importantDates.update, { id: fecha, label: "Cumple", recurring: true });
+    await t.action(internal.emails.runDailyEmailNotifications, {});
+    expect(calls).toHaveLength(1);
+  });
+});

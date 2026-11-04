@@ -384,6 +384,12 @@ export async function POST(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
+  // Un token recién pedido para lo que va después de Gemini (guardar o
+  // devolver la unidad). El del principio dura lo que diga la plantilla de
+  // Clerk (60 s por defecto), y una generación lenta con reintentos más las
+  // fotos y las marcas puede pasar de ahí: guardar fallaría, devolver la
+  // unidad también, y el aviso diría que no se ha gastado.
+  const freshToken = async () => (await getToken({ template: "convex" }).catch(() => null)) ?? token;
 
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     console.error(
@@ -473,7 +479,10 @@ export async function POST(req: NextRequest) {
     remaining = reserved.remaining;
     reservedDay = reserved.day;
   } catch (err) {
-    if (err instanceof ConvexError) {
+    // «No autorizado.» es el secreto de servidor, no la cuota: un
+    // CONVEX_SERVER_SECRET distinto en Next y en Convex. Sin esto salía como
+    // un límite alcanzado (429) y sin rastro en el log.
+    if (err instanceof ConvexError && err.data !== "No autorizado.") {
       return NextResponse.json(
         { error: typeof err.data === "string" ? err.data : "Has alcanzado el límite diario de recomendaciones." },
         { status: 429 },
@@ -544,7 +553,7 @@ export async function POST(req: NextRequest) {
     // Best-effort: degrada al botón de búsqueda de marca si no hay clave/resolución.
     const ideasWithBrands = await attachBrandStores(ideasWithImages, person.favoriteBrands);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await fetchMutation(api.recommendations.upsert, { personId, occasionLabel, giftType, ideas: ideasWithBrands as any }, { token });
+    await fetchMutation(api.recommendations.upsert, { personId, occasionLabel, giftType, ideas: ideasWithBrands as any }, { token: await freshToken() });
 
     return NextResponse.json({ ideas: ideasWithBrands, remaining });
   } catch (err) {
@@ -560,7 +569,7 @@ export async function POST(req: NextRequest) {
     // ≠9 ideas, bloqueo de seguridad, JSON inválido) deben costarle al usuario
     // una de sus generaciones diarias.
     try {
-      await fetchMutation(api.recommendationUsage.refund, { day: reservedDay, secret: serverSecret }, { token });
+      await fetchMutation(api.recommendationUsage.refund, { day: reservedDay, secret: serverSecret }, { token: await freshToken() });
     } catch (refundErr) {
       console.error("[recommendations] quota refund:", refundErr);
     }

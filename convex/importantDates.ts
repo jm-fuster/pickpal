@@ -239,6 +239,24 @@ export const update = mutation({
         );
       }
     }
+    // Si la fecha cambia de día, los avisos ya enviados de este año en
+    // adelante eran del día viejo. La dedupe del cron no mira el día (solo
+    // fecha, año y antelación), así que sin esto corregir el 20 por el 27
+    // tras el aviso de 14 días dejaba al 27 sin el suyo.
+    const occurrenceMoved =
+      merged.month !== existing.month ||
+      merged.day !== existing.day ||
+      (merged.recurring ?? true) !== (existing.recurring ?? true) ||
+      (merged.recurring === false && merged.year !== existing.year);
+    if (occurrenceMoved) {
+      const sent = await ctx.db
+        .query("emailNotifications")
+        .withIndex("by_date_year", (q) =>
+          q.eq("importantDateId", id).gte("occurrenceYear", new Date().getUTCFullYear()),
+        )
+        .collect();
+      for (const row of sent) await ctx.db.delete(row._id);
+    }
     await ctx.db.patch(id, patch);
   },
 });

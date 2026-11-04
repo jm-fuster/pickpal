@@ -336,3 +336,33 @@ export function suggestInterests(current: string[]): string[] {
   for (const item of STARTER_INTERESTS) push(item);
   return suggestions;
 }
+
+/** Lo añadido y lo quitado en esta pantalla que el servidor aún no refleja. */
+export type TagEdits = { added: string[]; removed: string[] };
+
+export const NO_TAG_EDITS: TagEdits = { added: [], removed: [] };
+
+/**
+ * Aplica un cambio de etiquetas (intereses o marcas) sobre lo último guardado,
+ * no sobre lo que había al abrir el bloque. En una ficha compartida otra
+ * persona puede haber añadido o quitado alguna entretanto, y mandar la lista
+ * entera de esta pantalla se lo llevaba por delante. Se acumula lo editado
+ * aquí hasta que el servidor lo refleja: dos etiquetas seguidas, antes de que
+ * llegue la primera, no se pisan entre sí.
+ */
+export function mergeTagEdit(
+  pending: TagEdits,
+  before: string[],
+  after: string[],
+  latest: string[],
+): { tags: string[]; pending: TagEdits } {
+  const add = after.filter((t) => !before.includes(t));
+  const del = before.filter((t) => !after.includes(t));
+  // Lo que el servidor ya refleja deja de estar pendiente.
+  const added = pending.added.filter((t) => !latest.includes(t) && !del.includes(t));
+  const removed = pending.removed.filter((t) => latest.includes(t) && !add.includes(t));
+  for (const t of add) if (!added.includes(t)) added.push(t);
+  for (const t of del) if (!removed.includes(t)) removed.push(t);
+  const kept = latest.filter((t) => !removed.includes(t));
+  return { tags: [...kept, ...added.filter((t) => !kept.includes(t))], pending: { added, removed } };
+}

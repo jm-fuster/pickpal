@@ -37,6 +37,9 @@ export function ManagedListsCard() {
   const full = lists.length >= MAX_MANAGED_LISTS;
 
   const handleCreate = async () => {
+    // Intro dos veces (o la tecla repetida) creaba dos listas iguales, y cada
+    // una gasta un hueco de los 5 y una del cupo del día.
+    if (saving) return;
     setSaving(true);
     try {
       const listId = await createList({ forName: name });

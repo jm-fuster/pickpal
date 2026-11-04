@@ -5,6 +5,8 @@ import {
   normalizeInterest,
   searchInterests,
   suggestInterests,
+  mergeTagEdit,
+  NO_TAG_EDITS,
 } from "./interests";
 
 describe("normalizeInterest", () => {
@@ -104,5 +106,41 @@ describe("catálogo", () => {
 
   it("MAX_INTERESTS coincide con el límite del servidor", () => {
     expect(MAX_INTERESTS).toBe(20);
+  });
+});
+
+
+describe("mergeTagEdit", () => {
+  const tags = (...args: Parameters<typeof mergeTagEdit>) => mergeTagEdit(...args).tags;
+
+  it("aplica lo añadido y lo quitado aquí sobre lo que otra persona guardó entretanto", () => {
+    // Al abrir: cerámica y yoga. Bob añade jardinería. Aquí se quita yoga y se añade lectura.
+    expect(
+      tags(NO_TAG_EDITS, ["cerámica", "yoga"], ["cerámica", "lectura"], ["cerámica", "yoga", "jardinería"]),
+    ).toEqual(["cerámica", "jardinería", "lectura"]);
+  });
+
+  it("no resucita lo que otra persona quitó", () => {
+    // Bob quitó yoga; aquí aún se ve y se añade cine.
+    expect(tags(NO_TAG_EDITS, ["cerámica", "yoga"], ["cerámica", "yoga", "cine"], ["cerámica"])).toEqual([
+      "cerámica",
+      "cine",
+    ]);
+  });
+
+  it("dos cambios seguidos antes de que llegue el primero no se pisan", () => {
+    const primero = mergeTagEdit(NO_TAG_EDITS, ["a"], ["a", "b"], ["a"]);
+    expect(primero.tags).toEqual(["a", "b"]);
+    // El servidor aún dice ["a"].
+    const segundo = mergeTagEdit(primero.pending, primero.tags, [...primero.tags, "c"], ["a"]);
+    expect(segundo.tags).toEqual(["a", "b", "c"]);
+    // Cuando llega, deja de estar pendiente.
+    const tercero = mergeTagEdit(segundo.pending, segundo.tags, ["b", "c"], ["a", "b", "c"]);
+    expect(tercero).toEqual({ tags: ["b", "c"], pending: { added: [], removed: ["a"] } });
+  });
+
+  it("añadir y quitar la misma antes de que llegue la deja fuera", () => {
+    const puesta = mergeTagEdit(NO_TAG_EDITS, ["a"], ["a", "b"], ["a"]);
+    expect(mergeTagEdit(puesta.pending, puesta.tags, ["a"], ["a"]).tags).toEqual(["a"]);
   });
 });

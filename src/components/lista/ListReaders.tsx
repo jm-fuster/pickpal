@@ -67,6 +67,8 @@ export function ListReaders({ listId, forName }: { listId?: Id<"managedLists">; 
   }, [readersKey, apiUrl]);
 
   const handleInvite = async () => {
+    // Intro dos veces gastaba dos consultas del cupo de invitar.
+    if (inviting) return;
     setInviting(true);
     try {
       const res = await fetch("/api/lista/share", {

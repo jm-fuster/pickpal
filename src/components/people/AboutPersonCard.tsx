@@ -12,6 +12,7 @@ import { InterestTagInput } from "@/components/people/InterestTagInput";
 import { BrandTagInput } from "@/components/people/BrandTagInput";
 import { AiNotesNotice } from "@/components/people/AiNotesNotice";
 import { useRestoreFocus } from "@/components/people/useRestoreFocus";
+import { mergeTagEdit, NO_TAG_EDITS } from "@/lib/interests";
 import { missingSentence, type MissingField } from "@/lib/missingSentence";
 
 export type AboutFields = {
@@ -188,6 +189,8 @@ export function TastesCard({
   const [brands, setBrands] = useState<string[]>(initial.favoriteBrands ?? []);
   const [notes, setNotes] = useState(initial.notes ?? "");
   const saveText = useSaveText(save, initial);
+  const interestEdits = useRef(NO_TAG_EDITS);
+  const brandEdits = useRef(NO_TAG_EDITS);
   // Con «Editar», el cursor entra en el primer campo; con el atajo, en el suyo.
   const focus = editing?.field ?? "interests";
 
@@ -207,8 +210,12 @@ export function TastesCard({
               autoFocus={focus === "interests"}
               value={interests}
               onChange={(tags) => {
-                setInterests(tags);
-                save({ interests: tags });
+                // Sobre lo último guardado (`initial` está vivo), no sobre lo de
+                // al abrir: así no se pierde lo que otra persona añadió.
+                const next = mergeTagEdit(interestEdits.current, interests, tags, initial.interests);
+                interestEdits.current = next.pending;
+                setInterests(next.tags);
+                save({ interests: next.tags });
               }}
             />
           </Field>
@@ -218,8 +225,10 @@ export function TastesCard({
               autoFocus={focus === "brands"}
               value={brands}
               onChange={(tags) => {
-                setBrands(tags);
-                save({ favoriteBrands: tags });
+                const next = mergeTagEdit(brandEdits.current, brands, tags, initial.favoriteBrands ?? []);
+                brandEdits.current = next.pending;
+                setBrands(next.tags);
+                save({ favoriteBrands: next.tags });
               }}
             />
           </Field>

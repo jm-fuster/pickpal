@@ -91,8 +91,11 @@ export function GiftsPanel({
   // evento disponible. Entrar desde la ficha (sin ?occasion) deja de mostrar el
   // selector vacío en el caso más común. Con varios eventos no elegimos por el
   // usuario (presupuestos distintos).
-  const occasion =
-    occasionChoice || (events && events.length === 1 ? events[0].label : "");
+  // Un `?occasion=` de un evento que ya no está (renombrado o borrado, desde
+  // un correo viejo) no cuenta como elegido: la ruta ya no genera para él.
+  const choice =
+    occasionChoice && (!events || events.some((e) => e.label === occasionChoice)) ? occasionChoice : "";
+  const occasion = choice || (events && events.length === 1 ? events[0].label : "");
   // La ocasión elegida ahora. El selector sigue activo mientras se genera: si
   // cambia, la respuesta es de la anterior y no se pinta bajo la nueva (se
   // guardaba como suya y los descartes no encontraban la idea).
@@ -158,7 +161,9 @@ export function GiftsPanel({
     const saved = (savedIdeasRef.current ?? []).find(
       (s) => s.title === title && s.importantDateId === event._id,
     );
-    if (saved) removeSavedIdea({ id: saved._id }).catch(() => {});
+    // Descartar la sugerencia de la IA no borra una idea apuntada a mano con
+    // el mismo título: se llevaba su nota, su enlace y su foto sin avisar.
+    if (saved && saved.source !== "own") removeSavedIdea({ id: saved._id }).catch(() => {});
   };
 
   // Al salir, o al cerrar la pestaña, se confirma lo descartado y lo quitado,
@@ -342,7 +347,10 @@ export function GiftsPanel({
 
   // Se puede quitar desde aquí lo guardado en la ocasión elegida. Lo guardado
   // en otra se queda puesto: el generador no lo toca (decisión 14).
-  const canUnsave = (title: string) => persistedSaved.has(title) && !savedElsewhere(title);
+  // Una idea que apuntó alguien a mano (`source: "own"`) con el mismo título
+  // tampoco: tiene su nota, su enlace y su foto, y se quita desde la ficha.
+  const canUnsave = (title: string) =>
+    persistedSaved.has(title) && persistedSaved.get(title)?.source !== "own" && !savedElsewhere(title);
 
   const without = (set: ReadonlySet<string>, title: string) => {
     const next = new Set(set);

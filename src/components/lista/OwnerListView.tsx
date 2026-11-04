@@ -130,7 +130,7 @@ export function OwnerListView({
   const unclaim = useMutation(api.lists.unclaim);
   const markGiven = useMutation(api.lists.markGiven);
   const createHistoryEntry = useMutation(api.giftHistory.create);
-  const { upload, uploadingId } = usePhotoUpload();
+  const { upload, uploading } = usePhotoUpload();
   // Un solo selector de archivos para toda la vista; recuerda para qué fila se abrió.
   const photoInput = useRef<HTMLInputElement>(null);
   const photoFor = useRef<Id<"listItems"> | null>(null);
@@ -348,7 +348,7 @@ export function OwnerListView({
   };
 
   const sub = (item: Item) => {
-    if (uploadingId === item._id) return <span role="status">Subiendo la foto…</span>;
+    if (uploading.has(item._id)) return <span role="status">Subiendo la foto…</span>;
     const meta = hasItemMeta(item) ? <ItemMeta item={item} /> : (item.note ?? null);
     const line = claimLine(item);
     if (line && meta) return <>{line}, {meta}</>;
@@ -491,7 +491,7 @@ export function OwnerListView({
                         dimmed={item.state === "taken"}
                         corner={<FavoriteToggle {...heart(item)} overlay />}
                         visualAction={
-                          !item.photoUrl && uploadingId !== item._id ? (
+                          !item.photoUrl && !uploading.has(item._id) ? (
                             <AddPhotoButton title={item.title} onClick={() => pickPhoto(item)} />
                           ) : null
                         }

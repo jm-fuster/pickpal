@@ -199,3 +199,21 @@ describe("savedIdeas.addOwn", () => {
     ).rejects.toThrow(/No autorizado/);
   });
 });
+
+describe("la exportación", () => {
+  test("lleva la foto de una idea propia por su dirección, no por el id del archivo", async () => {
+    const t = convexTest(schema, modules);
+    const personId = await persona(t);
+    const foto = await subir(t, "image/jpeg", 2000, 3);
+    await t.withIdentity(ALICE).mutation(api.savedIdeas.addOwn, {
+      personId,
+      importantDateId: null,
+      title: "Taza de cerámica",
+      photoStorageId: foto,
+    });
+
+    const [idea] = (await t.withIdentity(ALICE).query(api.exportData.mine, {})).seresQueridos[0].ideasGuardadas;
+    expect(idea).not.toHaveProperty("photoStorageId");
+    expect(idea.fotoUrl).toMatch(/^https:\/\//);
+  });
+});

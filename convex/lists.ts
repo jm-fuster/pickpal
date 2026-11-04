@@ -1412,7 +1412,10 @@ export const forPerson = query({
             .eq("managedListId", share.managedListId)
             .eq("readerClerkUserId", clerkUserId),
         )
+        // Si pasan del tope, las más nuevas; se pintan en el orden de siempre.
+        .order("desc")
         .take(MAX_ITEMS_PER_LIST);
+      myClaims.reverse();
       const removed = myClaims
         .filter((c) => c.itemId === undefined && c.snapshot !== undefined)
         .map((c) => ({
@@ -1463,9 +1466,13 @@ export const myGifts = query({
   args: {},
   handler: async (ctx) => {
     const clerkUserId = await requireUser(ctx);
+    // Las más nuevas primero: las «regaladas» se quedan mientras exista la
+    // cosa (decisión 16) y, leyendo por orden de creación, 200 viejas dejaban
+    // fuera un «Lo regalo yo» de hoy. El orden de salida lo pone el `sort`.
     const claims = await ctx.db
       .query("listClaims")
       .withIndex("by_reader", (q) => q.eq("readerClerkUserId", clerkUserId))
+      .order("desc")
       .take(MAX_GIFTS_READ);
 
     // Una lectura por lista, no por marca.

@@ -30,7 +30,7 @@ import {
   type SharedItem,
   type SharedList,
 } from "@/components/people/ideaParts";
-import { formatDayMonth } from "@/lib/dates";
+import { formatOccurrence } from "@/lib/dates";
 import { userErrorMessage } from "@/lib/errors";
 import { formatBudget, nextOccasion, occasionWhen, URGENT_DAYS } from "@/lib/nextOccasion";
 import { formatApproxPrice } from "@/lib/price";
@@ -108,7 +108,7 @@ export function NextOccasionCard({
               {/* «Mañana, 10 de septiembre · 40 – 80 €»: el cuándo y el día son una frase; el punto solo separa el dinero. */}
               <span className={cn(urgent && "font-medium text-foreground")}>{occasionWhen(next.days)}</span>
               {", "}
-              {formatDayMonth(next.event.month, next.event.day)}
+              {formatOccurrence(next.event.month, next.event.day, next.days)}
               {budget && ` · ${budget}`}
             </p>
           ) : (

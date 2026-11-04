@@ -278,6 +278,8 @@ Configuración en Clerk Dashboard → **Sessions → Claims** (token de sesión,
 - **Un email por usuario** que tenga eventos disparando ese día, contando las fichas que le han compartido. Si un usuario tiene 3 cumples a 7 días vista, recibe 1 correo con los 3, no 3 correos.
 - **Sin reintentos automáticos** (ver "Flujo end-to-end").
 - **Recordatorios escalonados (multi-trigger)**: el usuario puede marcar varias antelaciones (0/2/7/14) en `/settings`. Cada antelación marcada genera un email independiente cuando se alcanza. La dedupe es por destinatario y `(importantDateId, occurrenceYear, leadDays)`, así que los avisos a 14 y a 7 días para la misma ocurrencia coexisten sin bloquearse.
+- **Corregir el día de una fecha (4-nov-2026)**: la dedupe no mira el día, así que si alguien recibía el aviso a 14 días del 20 y corregía la fecha al 27, el 27 se quedaba sin el suyo. Ahora `importantDates.update` borra las filas de `emailNotifications` de esa fecha de este año en adelante cuando cambia el día, el mes, si se repite o (en una fecha única) el año. Cambiar solo el nombre o el presupuesto no las toca.
+- **Un 29 de febrero en un año que no es bisiesto**: el aviso sale el día de la cuenta atrás (el 28) y la tarjeta del correo dice 28/02, no 29/02.
 
 ---
 

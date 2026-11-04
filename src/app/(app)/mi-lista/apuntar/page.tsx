@@ -74,7 +74,10 @@ export default function BookmarkletPage() {
   const listId = target.startsWith(LIST) ? (target.slice(LIST.length) as Id<"managedLists">) : undefined;
   const personId = target.startsWith(PERSON) ? (target.slice(PERSON.length) as Id<"people">) : undefined;
   const person = people?.find((p) => p._id === personId);
-  const personDates = useQuery(api.importantDates.getByPerson, personId ? { personId } : "skip");
+  const personDates = useQuery(
+    api.importantDates.getByPerson,
+    isLoaded && isSignedIn && personId ? { personId } : "skip",
+  );
   // En el servidor y al hidratar, `false`: así el HTML coincide y lo que
   // depende de la dirección solo se pinta en el navegador.
   const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);

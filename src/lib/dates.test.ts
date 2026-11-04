@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   closestOccasionLabel,
   computeDaysUntil,
@@ -188,6 +188,21 @@ describe("nextDatePhrase", () => {
 
   it("a más de un mes, el día", () => {
     expect(nextDatePhrase("Cumpleaños", 31, 11, 30)).toBe("Cumpleaños, el 30 de noviembre");
+  });
+
+  it("un 29 de febrero en un año que no es bisiesto dice el 28, como la cuenta atrás", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date(2027, 0, 10, 12));
+      const days = computeDaysUntilNextOccurrence(2, 29);
+      expect(nextDatePhrase("Cumpleaños", days, 2, 29)).toBe("Cumpleaños, el 28 de febrero");
+      vi.setSystemTime(new Date(2028, 0, 10, 12));
+      expect(nextDatePhrase("Cumpleaños", computeDaysUntilNextOccurrence(2, 29), 2, 29)).toBe(
+        "Cumpleaños, el 29 de febrero",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

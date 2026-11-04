@@ -45,9 +45,24 @@ export async function preparePhoto(file: File): Promise<Blob | PhotoPrepError> {
   context.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
 
+  // Sin WebP (Safari, y con él todo el iPhone) sale JPEG, que no tiene
+  // transparencia: lo transparente se volvía negro, y una foto de producto
+  // recortada salía sobre fondo negro. Para el JPEG, sobre blanco.
+  let jpegReady = false;
+  const toJpeg = async (quality: number) => {
+    if (!jpegReady) {
+      context.globalCompositeOperation = "destination-over";
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, width, height);
+      context.globalCompositeOperation = "source-over";
+      jpegReady = true;
+    }
+    return toBlob(canvas, "image/jpeg", quality);
+  };
+
   for (const quality of [0.85, 0.7, 0.55]) {
     let blob = await toBlob(canvas, "image/webp", quality);
-    if (!blob || blob.type !== "image/webp") blob = await toBlob(canvas, "image/jpeg", quality);
+    if (!blob || blob.type !== "image/webp") blob = await toJpeg(quality);
     if (blob && blob.size <= MAX_UPLOAD_BYTES) return blob;
   }
   return "too-large";

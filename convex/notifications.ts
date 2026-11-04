@@ -88,6 +88,8 @@ export type EventToNotify = {
   label: string;
   personName: string;
   personAvatarUrl?: string;
+  /** El día en que cae esta vez: un 29-feb en un año que no es bisiesto, el 28,
+   * como la cuenta atrás de la app. */
   month: number;
   day: number;
   daysUntil: number;
@@ -232,6 +234,7 @@ export const findEventsForUser = internalQuery({
           (await countMarkedByReader(ctx, person._id, s.clerkUserId)) +
           (await countMarkedByManager(ctx, person._id, s.clerkUserId));
 
+        const on = occurrenceInYearUTC(next.occurrenceYear, date.month, date.day);
         events.push({
           dateId: date._id,
           personId: person._id,
@@ -239,8 +242,8 @@ export const findEventsForUser = internalQuery({
           label: date.label,
           personName: person.name,
           personAvatarUrl: person.avatarUrl,
-          month: date.month,
-          day: date.day,
+          month: on.getUTCMonth() + 1,
+          day: on.getUTCDate(),
           daysUntil: next.daysUntil,
           ...(listUnclaimed > 0 ? { listUnclaimed } : {}),
           ...(listMine > 0 ? { listMine } : {}),

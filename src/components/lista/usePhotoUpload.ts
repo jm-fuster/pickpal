@@ -22,10 +22,12 @@ const PREP_ERRORS = {
 export function usePhotoUpload() {
   const generateUploadUrl = useMutation(api.lists.generatePhotoUploadUrl);
   const setItemPhoto = useMutation(api.lists.setItemPhoto);
-  const [uploadingId, setUploadingId] = useState<Id<"listItems"> | null>(null);
+  // Las que se están subiendo. Un conjunto y no una sola: con dos a la vez,
+  // acabar la primera borraba el «Subiendo la foto…» de la segunda.
+  const [uploading, setUploading] = useState<ReadonlySet<Id<"listItems">>>(() => new Set());
 
   const upload = async (id: Id<"listItems">, file: File) => {
-    setUploadingId(id);
+    setUploading((prev) => new Set(prev).add(id));
     try {
       const blob = await preparePhoto(file);
       if (typeof blob === "string") {
@@ -41,9 +43,13 @@ export function usePhotoUpload() {
     } catch (err) {
       toast.error(userErrorMessage(err, "No se pudo subir la foto"));
     } finally {
-      setUploadingId(null);
+      setUploading((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   };
 
-  return { upload, uploadingId };
+  return { upload, uploading };
 }
