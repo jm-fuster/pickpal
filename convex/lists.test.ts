@@ -1962,9 +1962,10 @@ describe("bloquear a quien te comparte su lista", () => {
     const datos = await alex.query(api.exportData.mine, {});
     expect(datos.listasQueTeComparten).toEqual([]);
     // El último aviso no salió: va el anterior, el de antes de bloquear.
-    expect(datos.avisosDeListaPorCorreo.recibidos).toEqual([
-      { enviado: new Date("2026-10-12T10:00:00Z").getTime() },
-    ]);
+    // Con margen de un segundo: convex 1.49 suma 1 ms al reloj dentro de las mutaciones.
+    const recibidos = datos.avisosDeListaPorCorreo.recibidos;
+    expect(recibidos).toHaveLength(1);
+    expect(Math.abs(recibidos[0].enviado - new Date("2026-10-12T10:00:00Z").getTime())).toBeLessThan(1000);
     expect(datos.listasQueNoQuieres).toMatchObject([{ de: "Laura", email: LAURA.email }]);
     expect(await alex.query(api.lists.myBlocks, {})).toMatchObject([
       { ownerName: "Laura", ownerEmail: LAURA.email },
