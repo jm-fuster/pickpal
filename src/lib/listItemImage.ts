@@ -61,6 +61,55 @@ function matches(tokens: string[], phrase: string, keyword: string): boolean {
   return tokens.some((t) => t === keyword || t === `${keyword}s` || t === `${keyword}es`);
 }
 
+// Objetos con foto de ejemplo en /public/list-photos/<palabra con guiones>.webp
+// (Pexels, elegidas a mano; los créditos están en credits.json). Solo objetos
+// concretos: la ropa que en Pexels sale puesta a una persona se quedó fuera.
+const PHOTO_WORDS: readonly string[] = [
+  "libro", "novela", "manga", "cuento", "auriculares", "altavoz", "tocadiscos", "camara", "polaroid", "tripode",
+  "consola", "mando", "movil", "tablet", "portatil", "kindle", "smartwatch", "cargador", "teclado", "raton",
+  "vinilo", "guitarra", "ukelele", "piano", "puzzle", "ajedrez", "baraja", "lego", "peluche", "muneca",
+  "dinosaurio", "juego de mesa", "cuaderno", "agenda", "boligrafo", "lapiz", "rotulador", "acuarela", "pincel",
+  "lienzo", "arcilla", "ganchillo", "bordado", "plastilina", "perro", "gato", "correa", "rascador", "taladro",
+  "destornillador", "reloj", "pendiente", "collar", "pulsera", "anillo", "perfume", "crema", "maquillaje",
+  "pintalabios", "neceser", "jabon", "vela", "vino", "cava", "cerveza", "ginebra", "whisky", "coctelera", "cafe",
+  "cafetera", "molinillo", "tetera", "hervidor", "taza", "matcha", "termo", "chocolate", "bombon", "jamon", "queso",
+  "aceite", "miel", "cesta", "cuchillo", "sarten", "olla", "delantal", "batidora", "bicicleta", "pesa", "esterilla",
+  "raqueta", "balon", "cantimplora", "prismaticos", "planta", "maceta", "regadera", "bonsai", "flor", "ramo",
+  "camiseta", "jersey", "zapatilla", "zapato", "bota", "bufanda", "guante", "calcetin", "bolso", "cartera",
+  "cinturon", "gafas", "lampara", "cojin", "manta", "jarron", "cuadro", "alfombra", "toalla", "difusor", "marco",
+  "mantel", "maleta",
+];
+
+// Lo que define el tipo de regalo aunque el título nombre un objeto («Clase de
+// piano», «Entradas para un concierto de guitarra»): ahí no hay foto de objeto.
+const NO_PHOTO_KEYS: ReadonlySet<GiftImageKey> = new Set<GiftImageKey>([
+  "experiencia-cultural", "experiencia-gastronomica", "experiencia-bienestar", "experiencia-aventura", "taller-curso",
+]);
+
+const LEADING_FILLER = new Set(["un", "una", "el", "la", "los", "las", "unos", "unas", "set", "par", "pack", "kit"]);
+
+/**
+ * La foto de ejemplo del objeto del que habla el título, o null. Solo cuenta
+ * cuando el objeto es lo primero que se nombra («Taza esmaltada», «Un jersey de
+ * lana»): «Báscula para café» o «Funda de guitarra» no son una foto de café ni
+ * de guitarra, y ahí gana el icono.
+ */
+export function listItemPhoto(title: string): string | null {
+  const tokens = words(title);
+  if (tokens.length === 0) return null;
+  if (NO_PHOTO_KEYS.has(listItemImageKey(title))) return null;
+  const start = LEADING_FILLER.has(tokens[0]) && tokens.length > 1 ? 1 : 0;
+  const head = ` ${tokens.slice(start, start + 3).join(" ")} `;
+  const first = tokens[start];
+  for (const word of PHOTO_WORDS) {
+    const hit = word.includes(" ")
+      ? head.startsWith(` ${word} `)
+      : first === word || first === `${word}s` || first === `${word}es`;
+    if (hit) return `/list-photos/${word.replace(/ /g, "-")}.webp`;
+  }
+  return null;
+}
+
 /** La categoría del catálogo de ideas que mejor encaja con el título. */
 export function listItemImageKey(title: string): GiftImageKey {
   const tokens = words(title);

@@ -348,7 +348,14 @@ export function ItemSheet({
         className="mx-auto max-h-[90dvh] w-full max-w-lg gap-0 overflow-y-auto rounded-t-2xl px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
       >
         <div aria-hidden className="mx-auto mb-3 h-1 w-9 shrink-0 rounded-full bg-input/50" />
-        <VisualBox visual={visual} className="h-36 w-full shrink-0 rounded-xl" iconSize="size-12" />
+        <div className="relative shrink-0">
+          <VisualBox visual={visual} className="h-36 w-full rounded-xl" iconSize="size-12" />
+          {visual.kind === "photo" && visual.stock && (
+            <span className="absolute bottom-2 left-2 rounded-full bg-background/90 px-2 py-0.5 text-xs text-muted-foreground">
+              Foto de ejemplo
+            </span>
+          )}
+        </div>
         <div className="mt-4 space-y-1">
           <SheetTitle className="text-xl leading-tight font-semibold">{title}</SheetTitle>
           {meta && <SheetDescription>{meta}</SheetDescription>}

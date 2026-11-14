@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { GIFT_IMAGE_KEYS } from "./giftCatalog";
-import { listItemImageKey } from "./listItemImage";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+import { listItemImageKey, listItemPhoto } from "./listItemImage";
 
 describe("listItemImageKey", () => {
   it("reconoce lo que hay en las listas de ejemplo", () => {
@@ -50,6 +52,35 @@ describe("listItemImageKey", () => {
     expect(listItemImageKey("Lámpara de mesa")).toBe("hogar-decoracion");
     // «taller» suelto no es un curso.
     expect(listItemImageKey("Banco para el taller")).toBe("regalo-generico");
+  });
+
+  describe("listItemPhoto", () => {
+    it("da la foto del objeto cuando es lo primero que nombra el título", () => {
+      expect(listItemPhoto("Taza esmaltada azul")).toBe("/list-photos/taza.webp");
+      expect(listItemPhoto("Vela de cera de higo")).toBe("/list-photos/vela.webp");
+      expect(listItemPhoto("Calcetines de lana gorda")).toBe("/list-photos/calcetin.webp");
+      expect(listItemPhoto("Un jersey de lana")).toBe("/list-photos/jersey.webp");
+      expect(listItemPhoto("Juego de mesa cooperativo")).toBe("/list-photos/juego-de-mesa.webp");
+    });
+
+    it("no la da si el objeto es solo un complemento o el regalo es otra cosa", () => {
+      expect(listItemPhoto("Báscula para café con temporizador")).toBeNull();
+      expect(listItemPhoto("Funda de guitarra")).toBeNull();
+      expect(listItemPhoto("Clase de piano")).toBeNull();
+      expect(listItemPhoto("Entradas para el concierto")).toBeNull();
+      expect(listItemPhoto("Sorpréndeme")).toBeNull();
+      expect(listItemPhoto("")).toBeNull();
+    });
+
+    it("cada palabra con foto tiene su archivo y cada archivo, su palabra", () => {
+      const dir = join(process.cwd(), "public", "list-photos");
+      const files = readdirSync(dir).filter((f) => f.endsWith(".webp"));
+      expect(files.length).toBeGreaterThan(100);
+      for (const file of files) {
+        const word = file.replace(/\.webp$/, "").replace(/-/g, " ");
+        expect(listItemPhoto(word), word).toBe(`/list-photos/${file}`);
+      }
+    });
   });
 
   it("sin pistas, el regalo genérico; siempre una clave del catálogo", () => {

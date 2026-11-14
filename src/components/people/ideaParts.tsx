@@ -11,7 +11,7 @@ import type { MenuGroup } from "@/components/people/ActionMenu";
 import { matchFavoriteBrands } from "@/lib/brands";
 import { userErrorMessage } from "@/lib/errors";
 import { giftImageFor, resolveGiftImage } from "@/lib/giftImages";
-import { listItemImageKey } from "@/lib/listItemImage";
+import { listItemImageKey, listItemPhoto } from "@/lib/listItemImage";
 import type { GiftType } from "@/lib/gifts";
 import { formatApproxPrice } from "@/lib/price";
 import { formatEventDate, moveDestinations } from "@/lib/savedIdeaGroups";
@@ -44,7 +44,7 @@ export function ideaPrice(idea: SavedIdea): string | null {
 }
 
 export type Visual =
-  | { kind: "photo"; url: string }
+  | { kind: "photo"; url: string; stock?: boolean }
   | { kind: "icon"; Icon: typeof Gift; container: string; iconClass: string };
 
 const TERRACOTTA = { container: "bg-secondary/15", iconClass: "text-brand-secondary" };
@@ -63,11 +63,15 @@ export function ideaVisual(idea: SavedIdea): Visual {
 }
 
 /**
- * La foto que subió la dueña o, sin foto, el icono de la categoría que sale del
- * título (src/lib/listItemImage.ts): el mismo que tendría como idea de regalo.
+ * La foto que subió la dueña; sin ella, una foto de ejemplo del objeto si el
+ * título lo nombra (marcada como `stock`); y si no, el icono de la categoría
+ * que sale del título (src/lib/listItemImage.ts), el mismo que tendría como
+ * idea de regalo.
  */
 export function itemVisual(item: { photoUrl: string | null; title: string }): Visual {
   if (item.photoUrl) return { kind: "photo", url: item.photoUrl };
+  const stock = listItemPhoto(item.title);
+  if (stock) return { kind: "photo", url: stock, stock: true };
   const v = giftImageFor(listItemImageKey(item.title));
   return { kind: "icon", Icon: v.icon, container: v.container, iconClass: v.iconClass };
 }
