@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Geist } from "next/font/google";
+import { fraunces, geistSans } from "./brandFonts";
 import { ClerkProvider } from "@clerk/nextjs";
 import { esES } from "@clerk/localizations";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -72,18 +72,6 @@ const clerkLocalization = {
     },
   },
 };
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
 
 const SITE_URL = "https://pickpal.jorgemolinafuster.com";
 const DESCRIPTION =

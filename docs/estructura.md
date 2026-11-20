@@ -41,7 +41,9 @@ pickpal/
 │   │                                # Denegar por defecto + CSRF por Sec-Fetch-Site
 │   ├── app/
 │   │   ├── layout.tsx               # ClerkProvider + tema + fuentes
+│   │   ├── brandFonts.ts            # Geist y Fraunces, para el layout y global-error
 │   │   ├── fonts.ts                 # Geist Mono, sin precarga: se importa donde se usa
+│   │   ├── global-error.tsx         # error del layout raíz: su propio <html>, sin Clerk
 │   │   ├── page.tsx                 # landing pública, estática (con sesión, el proxy
 │   │   │                            # redirige a /agenda)
 │   │   ├── manifest.ts              # PWA, con el `share_target` de Android

@@ -92,10 +92,12 @@ export function UpcomingDateCard({
           ) : null}
         </div>
 
-        {/* Móvil: navega a la página. Desktop: abre el panel lateral (si hay callback). */}
+        {/* Móvil: navega a la página. Desktop: abre el panel lateral (si hay callback).
+            Sin aria-label: el nombre accesible es el texto que se ve en cada
+            ancho («Regalar» o «Ideas de regalo»), como pide WCAG 2.5.3. El span
+            oculto con `hidden` no entra en el nombre. */}
         <Link
           href={`/seres-queridos/${person._id}/gifts?occasion=${encodeURIComponent(date.label)}`}
-          aria-label="Ideas de regalo"
           className={cn(buttonVariants({ size: "sm" }), "shrink-0", onSelect && "xl:hidden")}
         >
           <Gift className="size-4" aria-hidden />
@@ -105,7 +107,6 @@ export function UpcomingDateCard({
         {onSelect && (
           <button
             onClick={onSelect}
-            aria-label="Ideas de regalo"
             className={cn(buttonVariants({ size: "sm" }), "shrink-0 hidden xl:inline-flex hover:bg-primary/80")}
           >
             <Gift className="size-4" aria-hidden />
