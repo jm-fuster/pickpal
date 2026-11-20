@@ -42,28 +42,13 @@ export type PolicyNotice = {
 /**
  * Los avisos que existen. Uno por cambio sustancial: añade uno nuevo en vez de
  * editar uno ya enviado, o quien lo recibió no volverá a recibirlo.
+ *
+ * Vacío desde el 20-nov-2026: los dos de octubre (`2026-10-mi-lista` y
+ * `2026-10-ideas-propias`) se retiraron sin enviar, porque sus cambios ya
+ * estaban publicados en `/privacidad` y un correo con fecha de entrada en
+ * vigor futura habría sido falso. No reutilices esos identificadores.
  */
-export const NOTICES: Record<string, PolicyNotice> = {
-  "2026-10-mi-lista": {
-    id: "2026-10-mi-lista",
-    changes: [
-      "«Mi lista»: puedes apuntar lo que te haría ilusión recibir, con enlace, nota, precio aproximado y una foto de cada cosa, y compartirla con otros usuarios de PickPal. Quien la lee puede marcar lo que va a regalarte, pero tú nunca ves esas marcas. Las fotos se reducen en tu navegador antes de subirlas y pierden sus datos de ubicación.",
-      "Tu cumpleaños (solo día y mes) y una nota para quien te regala los ven quienes tienen acceso a tu lista, si decides añadirlos.",
-      "Listas para otra persona: un adulto puede llevar la lista de alguien que no tiene cuenta, por ejemplo un niño. Solo se guarda su nombre de pila, nunca su edad, y quien la lleva ve qué está cogido pero no quién lo regala.",
-      "Bloqueos: si no quieres recibir las listas de alguien, PickPal guarda a quién (su nombre y su correo) para no mostrártelas, sin avisarle.",
-      "Si un lector pasa una cosa de tu lista a su historial con «Ya se lo he regalado», su título puede viajar a la IA de Google al generar ideas para esa persona, como el resto de ese historial.",
-    ],
-  },
-  // Preparado el 14-oct-2026, sin enviar: decide Jorge si se manda y con qué
-  // fecha de entrada en vigor (docs/privacy.md §11).
-  "2026-10-ideas-propias": {
-    id: "2026-10-ideas-propias",
-    changes: [
-      "En la ficha de cada persona puedes apuntar tus propias ideas de regalo, con enlace, precio aproximado, nota y una foto que pegas o subes tú. Las ven quienes tienen acceso a esa ficha, como el resto de ideas guardadas. Las fotos se reducen en tu navegador antes de subirlas y pierden sus datos de ubicación.",
-      "Estas ideas no se envían a la IA de Google, y PickPal nunca abre sus enlaces ni descarga nada de la tienda.",
-    ],
-  },
-};
+export const NOTICES: Record<string, PolicyNotice> = {};
 
 /**
  * La fecha de entrada en vigor, en `YYYY-MM-DD`, ya validada: existe de verdad

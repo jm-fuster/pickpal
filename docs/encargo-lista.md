@@ -517,8 +517,8 @@ medidas están en `docs/design-system.md`, «Apuntar en una línea».
 4. **«Pegar» lee el portapapeles solo con el toque.** Es la vía rápida en el
    iPhone, que no admite el destino de «Compartir» (fase 3, punto 5).
 
-No cambia qué datos se guardan ni quién los ve: ni `/privacidad` ni el aviso
-`2026-10-mi-lista` necesitan tocarse.
+No cambia qué datos se guardan ni quién los ve: `/privacidad` no necesita
+tocarse.
 
 | Dónde | Texto |
 | --- | --- |

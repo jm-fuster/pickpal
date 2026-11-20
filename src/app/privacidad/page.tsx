@@ -505,6 +505,19 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-3">
+          <h2 className="text-xl font-medium">Cambios en esta política</h2>
+          <p className="text-sm text-foreground">
+            Si cambiamos algo importante (un dato nuevo, un proveedor nuevo,
+            para qué usamos tus datos o quién puede verlos), lo publicamos en
+            esta página y te escribimos al correo de tu cuenta al menos 15 días
+            antes de que entre en vigor. Si no estás de acuerdo, puedes usar
+            &laquo;Eliminar mi cuenta&raquo; en Ajustes antes de esa fecha. Los
+            retoques que no cambian nada de eso, como aclarar una frase, solo
+            cambian la fecha de abajo.
+          </p>
+        </section>
+
+        <section className="space-y-3">
           <h2 className="text-xl font-medium">Contacto</h2>
           <p className="text-sm text-foreground">
             Para cualquier duda sobre tus datos, o para ejercer cualquiera de
@@ -520,7 +533,7 @@ export default function PrivacyPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 3 de noviembre de 2026.
+          Última actualización: 20 de noviembre de 2026.
         </p>
       </main>
 

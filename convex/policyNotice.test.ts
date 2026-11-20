@@ -7,7 +7,7 @@
 // interruptor de recordatorios.
 
 import { convexTest } from "convex-test";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { internal } from "./_generated/api";
 import {
   NOTICES,
@@ -18,7 +18,22 @@ import {
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
-const NOTICE = "2026-10-mi-lista";
+// Un aviso de prueba: `NOTICES` está vacío mientras no haya un cambio que avisar.
+const NOTICE = "test-aviso";
+
+beforeAll(() => {
+  NOTICES[NOTICE] = {
+    id: NOTICE,
+    changes: [
+      "Un dato nuevo: lo que apuntas sobre cada persona.",
+      "Un proveedor nuevo, que recibe solo lo necesario.",
+    ],
+  };
+});
+
+afterAll(() => {
+  delete NOTICES[NOTICE];
+});
 
 afterEach(() => {
   vi.useRealTimers();
