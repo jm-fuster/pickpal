@@ -400,3 +400,26 @@ html[data-lazo="on"] .launch-mark {
     letter-spacing: -0.01em;
   }
 }
+
+/* Zona de toque de 44 × 44 px, solo en táctil (pointer: coarse), centrada
+   sobre el control y sin cambiar cómo se ve. Para controles propios que no
+   son `Button`: «Volver», las pestañas de la ficha, «Ver el regalo», la
+   antelación de Ajustes, el crédito de Pexels, el avatar de Clerk. Antes de
+   ponerla, comprobar que no pisa la de un vecino: dos zonas no se solapan
+   (docs/design-system.md · Accesibilidad · Áreas táctiles). Un padre con
+   `overflow: hidden` la recorta. */
+@utility touch-target {
+  @media (pointer: coarse) {
+    position: relative;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      translate: -50% -50%;
+    }
+  }
+}

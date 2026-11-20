@@ -705,7 +705,7 @@ export function GiftsPanel({
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Pexels (abre en una pestaña nueva)"
-                className="underline underline-offset-2 hover:text-foreground"
+                className="touch-target underline underline-offset-2 hover:text-foreground"
               >
                 Pexels
               </a>

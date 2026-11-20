@@ -38,6 +38,7 @@ export function BackLink({
       type="button"
       onClick={handleClick}
       className={cn(
+        "touch-target",
         icon
           ? "flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground w-fit"
           : "hover:text-foreground",

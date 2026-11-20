@@ -161,19 +161,23 @@ export function PersonHeader({
       </button>
 
       <div className="min-w-0 flex-1">
+        {/* Nombre y relación van a 2 px: dos zonas de 44 centradas se pisarían.
+            En táctil, la del nombre crece hacia arriba (hasta donde acaba la de
+            «Volver») y la de la relación hacia abajo, sin mover nada. El
+            `truncate` va en un span: en el botón, su overflow recortaría la zona. */}
         <h1 className="font-heading text-3xl font-medium leading-tight sm:text-4xl">
           <button
             type="button"
             onClick={() => onEdit("name")}
-            className="-mx-2 max-w-full truncate rounded-md px-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative -mx-2 inline-block max-w-full rounded-md px-2 text-left align-top transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:bottom-0 pointer-coarse:after:h-11"
           >
-            {savedName}
+            <span className="block truncate">{savedName}</span>
           </button>
         </h1>
         <button
           type="button"
           onClick={() => onEdit("relationship")}
-          className="-mx-2 mt-0.5 rounded-md px-2 py-0.5 text-left text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="relative -mx-2 mt-0.5 rounded-md px-2 py-0.5 text-left text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:top-0 pointer-coarse:after:h-11"
         >
           <span className="sr-only">Relación: </span>
           {relationshipLabel(relationship)}

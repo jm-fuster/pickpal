@@ -302,7 +302,7 @@ export default function SettingsPage() {
                 aria-checked={checked}
                 onClick={() => handleNotifyWindow(opt.value)}
                 className={[
-                  "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                  "touch-target rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
                   checked
                     ? "border-border bg-muted text-foreground"
                     : "border-border/50 text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground",
@@ -433,14 +433,14 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-2">
           <Link
             href="/privacidad"
-            className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-muted-foreground"
+            className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-muted-foreground pointer-coarse:min-h-11"
           >
             Política de privacidad
             <ArrowUpRight className="size-4" aria-hidden />
           </Link>
           <Link
             href="/terminos"
-            className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-muted-foreground"
+            className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-muted-foreground pointer-coarse:min-h-11"
           >
             Términos y condiciones de uso
             <ArrowUpRight className="size-4" aria-hidden />

@@ -126,7 +126,7 @@ function ViewRow({ label, onClick, children }: { label: string; onClick: () => v
     <button
       type="button"
       onClick={onClick}
-      className="-mx-2 grid w-[calc(100%+1rem)] grid-cols-[6rem_minmax(0,1fr)] items-start gap-x-3 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="-mx-2 grid w-[calc(100%+1rem)] grid-cols-[6rem_minmax(0,1fr)] items-start gap-x-3 rounded-md px-2 py-1.5 pointer-coarse:py-3 text-left text-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span className="text-muted-foreground">
         <span className="sr-only">Editar · </span>
@@ -144,7 +144,7 @@ function MissingLine({ text, onClick }: { text: string; onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="-mx-2 block rounded-md px-2 py-1 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="-mx-2 block rounded-md px-2 py-1 pointer-coarse:py-3.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {text}
     </button>

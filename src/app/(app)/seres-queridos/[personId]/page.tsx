@@ -283,7 +283,7 @@ function PersonDetailContent({
             aria-controls={`panel-${t.id}`}
             onClick={() => setTab(t.id)}
             className={cn(
-              "flex-1 border-b-2 px-3 pb-2.5 pt-1 text-sm font-medium transition-colors",
+              "touch-target flex-1 border-b-2 px-3 pb-2.5 pt-1 text-sm font-medium transition-colors",
               tab === t.id ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >

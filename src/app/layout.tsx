@@ -138,7 +138,13 @@ export default function RootLayout({
   return (
     // waitlistUrl: «Unirte a la lista de espera» stays in the app instead of
     // going to Clerk's Account Portal, which is in English and off-brand.
-    <ClerkProvider localization={clerkLocalization} waitlistUrl="/lista-de-espera">
+    // appearance: el avatar de <UserButton> mide 28 px; en táctil gana una
+    // zona de toque de 44 sin cambiar de tamaño (utilidad touch-target).
+    <ClerkProvider
+      localization={clerkLocalization}
+      waitlistUrl="/lista-de-espera"
+      appearance={{ elements: { userButtonTrigger: "touch-target" } }}
+    >
       <html
         lang="es"
         suppressHydrationWarning
