@@ -152,35 +152,35 @@
       "#547959"
     ],
     [
-      "color/bg/category/1",
+      "color/fill/category/1",
       "Semantic",
       "--chart-1",
       "#0c2912",
       "#547959"
     ],
     [
-      "color/bg/category/2",
+      "color/fill/category/2",
       "Semantic",
       "--chart-2",
       "#c56a3e",
       "#dc855d"
     ],
     [
-      "color/bg/category/3",
+      "color/fill/category/3",
       "Semantic",
       "--chart-3",
       "#e3a757",
       "#e3a757"
     ],
     [
-      "color/bg/category/4",
+      "color/fill/category/4",
       "Semantic",
       "--chart-4",
       "#d5b59e",
       "#6f6149"
     ],
     [
-      "color/bg/category/5",
+      "color/fill/category/5",
       "Semantic",
       "--chart-5",
       "#775e50",
