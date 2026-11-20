@@ -57,8 +57,9 @@ const QUESTIONS: { q: string; a: ReactNode }[] = [
   },
 ];
 
-// <details> nativo: abre y cierra sin JS, y el mismo `name` hace que abrir
-// una pregunta cierre la anterior. Va en la columna del texto de «Cómo
+// <details> nativo: abre y cierra sin JS. Sin `name` compartido: cada respuesta
+// se abre sola, para poder leer dos a la vez (hasta el 20-nov-2026, abrir una
+// cerraba la anterior). Va en la columna del texto de «Cómo
 // funciona» y de «Lo que PickPal no hace», con el titular encima y no al lado:
 // dos secciones seguidas con el titular en un tercio y el contenido en dos
 // tercios era la maqueta de plantilla. Es la sección de consulta, así que su
@@ -74,7 +75,7 @@ export function Faq() {
 
           <div className="mt-6 divide-y divide-border/60 border-y border-border/60">
             {QUESTIONS.map(({ q, a }) => (
-              <details key={q} name="faq" className="group">
+              <details key={q} className="group">
                 <summary className="-mx-2 flex cursor-pointer list-none items-center justify-between gap-4 rounded-md px-2 py-4 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
                   <h3 className="text-lg leading-snug font-medium">{q}</h3>
                   <ChevronDown
