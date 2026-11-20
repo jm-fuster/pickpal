@@ -54,8 +54,12 @@ export function MobileNavSheet({
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  // La barra de la izquierda es la marca de «estás aquí» que no
+                  // depende del color: el tinte solo da 1,1–1,2:1 contra el
+                  // panel y el texto activo 1,7:1 contra los demás. La barra
+                  // da 15:1 en claro y 6,3:1 en oscuro (docs/design-system.md).
                   isActive
-                    ? "bg-primary/10 text-brand"
+                    ? "relative bg-primary/10 text-brand before:absolute before:top-1/2 before:left-1 before:h-4.5 before:w-0.75 before:-translate-y-1/2 before:rounded-full before:bg-brand"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
