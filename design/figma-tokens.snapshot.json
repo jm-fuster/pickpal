@@ -11,7 +11,7 @@
           "Light",
           "Dark"
         ],
-        "count": 178
+        "count": 177
       },
       {
         "name": "Typography",
@@ -36,7 +36,7 @@
         "count": 9
       }
     ],
-    "total": 360
+    "total": 359
   },
   "fields": [
     "figma",
@@ -562,7 +562,6 @@
       "color/bg/subtle",
       "color/border/brand",
       "color/border/brand-secondary",
-      "color/border/component",
       "color/border/strong",
       "color/border/subtle",
       "color/field/border-destructive",

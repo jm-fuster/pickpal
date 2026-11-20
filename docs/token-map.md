@@ -2,12 +2,12 @@
 
 <!-- GENERADO por scripts/token-map.mjs. No editar a mano: se regenera. -->
 
-Figma: **PickPal · Product case study & design system** · volcado del 2026-11-20 · 360 variables.
+Figma: **PickPal · Product case study & design system** · volcado del 2026-11-20 · 359 variables.
 Código: [`src/app/globals.css`](../src/app/globals.css).
 
 Este documento responde a una sola pregunta: **¿dónde dicen Figma y el código cosas distintas?**
-No genera CSS desde Figma — solo 71 de las 360 variables tienen contraparte en código
-y las otras 289 no deben tenerla, así que un generador aplanaría el criterio en vez de aplicarlo.
+No genera CSS desde Figma — solo 71 de las 359 variables tienen contraparte en código
+y las otras 288 no deben tenerla, así que un generador aplanaría el criterio en vez de aplicarlo.
 
 ## Resumen
 
@@ -20,7 +20,7 @@ y las otras 289 no deben tenerla, así que un generador aplanaría el criterio e
 | … en divergencia **nueva, sin declarar** | 0 |
 | Props del código que varias variables de Figma reclaman con valores distintos | 0 |
 | Solo-código (sin variable en Figma) | 6 |
-| Solo-Figma · capa Semantic (decisión pendiente) | 146 |
+| Solo-Figma · capa Semantic (decisión pendiente) | 145 |
 | Solo-Figma · Primitives (por diseño: ocultos al publicar) | 134 |
 
 ## Espejados
@@ -121,7 +121,7 @@ Escalas propias en `@theme` sin variable equivalente:
 
 ## Solo-Figma
 
-### Capa Semantic — 146 variables sin contraparte
+### Capa Semantic — 145 variables sin contraparte
 
 Aquí está el trabajo pendiente de verdad: por cada una hay que decidir si merece una custom
 property, si el código ya lo resuelve con utilidades de Tailwind, o si es de uso exclusivo en Figma.
@@ -136,8 +136,8 @@ Mientras no se decida, ni Figma ni el código están completos.
 | `color/fill/` | 10 | `color/fill/brand-secondary-solid-hover`, `color/fill/brand-solid-hover`, `color/fill/brand-subtle`, `color/fill/destructive-subtle`, `color/fill/destructive-subtle-hover`, `color/fill/success-solid`, `color/fill/success-subtle`, `color/fill/sunken`, `color/fill/warning-solid`, `color/fill/warning-subtle` |
 | `radius/` | 8 | `radius/checkbox`, `radius/control`, `radius/control-sm`, `radius/logo`, `radius/panel`, `radius/pill`, `radius/surface`, `radius/tag` |
 | `z-index/` | 6 | `z-index/dropdown`, `z-index/modal`, `z-index/overlay`, `z-index/popover`, `z-index/sticky`, `z-index/toast` |
-| `color/border/` | 5 | `color/border/brand`, `color/border/brand-secondary`, `color/border/component`, `color/border/strong`, `color/border/subtle` |
 | `color/text/` | 5 | `color/text/info`, `color/text/on-destructive-solid`, `color/text/on-success-solid`, `color/text/on-warning-solid`, `color/text/success` |
+| `color/border/` | 4 | `color/border/brand`, `color/border/brand-secondary`, `color/border/strong`, `color/border/subtle` |
 | `color/field/` | 4 | `color/field/border-destructive`, `color/field/border-focus`, `color/field/fill-disabled`, `color/field/placeholder` |
 | `opacity/` | 4 | `opacity/disabled`, `opacity/hover`, `opacity/pressed`, `opacity/skeleton` |
 | `border-width/` | 3 | `border-width/default`, `border-width/focus`, `border-width/strong` |
