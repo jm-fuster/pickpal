@@ -2,12 +2,12 @@
 
 <!-- GENERADO por scripts/token-map.mjs. No editar a mano: se regenera. -->
 
-Figma: **PickPal · Product case study & design system** · volcado del 2026-09-18 · 349 variables.
+Figma: **PickPal · Product case study & design system** · volcado del 2026-11-20 · 360 variables.
 Código: [`src/app/globals.css`](../src/app/globals.css).
 
 Este documento responde a una sola pregunta: **¿dónde dicen Figma y el código cosas distintas?**
-No genera CSS desde Figma — solo 71 de las 349 variables tienen contraparte en código
-y las otras 278 no deben tenerla, así que un generador aplanaría el criterio en vez de aplicarlo.
+No genera CSS desde Figma — solo 71 de las 360 variables tienen contraparte en código
+y las otras 289 no deben tenerla, así que un generador aplanaría el criterio en vez de aplicarlo.
 
 ## Resumen
 
@@ -19,9 +19,9 @@ y las otras 278 no deben tenerla, así que un generador aplanaría el criterio e
 | … en divergencia **ya declarada** | 0 |
 | … en divergencia **nueva, sin declarar** | 0 |
 | Props del código que varias variables de Figma reclaman con valores distintos | 0 |
-| Solo-código (sin variable en Figma) | 5 |
+| Solo-código (sin variable en Figma) | 6 |
 | Solo-Figma · capa Semantic (decisión pendiente) | 146 |
-| Solo-Figma · Primitives (por diseño: ocultos al publicar) | 132 |
+| Solo-Figma · Primitives (por diseño: ocultos al publicar) | 134 |
 
 ## Espejados
 
@@ -30,77 +30,77 @@ Valores: `Figma / código`. `≈` = mismo color, ±1 por canal del ida y vuelta 
 
 | Variable Figma | Colección | Custom property | Origen del valor | Light | Dark |
 |---|---|---|---|---|---|
+| `color/bg` | Semantic | `--background` | :root / .dark | ✅ #faf6f1 / #faf6f1 | ✅ #16100d / #16100d |
+| `color/text` | Semantic | `--foreground` | :root / .dark | ✅ #302621 / #302621 | ✅ #efeae2 / #efeae2 |
+| `color/bg/surface` | Semantic | `--card` | :root / .dark | ✅ #fffbf6 / #fffbf6 | ✅ #211914 / #211914 |
+| `color/bg/surface-raised` | Semantic | `--popover` | :root / .dark | ✅ #fffbf6 / #fffbf6 | ✅ #211914 / #211914 |
+| `color/fill/brand-solid` | Semantic | `--primary` | :root / .dark | ✅ #0c2912 / #0c2912 | ✅ #547959 / #547959 |
+| `color/text/on-brand-solid` | Semantic | `--primary-foreground` | :root / .dark | ✅ #faf6f1 / #faf6f1 | ✅ #faf6f1 / #faf6f1 |
+| `color/fill/brand-secondary-solid` | Semantic | `--secondary` | :root / .dark | ✅ #c56a3e / #c56a3e | ✅ #dc855d / #dc855d |
+| `color/text/on-brand-secondary-solid` | Semantic | `--secondary-foreground` | :root / .dark | ✅ #16100d / #16100d | ✅ #16100d / #16100d |
+| `color/fill/component` | Semantic | `--muted` | :root / .dark | ✅ #f3e6d2 / #f3e6d2 | ✅ #302621 / #302621 |
+| `color/text/secondary` | Semantic | `--muted-foreground` | :root / .dark | ✅ #5a4234 / #5a4234 | ✅ #cec2b3 / #cec2b3 |
 | `color/fill/component-focus` | Semantic | `--accent` | :root / .dark | ✅ #f3e6d2 / #f3e6d2 | ✅ #2f281d / #2f281d |
 | `color/text/on-component-focus` | Semantic | `--accent-foreground` | :root / .dark | ✅ #5a4234 / #5a4234 | ✅ #efeae2 / #efeae2 |
-| `color/bg` | Semantic | `--background` | :root / .dark | ✅ #faf6f1 / #faf6f1 | ✅ #16100d / #16100d |
+| `color/fill/destructive-solid` | Semantic | `--destructive` | :root / .dark | ✅ #cc2823 / #cc2823 | ✅ #fa6863 / #fa6863 |
 | `color/border` | Semantic | `--border` | :root / .dark | ✅ #e1d6c6 / #e1d6c6 | ✅ #ffffff/10 / #ffffff/10 |
-| `color/icon/brand` | Semantic | `--brand` | :root / .dark | ✅ #0c2912 / #0c2912 | ✅ #8eaa91 / #8eaa91 |
-| `color/text/brand` | Semantic | `--brand` | :root / .dark | ✅ #0c2912 / #0c2912 | ✅ #8eaa91 / #8eaa91 |
-| `color/text/brand-secondary` | Semantic | `--brand-secondary` | :root / .dark | ✅ #a44c1d / #a44c1d | ✅ #dc855d / #dc855d |
-| `color/bg/surface` | Semantic | `--card` | :root / .dark | ✅ #fffbf6 / #fffbf6 | ✅ #211914 / #211914 |
-| `color/icon/category/3` | Semantic | `--category-amber` | :root / .dark | ✅ #b45309 / #b45309 | ✅ #f3ae51 / #f3ae51 |
+| `color/border/focus` | Semantic | `--ring` | :root / .dark | ✅ #0c2912 / #0c2912 | ✅ #547959 / #547959 |
 | `color/bg/category/1` | Semantic | `--chart-1` | :root / .dark | ✅ #0c2912 / #0c2912 | ✅ #547959 / #547959 |
 | `color/bg/category/2` | Semantic | `--chart-2` | :root / .dark | ✅ #c56a3e / #c56a3e | ✅ #dc855d / #dc855d |
 | `color/bg/category/3` | Semantic | `--chart-3` | :root / .dark | ✅ #e3a757 / #e3a757 | ✅ #e3a757 / #e3a757 |
 | `color/bg/category/4` | Semantic | `--chart-4` | :root / .dark | ✅ #d5b59e / #d5b59e | ✅ #6f6149 / #6f6149 |
 | `color/bg/category/5` | Semantic | `--chart-5` | :root / .dark | ✅ #775e50 / #775e50 | ✅ #5a4234 / #5a4234 |
-| `color/border/destructive` | Semantic | `--destructive` | :root / .dark | ✅ #cc2823 / #cc2823 | ✅ #fa6863 / #fa6863 |
-| `color/fill/destructive-solid` | Semantic | `--destructive` | :root / .dark | ✅ #cc2823 / #cc2823 | ✅ #fa6863 / #fa6863 |
-| `color/text/destructive` | Semantic | `--destructive` | :root / .dark | ✅ #cc2823 / #cc2823 | ✅ #fa6863 / #fa6863 |
-| `color/fill/field-disabled` | Semantic | `--field-disabled` | :root / .dark | ✅ #efeae2 / #efeae2 | ✅ #302621 / #302621 |
+| `typography/font-family/sans` | Typography | `--font-sans` | @theme inline | — Geist / var(--font-geist-sans) | — Geist / var(--font-geist-sans) |
 | `typography/font-family/serif` | Typography | `--font-heading` | @theme inline | — Fraunces / var(--font-fraunces) | — Fraunces / var(--font-fraunces) |
 | `typography/font-family/mono` | Typography | `--font-mono` | @theme inline | — Geist Mono / var(--font-geist-mono) | — Geist Mono / var(--font-geist-mono) |
-| `typography/font-family/sans` | Typography | `--font-sans` | @theme inline | — Geist / var(--font-geist-sans) | — Geist / var(--font-geist-sans) |
-| `typography/font-weight/bold` | Typography | `--font-weight-bold` | — | — 700 / — | — 700 / — |
-| `typography/font-weight/medium` | Typography | `--font-weight-medium` | — | — 500 / — | — 500 / — |
 | `typography/font-weight/regular` | Typography | `--font-weight-normal` | — | — 400 / — | — 400 / — |
+| `typography/font-weight/medium` | Typography | `--font-weight-medium` | — | — 500 / — | — 500 / — |
 | `typography/font-weight/semibold` | Typography | `--font-weight-semibold` | — | — 600 / — | — 600 / — |
-| `color/text` | Semantic | `--foreground` | :root / .dark | ✅ #302621 / #302621 | ✅ #efeae2 / #efeae2 |
-| `color/field/border` | Semantic | `--input` | :root / .dark | ✅ #917a6d / #917a6d | ✅ #ffffff/36 / #ffffff/36 |
-| `typography/line-height/normal` | Typography | `--leading-normal` | @theme | ✅ 1.4 / 1.4 | ✅ 1.4 / 1.4 |
-| `typography/line-height/relaxed` | Typography | `--leading-relaxed` | @theme | ✅ 1.5 / 1.5 | ✅ 1.5 / 1.5 |
-| `typography/line-height/snug` | Typography | `--leading-snug` | @theme | ✅ 1.2 / 1.2 | ✅ 1.2 / 1.2 |
-| `typography/line-height/snug-alt` | Typography | `--leading-snug-alt` | @theme | ✅ 1.3 / 1.3 | ✅ 1.3 / 1.3 |
-| `typography/line-height/tight` | Typography | `--leading-tight` | @theme | ✅ 1.1 / 1.1 | ✅ 1.1 / 1.1 |
-| `color/fill/component` | Semantic | `--muted` | :root / .dark | ✅ #f3e6d2 / #f3e6d2 | ✅ #302621 / #302621 |
-| `color/text/secondary` | Semantic | `--muted-foreground` | :root / .dark | ✅ #5a4234 / #5a4234 | ✅ #e1d6c6 / #e1d6c6 |
-| `color/bg/surface-raised` | Semantic | `--popover` | :root / .dark | ✅ #fffbf6 / #fffbf6 | ✅ #211914 / #211914 |
-| `color/fill/brand-solid` | Semantic | `--primary` | :root / .dark | ✅ #0c2912 / #0c2912 | ✅ #547959 / #547959 |
-| `color/icon/on-brand-solid` | Semantic | `--primary-foreground` | :root / .dark | ✅ #faf6f1 / #faf6f1 | ✅ #faf6f1 / #faf6f1 |
-| `color/text/on-brand-solid` | Semantic | `--primary-foreground` | :root / .dark | ✅ #faf6f1 / #faf6f1 | ✅ #faf6f1 / #faf6f1 |
-| `radius/base` | Primitives | `--radius` | :root | ✅ 16 / 16 | ✅ 16 / 16 |
-| `radius/2xl` | Primitives | `--radius-2xl` | @theme inline | ✅ 24 / 24 | ✅ 24 / 24 |
-| `radius/3xl` | Primitives | `--radius-3xl` | @theme inline | ✅ 28 / 28 | ✅ 28 / 28 |
-| `radius/4xl` | Primitives | `--radius-4xl` | @theme inline | ✅ 32 / 32 | ✅ 32 / 32 |
-| `radius/lg` | Primitives | `--radius-lg` | @theme inline | — 16 / var(--radius) | — 16 / var(--radius) |
-| `radius/md` | Primitives | `--radius-md` | @theme inline | ✅ 12 / 12 | ✅ 12 / 12 |
-| `radius/sm` | Primitives | `--radius-sm` | @theme inline | ✅ 8 / 8 | ✅ 8 / 8 |
-| `radius/xl` | Primitives | `--radius-xl` | @theme inline | ✅ 20 / 20 | ✅ 20 / 20 |
-| `radius/xs` | Primitives | `--radius-xs` | @theme inline | ✅ 4 / 4 | ✅ 4 / 4 |
-| `color/border/focus` | Semantic | `--ring` | :root / .dark | ✅ #0c2912 / #0c2912 | ✅ #547959 / #547959 |
-| `color/fill/brand-secondary-solid` | Semantic | `--secondary` | :root / .dark | ✅ #c56a3e / #c56a3e | ✅ #dc855d / #dc855d |
-| `color/text/on-brand-secondary-solid` | Semantic | `--secondary-foreground` | :root / .dark | ✅ #16100d / #16100d | ✅ #16100d / #16100d |
-| `color/icon/tertiary` | Semantic | `--subtle-foreground` | :root / .dark | ✅ #6e6055 / #6e6055 | ✅ #a99c8e / #a99c8e |
-| `color/text/tertiary` | Semantic | `--subtle-foreground` | :root / .dark | ✅ #6e6055 / #6e6055 | ✅ #a99c8e / #a99c8e |
+| `typography/font-weight/bold` | Typography | `--font-weight-bold` | — | — 700 / — | — 700 / — |
+| `typography/font-size/xs` | Typography | `--text-xs` | — | — 12 / — | — 12 / — |
+| `typography/font-size/sm` | Typography | `--text-sm` | — | — 14 / — | — 14 / — |
+| `typography/font-size/base` | Typography | `--text-base` | — | — 16 / — | — 16 / — |
+| `typography/font-size/lg` | Typography | `--text-lg` | — | — 18 / — | — 18 / — |
+| `typography/font-size/xl` | Typography | `--text-xl` | — | — 20 / — | — 20 / — |
 | `typography/font-size/2xl` | Typography | `--text-2xl` | — | — 24 / — | — 24 / — |
-| `typography/font-size/2xs` | Typography | `--text-2xs` | @theme | ✅ 11 / 11 | ✅ 11 / 11 |
-| `typography/font-size/3xl` | Typography | `--text-3xl` | @theme | ✅ 28 / 28 | ✅ 28 / 28 |
 | `typography/font-size/4xl` | Typography | `--text-4xl` | @theme | ✅ 34 / 34 | ✅ 34 / 34 |
 | `typography/font-size/5xl` | Typography | `--text-5xl` | @theme | ✅ 40 / 40 | ✅ 40 / 40 |
 | `typography/font-size/6xl` | Typography | `--text-6xl` | @theme | ✅ 48 / 48 | ✅ 48 / 48 |
 | `typography/font-size/7xl` | Typography | `--text-7xl` | @theme | ✅ 60 / 60 | ✅ 60 / 60 |
-| `typography/font-size/8xl` | Typography | `--text-8xl` | @theme | ✅ 72 / 72 | ✅ 72 / 72 |
-| `typography/font-size/base` | Typography | `--text-base` | — | — 16 / — | — 16 / — |
-| `typography/font-size/lg` | Typography | `--text-lg` | — | — 18 / — | — 18 / — |
-| `typography/font-size/sm` | Typography | `--text-sm` | — | — 14 / — | — 14 / — |
-| `typography/font-size/xl` | Typography | `--text-xl` | — | — 20 / — | — 20 / — |
-| `typography/font-size/xs` | Typography | `--text-xs` | — | — 12 / — | — 12 / — |
-| `typography/letter-spacing/normal` | Typography | `--tracking-normal` | @theme | ✅ 0 / 0 | ✅ 0 / 0 |
-| `typography/letter-spacing/tight` | Typography | `--tracking-tight` | @theme | ✅ -0.01 / -0.01 | ✅ -0.01 / -0.01 |
-| `typography/letter-spacing/tighter` | Typography | `--tracking-tighter` | @theme | ✅ -0.02 / -0.02 | ✅ -0.02 / -0.02 |
-| `typography/letter-spacing/wide` | Typography | `--tracking-wide` | @theme | ✅ 0.01 / 0.01 | ✅ 0.01 / 0.01 |
-| `typography/letter-spacing/wider` | Typography | `--tracking-wider` | @theme | ✅ 0.02 / 0.02 | ✅ 0.02 / 0.02 |
+| `color/text/brand` | Semantic | `--brand` | :root / .dark | ✅ #0c2912 / #0c2912 | ✅ #8eaa91 / #8eaa91 |
+| `color/text/destructive` | Semantic | `--destructive` | :root / .dark | ✅ #cc2823 / #cc2823 | ✅ #fa6863 / #fa6863 |
+| `color/border/destructive` | Semantic | `--destructive` | :root / .dark | ✅ #cc2823 / #cc2823 | ✅ #fa6863 / #fa6863 |
 | `color/text/warning` | Semantic | `--warning` | :root / .dark | ✅ #b45309 / #b45309 | ✅ #f3ae51 / #f3ae51 |
+| `radius/base` | Primitives | `--radius` | :root | ✅ 16 / 16 | ✅ 16 / 16 |
+| `radius/sm` | Primitives | `--radius-sm` | @theme inline | ✅ 8 / 8 | ✅ 8 / 8 |
+| `radius/md` | Primitives | `--radius-md` | @theme inline | ✅ 12 / 12 | ✅ 12 / 12 |
+| `radius/lg` | Primitives | `--radius-lg` | @theme inline | — 16 / var(--radius) | — 16 / var(--radius) |
+| `radius/xl` | Primitives | `--radius-xl` | @theme inline | ✅ 20 / 20 | ✅ 20 / 20 |
+| `radius/2xl` | Primitives | `--radius-2xl` | @theme inline | ✅ 24 / 24 | ✅ 24 / 24 |
+| `radius/3xl` | Primitives | `--radius-3xl` | @theme inline | ✅ 28 / 28 | ✅ 28 / 28 |
+| `radius/4xl` | Primitives | `--radius-4xl` | @theme inline | ✅ 32 / 32 | ✅ 32 / 32 |
+| `radius/xs` | Primitives | `--radius-xs` | @theme inline | ✅ 4 / 4 | ✅ 4 / 4 |
+| `color/icon/brand` | Semantic | `--brand` | :root / .dark | ✅ #0c2912 / #0c2912 | ✅ #8eaa91 / #8eaa91 |
+| `color/icon/on-brand-solid` | Semantic | `--primary-foreground` | :root / .dark | ✅ #faf6f1 / #faf6f1 | ✅ #faf6f1 / #faf6f1 |
+| `typography/font-size/2xs` | Typography | `--text-2xs` | — | — 11 / — | — 11 / — |
+| `typography/font-size/3xl` | Typography | `--text-3xl` | @theme | ✅ 28 / 28 | ✅ 28 / 28 |
+| `typography/font-size/8xl` | Typography | `--text-8xl` | @theme | ✅ 72 / 72 | ✅ 72 / 72 |
+| `typography/line-height/tight` | Typography | `--leading-tight` | @theme | ✅ 1.100000023841858 / 1.1 | ✅ 1.100000023841858 / 1.1 |
+| `typography/line-height/snug` | Typography | `--leading-snug` | @theme | ✅ 1.2000000476837158 / 1.2 | ✅ 1.2000000476837158 / 1.2 |
+| `typography/line-height/snug-alt` | Typography | `--leading-snug-alt` | @theme | ✅ 1.2999999523162842 / 1.3 | ✅ 1.2999999523162842 / 1.3 |
+| `typography/line-height/normal` | Typography | `--leading-normal` | @theme | ✅ 1.399999976158142 / 1.4 | ✅ 1.399999976158142 / 1.4 |
+| `typography/line-height/relaxed` | Typography | `--leading-relaxed` | @theme | ✅ 1.5 / 1.5 | ✅ 1.5 / 1.5 |
+| `typography/letter-spacing/tighter` | Typography | `--tracking-tighter` | @theme | ✅ -0.019999999552965164 / -0.02 | ✅ -0.019999999552965164 / -0.02 |
+| `typography/letter-spacing/tight` | Typography | `--tracking-tight` | @theme | ✅ -0.009999999776482582 / -0.01 | ✅ -0.009999999776482582 / -0.01 |
+| `typography/letter-spacing/normal` | Typography | `--tracking-normal` | @theme | ✅ 0 / 0 | ✅ 0 / 0 |
+| `typography/letter-spacing/wide` | Typography | `--tracking-wide` | @theme | ✅ 0.009999999776482582 / 0.01 | ✅ 0.009999999776482582 / 0.01 |
+| `typography/letter-spacing/wider` | Typography | `--tracking-wider` | @theme | ✅ 0.019999999552965164 / 0.02 | ✅ 0.019999999552965164 / 0.02 |
+| `color/text/brand-secondary` | Semantic | `--brand-secondary` | :root / .dark | ✅ #a44c1d / #a44c1d | ✅ #dc855d / #dc855d |
+| `color/text/tertiary` | Semantic | `--subtle-foreground` | :root / .dark | ✅ #6e6055 / #6e6055 | ✅ #a99c8e / #a99c8e |
+| `color/icon/tertiary` | Semantic | `--subtle-foreground` | :root / .dark | ✅ #6e6055 / #6e6055 | ✅ #a99c8e / #a99c8e |
+| `color/fill/field-disabled` | Semantic | `--field-disabled` | :root / .dark | ✅ #efeae2 / #efeae2 | ✅ #302621 / #302621 |
+| `color/field/border` | Semantic | `--input` | :root / .dark | ✅ #917a6d / #917a6d | ✅ #ffffff/36 / #ffffff/36 |
+| `color/icon/category/3` | Semantic | `--category-amber` | :root / .dark | ✅ #b45309 / #b45309 | ✅ #f3ae51 / #f3ae51 |
 
 ## Solo-código
 
@@ -114,6 +114,7 @@ Capa de tokens (`:root` / `.dark`):
 
 Escalas propias en `@theme` sin variable equivalente:
 
+- `--animate-breathe` — `breathe 2.4s var(--ease-swap) infinite`
 - `--leading-loose` — `initial (desactivado)`
 - `--text-9xl` — `initial (desactivado)`
 - `--tracking-widest` — `initial (desactivado)`
@@ -142,7 +143,7 @@ Mientras no se decida, ni Figma ni el código están completos.
 | `border-width/` | 3 | `border-width/default`, `border-width/focus`, `border-width/strong` |
 | `color/bg/` | 1 | `color/bg/subtle` |
 
-### Primitives — 132 variables, y está bien así
+### Primitives — 134 variables, y está bien así
 
 Los primitivos tienen scope vacío y están ocultos al publicar: no viajan a los archivos que
 consumen la librería y no deben aparecer en el CSS. El código consume la capa semántica, no la rampa.
@@ -150,7 +151,7 @@ Los 9 `radius/*` que sí cruzan son la excepción documentada.
 
 | Grupo | Nº |
 |---|---|
-| `spacing/` | 28 |
+| `spacing/` | 29 |
 | `color/Terracotta/` | 14 |
 | `color/Red/` | 13 |
 | `color/Amber/` | 11 |
@@ -158,8 +159,8 @@ Los 9 `radius/*` que sí cruzan son la excepción documentada.
 | `color/Green/` | 11 |
 | `color/Neutral/` | 11 |
 | `color/Umber/` | 11 |
+| `color/Cream/` | 7 |
 | `opacity/` | 7 |
-| `color/Cream/` | 6 |
 | `border-width/` | 4 |
 | `color/White/` | 4 |
 | `radius/` | 1 |

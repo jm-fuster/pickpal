@@ -174,7 +174,10 @@
   --secondary-foreground: oklch(0.18 0.012 50);
   --brand-secondary: oklch(0.70 0.12 45);
   --muted: oklch(0.28 0.018 50);
-  --muted-foreground: oklch(0.8806 0.0248 77.44);
+  /* Cream/450 (#CEC2B3): a medio camino entre el texto (L 0,94) y el terciario
+     (0,70), para que el secundario se lea como un nivel propio. Hasta el
+     20-nov-2026 era Cream/400 (0,88), casi pegado al texto. */
+  --muted-foreground: oklch(0.8198 0.0247 73.56);
   --subtle-foreground: oklch(0.7 0.0252 69.47);
   --accent: oklch(0.28 0.022 78);
   --accent-foreground: oklch(0.94 0.012 80);

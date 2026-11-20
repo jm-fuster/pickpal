@@ -3,7 +3,7 @@
   "meta": {
     "fileName": "PickPal · Product case study & design system",
     "fileKey": "4hQt4BnsEluKsYk5qbKkCz",
-    "capturedAt": "2026-09-18",
+    "capturedAt": "2026-11-20",
     "collections": [
       {
         "name": "Semantic",
@@ -25,10 +25,18 @@
         "modes": [
           "Value"
         ],
-        "count": 141
+        "count": 143
+      },
+      {
+        "name": "Pointer",
+        "modes": [
+          "Fine",
+          "Coarse"
+        ],
+        "count": 9
       }
     ],
-    "total": 349
+    "total": 360
   },
   "fields": [
     "figma",
@@ -38,6 +46,76 @@
     "dark"
   ],
   "mapped": [
+    [
+      "color/bg",
+      "Semantic",
+      "--background",
+      "#faf6f1",
+      "#16100d"
+    ],
+    [
+      "color/text",
+      "Semantic",
+      "--foreground",
+      "#302621",
+      "#efeae2"
+    ],
+    [
+      "color/bg/surface",
+      "Semantic",
+      "--card",
+      "#fffbf6",
+      "#211914"
+    ],
+    [
+      "color/bg/surface-raised",
+      "Semantic",
+      "--popover",
+      "#fffbf6",
+      "#211914"
+    ],
+    [
+      "color/fill/brand-solid",
+      "Semantic",
+      "--primary",
+      "#0c2912",
+      "#547959"
+    ],
+    [
+      "color/text/on-brand-solid",
+      "Semantic",
+      "--primary-foreground",
+      "#faf6f1",
+      "#faf6f1"
+    ],
+    [
+      "color/fill/brand-secondary-solid",
+      "Semantic",
+      "--secondary",
+      "#c56a3e",
+      "#dc855d"
+    ],
+    [
+      "color/text/on-brand-secondary-solid",
+      "Semantic",
+      "--secondary-foreground",
+      "#16100d",
+      "#16100d"
+    ],
+    [
+      "color/fill/component",
+      "Semantic",
+      "--muted",
+      "#f3e6d2",
+      "#302621"
+    ],
+    [
+      "color/text/secondary",
+      "Semantic",
+      "--muted-foreground",
+      "#5a4234",
+      "#cec2b3"
+    ],
     [
       "color/fill/component-focus",
       "Semantic",
@@ -53,11 +131,11 @@
       "#efeae2"
     ],
     [
-      "color/bg",
+      "color/fill/destructive-solid",
       "Semantic",
-      "--background",
-      "#faf6f1",
-      "#16100d"
+      "--destructive",
+      "#cc2823",
+      "#fa6863"
     ],
     [
       "color/border",
@@ -67,39 +145,11 @@
       "#ffffff/10"
     ],
     [
-      "color/icon/brand",
+      "color/border/focus",
       "Semantic",
-      "--brand",
+      "--ring",
       "#0c2912",
-      "#8eaa91"
-    ],
-    [
-      "color/text/brand",
-      "Semantic",
-      "--brand",
-      "#0c2912",
-      "#8eaa91"
-    ],
-    [
-      "color/text/brand-secondary",
-      "Semantic",
-      "--brand-secondary",
-      "#a44c1d",
-      "#dc855d"
-    ],
-    [
-      "color/bg/surface",
-      "Semantic",
-      "--card",
-      "#fffbf6",
-      "#211914"
-    ],
-    [
-      "color/icon/category/3",
-      "Semantic",
-      "--category-amber",
-      "#b45309",
-      "#f3ae51"
+      "#547959"
     ],
     [
       "color/bg/category/1",
@@ -137,32 +187,11 @@
       "#5a4234"
     ],
     [
-      "color/border/destructive",
-      "Semantic",
-      "--destructive",
-      "#cc2823",
-      "#fa6863"
-    ],
-    [
-      "color/fill/destructive-solid",
-      "Semantic",
-      "--destructive",
-      "#cc2823",
-      "#fa6863"
-    ],
-    [
-      "color/text/destructive",
-      "Semantic",
-      "--destructive",
-      "#cc2823",
-      "#fa6863"
-    ],
-    [
-      "color/fill/field-disabled",
-      "Semantic",
-      "--field-disabled",
-      "#efeae2",
-      "#302621"
+      "typography/font-family/sans",
+      "Typography",
+      "--font-sans",
+      "Geist",
+      "Geist"
     ],
     [
       "typography/font-family/serif",
@@ -179,18 +208,11 @@
       "Geist Mono"
     ],
     [
-      "typography/font-family/sans",
+      "typography/font-weight/regular",
       "Typography",
-      "--font-sans",
-      "Geist",
-      "Geist"
-    ],
-    [
-      "typography/font-weight/bold",
-      "Typography",
-      "--font-weight-bold",
-      700,
-      700
+      "--font-weight-normal",
+      400,
+      400
     ],
     [
       "typography/font-weight/medium",
@@ -200,13 +222,6 @@
       500
     ],
     [
-      "typography/font-weight/regular",
-      "Typography",
-      "--font-weight-normal",
-      400,
-      400
-    ],
-    [
       "typography/font-weight/semibold",
       "Typography",
       "--font-weight-semibold",
@@ -214,193 +229,46 @@
       600
     ],
     [
-      "color/text",
-      "Semantic",
-      "--foreground",
-      "#302621",
-      "#efeae2"
-    ],
-    [
-      "color/field/border",
-      "Semantic",
-      "--input",
-      "#917a6d",
-      "#ffffff/36"
-    ],
-    [
-      "typography/line-height/normal",
+      "typography/font-weight/bold",
       "Typography",
-      "--leading-normal",
-      1.4,
-      1.4
+      "--font-weight-bold",
+      700,
+      700
     ],
     [
-      "typography/line-height/relaxed",
+      "typography/font-size/xs",
       "Typography",
-      "--leading-relaxed",
-      1.5,
-      1.5
-    ],
-    [
-      "typography/line-height/snug",
-      "Typography",
-      "--leading-snug",
-      1.2,
-      1.2
-    ],
-    [
-      "typography/line-height/snug-alt",
-      "Typography",
-      "--leading-snug-alt",
-      1.3,
-      1.3
-    ],
-    [
-      "typography/line-height/tight",
-      "Typography",
-      "--leading-tight",
-      1.1,
-      1.1
-    ],
-    [
-      "color/fill/component",
-      "Semantic",
-      "--muted",
-      "#f3e6d2",
-      "#302621"
-    ],
-    [
-      "color/text/secondary",
-      "Semantic",
-      "--muted-foreground",
-      "#5a4234",
-      "#e1d6c6"
-    ],
-    [
-      "color/bg/surface-raised",
-      "Semantic",
-      "--popover",
-      "#fffbf6",
-      "#211914"
-    ],
-    [
-      "color/fill/brand-solid",
-      "Semantic",
-      "--primary",
-      "#0c2912",
-      "#547959"
-    ],
-    [
-      "color/icon/on-brand-solid",
-      "Semantic",
-      "--primary-foreground",
-      "#faf6f1",
-      "#faf6f1"
-    ],
-    [
-      "color/text/on-brand-solid",
-      "Semantic",
-      "--primary-foreground",
-      "#faf6f1",
-      "#faf6f1"
-    ],
-    [
-      "radius/base",
-      "Primitives",
-      "--radius",
-      16,
-      16
-    ],
-    [
-      "radius/2xl",
-      "Primitives",
-      "--radius-2xl",
-      24,
-      24
-    ],
-    [
-      "radius/3xl",
-      "Primitives",
-      "--radius-3xl",
-      28,
-      28
-    ],
-    [
-      "radius/4xl",
-      "Primitives",
-      "--radius-4xl",
-      32,
-      32
-    ],
-    [
-      "radius/lg",
-      "Primitives",
-      "--radius-lg",
-      16,
-      16
-    ],
-    [
-      "radius/md",
-      "Primitives",
-      "--radius-md",
+      "--text-xs",
       12,
       12
     ],
     [
-      "radius/sm",
-      "Primitives",
-      "--radius-sm",
-      8,
-      8
+      "typography/font-size/sm",
+      "Typography",
+      "--text-sm",
+      14,
+      14
     ],
     [
-      "radius/xl",
-      "Primitives",
-      "--radius-xl",
+      "typography/font-size/base",
+      "Typography",
+      "--text-base",
+      16,
+      16
+    ],
+    [
+      "typography/font-size/lg",
+      "Typography",
+      "--text-lg",
+      18,
+      18
+    ],
+    [
+      "typography/font-size/xl",
+      "Typography",
+      "--text-xl",
       20,
       20
-    ],
-    [
-      "radius/xs",
-      "Primitives",
-      "--radius-xs",
-      4,
-      4
-    ],
-    [
-      "color/border/focus",
-      "Semantic",
-      "--ring",
-      "#0c2912",
-      "#547959"
-    ],
-    [
-      "color/fill/brand-secondary-solid",
-      "Semantic",
-      "--secondary",
-      "#c56a3e",
-      "#dc855d"
-    ],
-    [
-      "color/text/on-brand-secondary-solid",
-      "Semantic",
-      "--secondary-foreground",
-      "#16100d",
-      "#16100d"
-    ],
-    [
-      "color/icon/tertiary",
-      "Semantic",
-      "--subtle-foreground",
-      "#6e6055",
-      "#a99c8e"
-    ],
-    [
-      "color/text/tertiary",
-      "Semantic",
-      "--subtle-foreground",
-      "#6e6055",
-      "#a99c8e"
     ],
     [
       "typography/font-size/2xl",
@@ -408,20 +276,6 @@
       "--text-2xl",
       24,
       24
-    ],
-    [
-      "typography/font-size/2xs",
-      "Typography",
-      "--text-2xs",
-      11,
-      11
-    ],
-    [
-      "typography/font-size/3xl",
-      "Typography",
-      "--text-3xl",
-      28,
-      28
     ],
     [
       "typography/font-size/4xl",
@@ -452,6 +306,125 @@
       60
     ],
     [
+      "color/text/brand",
+      "Semantic",
+      "--brand",
+      "#0c2912",
+      "#8eaa91"
+    ],
+    [
+      "color/text/destructive",
+      "Semantic",
+      "--destructive",
+      "#cc2823",
+      "#fa6863"
+    ],
+    [
+      "color/border/destructive",
+      "Semantic",
+      "--destructive",
+      "#cc2823",
+      "#fa6863"
+    ],
+    [
+      "color/text/warning",
+      "Semantic",
+      "--warning",
+      "#b45309",
+      "#f3ae51"
+    ],
+    [
+      "radius/base",
+      "Primitives",
+      "--radius",
+      16,
+      16
+    ],
+    [
+      "radius/sm",
+      "Primitives",
+      "--radius-sm",
+      8,
+      8
+    ],
+    [
+      "radius/md",
+      "Primitives",
+      "--radius-md",
+      12,
+      12
+    ],
+    [
+      "radius/lg",
+      "Primitives",
+      "--radius-lg",
+      16,
+      16
+    ],
+    [
+      "radius/xl",
+      "Primitives",
+      "--radius-xl",
+      20,
+      20
+    ],
+    [
+      "radius/2xl",
+      "Primitives",
+      "--radius-2xl",
+      24,
+      24
+    ],
+    [
+      "radius/3xl",
+      "Primitives",
+      "--radius-3xl",
+      28,
+      28
+    ],
+    [
+      "radius/4xl",
+      "Primitives",
+      "--radius-4xl",
+      32,
+      32
+    ],
+    [
+      "radius/xs",
+      "Primitives",
+      "--radius-xs",
+      4,
+      4
+    ],
+    [
+      "color/icon/brand",
+      "Semantic",
+      "--brand",
+      "#0c2912",
+      "#8eaa91"
+    ],
+    [
+      "color/icon/on-brand-solid",
+      "Semantic",
+      "--primary-foreground",
+      "#faf6f1",
+      "#faf6f1"
+    ],
+    [
+      "typography/font-size/2xs",
+      "Typography",
+      "--text-2xs",
+      11,
+      11
+    ],
+    [
+      "typography/font-size/3xl",
+      "Typography",
+      "--text-3xl",
+      28,
+      28
+    ],
+    [
       "typography/font-size/8xl",
       "Typography",
       "--text-8xl",
@@ -459,39 +432,53 @@
       72
     ],
     [
-      "typography/font-size/base",
+      "typography/line-height/tight",
       "Typography",
-      "--text-base",
-      16,
-      16
+      "--leading-tight",
+      1.100000023841858,
+      1.100000023841858
     ],
     [
-      "typography/font-size/lg",
+      "typography/line-height/snug",
       "Typography",
-      "--text-lg",
-      18,
-      18
+      "--leading-snug",
+      1.2000000476837158,
+      1.2000000476837158
     ],
     [
-      "typography/font-size/sm",
+      "typography/line-height/snug-alt",
       "Typography",
-      "--text-sm",
-      14,
-      14
+      "--leading-snug-alt",
+      1.2999999523162842,
+      1.2999999523162842
     ],
     [
-      "typography/font-size/xl",
+      "typography/line-height/normal",
       "Typography",
-      "--text-xl",
-      20,
-      20
+      "--leading-normal",
+      1.399999976158142,
+      1.399999976158142
     ],
     [
-      "typography/font-size/xs",
+      "typography/line-height/relaxed",
       "Typography",
-      "--text-xs",
-      12,
-      12
+      "--leading-relaxed",
+      1.5,
+      1.5
+    ],
+    [
+      "typography/letter-spacing/tighter",
+      "Typography",
+      "--tracking-tighter",
+      -0.019999999552965164,
+      -0.019999999552965164
+    ],
+    [
+      "typography/letter-spacing/tight",
+      "Typography",
+      "--tracking-tight",
+      -0.009999999776482582,
+      -0.009999999776482582
     ],
     [
       "typography/letter-spacing/normal",
@@ -501,37 +488,58 @@
       0
     ],
     [
-      "typography/letter-spacing/tight",
-      "Typography",
-      "--tracking-tight",
-      -0.01,
-      -0.01
-    ],
-    [
-      "typography/letter-spacing/tighter",
-      "Typography",
-      "--tracking-tighter",
-      -0.02,
-      -0.02
-    ],
-    [
       "typography/letter-spacing/wide",
       "Typography",
       "--tracking-wide",
-      0.01,
-      0.01
+      0.009999999776482582,
+      0.009999999776482582
     ],
     [
       "typography/letter-spacing/wider",
       "Typography",
       "--tracking-wider",
-      0.02,
-      0.02
+      0.019999999552965164,
+      0.019999999552965164
     ],
     [
-      "color/text/warning",
+      "color/text/brand-secondary",
       "Semantic",
-      "--warning",
+      "--brand-secondary",
+      "#a44c1d",
+      "#dc855d"
+    ],
+    [
+      "color/text/tertiary",
+      "Semantic",
+      "--subtle-foreground",
+      "#6e6055",
+      "#a99c8e"
+    ],
+    [
+      "color/icon/tertiary",
+      "Semantic",
+      "--subtle-foreground",
+      "#6e6055",
+      "#a99c8e"
+    ],
+    [
+      "color/fill/field-disabled",
+      "Semantic",
+      "--field-disabled",
+      "#efeae2",
+      "#302621"
+    ],
+    [
+      "color/field/border",
+      "Semantic",
+      "--input",
+      "#917a6d",
+      "#ffffff/36"
+    ],
+    [
+      "color/icon/category/3",
+      "Semantic",
+      "--category-amber",
       "#b45309",
       "#f3ae51"
     ]
@@ -716,6 +724,7 @@
       "color/Cream/200",
       "color/Cream/300",
       "color/Cream/400",
+      "color/Cream/450",
       "color/Cream/50",
       "color/Cream/500",
       "color/Green/100",
@@ -795,6 +804,7 @@
       "spacing/14",
       "spacing/16",
       "spacing/20",
+      "spacing/22",
       "spacing/24",
       "spacing/240",
       "spacing/28",
@@ -818,6 +828,17 @@
       "spacing/88",
       "spacing/92",
       "spacing/96"
+    ],
+    "Pointer": [
+      "sizing/control/height",
+      "sizing/control/height-lg",
+      "sizing/field/height-sm",
+      "sizing/field/width-budget",
+      "sizing/reaction/button",
+      "sizing/reaction/icon",
+      "sizing/slider/control",
+      "sizing/slider/thumb-rest",
+      "space/reaction/gap"
     ]
   }
 }

@@ -178,6 +178,18 @@ Al ir a aplicar ese cambio en Figma se vio que **`Cream/500` no está libre: es 
 
 **Por qué esto invierte el argumento anterior sin contradecirlo**: la objeción a `Cream/400` era que, con solo dos niveles, el secundario se comía el papel del apagado. En cuanto existe el tercero, `Cream/500` se queda haciendo ese trabajo y la objeción cae.
 
+#### La escalera de oscuro se equilibra con `Cream/450` (20-nov-2026)
+
+Con `Cream/400` el secundario quedaba casi pegado al texto: en luminosidad OKLCH la escalera de oscuro iba 0,94 → 0,88 → 0,70, un salto de 0,06 y otro de 0,18, y la rampa `Cream` del archivo (50–500) no tenía paso entre medias. Se probaron en el Playground (`Playground · Dark text ladder`) un paso nuevo de `Cream` y la escalera entera de `Neutral` (100 · 300 · 500: bien espaciada, pero más gris y rosada, contra la regla de calidez, y con el terciario a 4,7:1). Jorge eligió el paso nuevo.
+
+| Nivel en oscuro | Antes | Ahora | Contraste sobre el fondo / tarjeta / `muted` |
+|---|---|---|---|
+| `color/text` | `Cream/200` `#EFEAE2` (L 0,94) | igual | 15,74 / 14,45 / 12,31 |
+| `color/text/secondary` · `color/icon/secondary` | `Cream/400` `#E1D6C6` (L 0,88) | **`Cream/450` `#CEC2B3` (L 0,82)** | **10,76 / 9,88 / 8,42** |
+| `color/text/tertiary` · `color/icon/tertiary` | `Cream/500` `#A99C8E` (L 0,70) | igual | 7,03 / 6,45 / 5,50 |
+
+Saltos de 0,12 y 0,12, el secundario sigue en AAA sobre todos los fondos oscuros y la escalera conserva el tono cálido. `Cream/450` es un primitivo nuevo (oculto al publicar, sin scope, con descripción) y sale en la rampa de `01 · Colour`; `Cream/400` se queda con sus usos de claro (`color/border`). En código, `--muted-foreground` de `.dark` pasa a `oklch(0.8198 0.0247 73.56)`. El snapshot de Figma se regeneró y el mapa de tokens cuadra (71 de 71).
+
 #### Reparto de los 151 usos de `--muted-foreground` (27-ago-2026)
 
 El inventario reveló que dentro de un solo token convivían **ocho papeles distintos**, no dos niveles mal repartidos. El reparto se hizo por papel, no por contraste.
@@ -2485,7 +2497,7 @@ Lista de cosas que sé que faltan o que no han recibido pasada todavía. Se irá
 - [x] ~~Iconografía~~ → resuelto: lucide-react adoptado, ver Componentes · Iconografía.
 - [x] ~~Página `/seres-queridos/[personId]` (detalle)~~ → edición inline por secciones (header / intereses+notas / datos prácticos). Sin página `/seres-queridos/[personId]/edit` (redirige al perfil). Guard de cambios sin guardar con `beforeunload` + dialog. Ver "Edición inline (perfil de persona)".
 - [x] ~~Página `/seres-queridos/[personId]/gifts`~~ → resuelto: panel de configuración con Select de evento (solo eventos del perfil, presupuesto automático), tarjetas de tipo con iconos lucide y descripción, botón "Generar" top-right del panel, skeletons visibles (`bg-muted/40 animate-pulse`), tarjetas con stagger animation, botón X con toast permanente + deshacer, back link con `ArrowLeft`.
-- [ ] **Escalera de texto en oscuro desequilibrada**: 2.60 de hueco entre normal y secundario frente a 6.11 entre secundario y terciario, y la rampa `Cream` no tiene paso entre `400` y `500` para arreglarlo. O se rehace el espaciado de `Cream` en su tramo bajo, o el primer plano en oscuro pasa a salir de `Neutral` (bien espaciada, pero más griseada y choca con la regla de calidez). Ver «Reparto de los 151 usos».
+- [x] ~~**Escalera de texto en oscuro desequilibrada**~~ → resuelto el 20-nov-2026 con `Cream/450` para el secundario; ver «La escalera de oscuro se equilibra con `Cream/450`». Texto original:: 2.60 de hueco entre normal y secundario frente a 6.11 entre secundario y terciario, y la rampa `Cream` no tiene paso entre `400` y `500` para arreglarlo. O se rehace el espaciado de `Cream` en su tramo bajo, o el primer plano en oscuro pasa a salir de `Neutral` (bien espaciada, pero más griseada y choca con la regla de calidez). Ver «Reparto de los 151 usos».
 - [x] ~~**Cuatro elementos se apagan al pasar el ratón**~~ → resuelto el 20-nov-2026. En el badge no era deliberado: venía de shadcn desde el andamiaje (c4e6c9a), el de `outline` solo actúa si el badge es un enlace (`[a]:`) y los diez de PickPal son `span`, y `ghost` no se usa; los dos pasan a `hover:text-foreground` (en `outline` basta con quitar el cambio de color). Los enlaces legales de Ajustes, que ya van en `text-foreground`, se subrayan al señalarlos (`underline-offset-4 hover:underline`), como los enlaces de `/privacidad`, en vez de perder contraste. No queda ningún `hover:text-muted-foreground` en el código.
 - [ ] **Completar los 7 grupos de rol de `color/`**: falta crear `feedback` (los 7 de retroalimentación que siguen en `fill/`) y `bg/disabled` (el par duplicado `fill/field-disabled` + `field/fill-disabled`). Y `text`, `icon`, `border` y `field` crecen en el objetivo sin contenido asignado. Ver «`color/` se reduce a grupos de rol».
 - [ ] **`bg/category/*` guarda hues sólidos, no tintes**: el nombre dice `bg` pero el código los aplica al 10–15 % de alfa. Al definir los 8 miembros, decidir si el token guarda el hue o el tinte. Arrastra una colisión en código: la categoría ámbar necesita contenedor e icono, y `--category-amber` ya está ocupado por el icono mientras el contenedor sigue siendo `--chart-3`.
