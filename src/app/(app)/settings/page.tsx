@@ -433,14 +433,14 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-2">
           <Link
             href="/privacidad"
-            className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-muted-foreground pointer-coarse:min-h-11"
+            className="inline-flex items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:underline pointer-coarse:min-h-11"
           >
             Política de privacidad
             <ArrowUpRight className="size-4" aria-hidden />
           </Link>
           <Link
             href="/terminos"
-            className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-muted-foreground pointer-coarse:min-h-11"
+            className="inline-flex items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:underline pointer-coarse:min-h-11"
           >
             Términos y condiciones de uso
             <ArrowUpRight className="size-4" aria-hidden />
