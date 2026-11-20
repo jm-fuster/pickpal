@@ -808,7 +808,7 @@ export function GiftsPanel({
       <div
         aria-hidden={!showHeaderRegen}
         className={[
-          "fixed top-0 left-0 right-0 z-40 lg:hidden",
+          "fixed top-0 left-0 right-0 z-40 xl:hidden",
           "flex items-center justify-between gap-3 px-4 py-3",
           "bg-background/90 backdrop-blur-sm border-b border-border/40",
           "transition-all duration-200",

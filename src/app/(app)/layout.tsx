@@ -42,8 +42,8 @@ function AppShell({ children }: { children: React.ReactNode }) {
       >
         Saltar al contenido
       </a>
-      {/* Sidebar — lg+ */}
-      <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-background text-foreground border-r border-border h-screen sticky top-0">
+      {/* Sidebar — xl+: hasta 1280 no cabe junto al panel de ideas (docs/design-system.md) */}
+      <aside className="hidden xl:flex flex-col w-60 shrink-0 bg-background text-foreground border-r border-border h-screen sticky top-0">
         <div className="px-5 py-5 border-b border-border flex items-center justify-between">
           <Link href="/agenda" className="flex text-foreground">
             <Logo />
@@ -77,7 +77,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col min-w-0">
         {/* En táctil el menú y la campana miden 44: el relleno baja a 6 px para
             que la barra siga en 56. */}
-        <header className="lg:hidden flex items-center justify-between border-b px-4 py-3 pointer-coarse:py-1.5">
+        <header className="xl:hidden flex items-center justify-between border-b px-4 py-3 pointer-coarse:py-1.5">
           <div className="flex items-center gap-3">
             <MobileNav />
             <Link href="/agenda" className="flex">
