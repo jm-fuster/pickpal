@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 
 // El filtro por tipo de GiftsPanel, sin JS: radios nativos y una lista por
 // filtro, todas en el HTML. src/app/landing.css enseña la del radio marcado
-// con :has() ([data-switcher] / [data-set]); sin :has() se queda en «Todas».
+// con :has() ([data-switcher] / [data-set]); sin :has() se queda en «Todas» y
+// el filtro no se enseña, para que no parezca que no responde.
 // Las ocultas van con display:none, fuera del árbol accesible, y al volver a
 // mostrarse sus tarjetas repiten la entrada.
 //
