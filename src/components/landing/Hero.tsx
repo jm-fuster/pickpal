@@ -76,7 +76,7 @@ export function Hero() {
               a mt-10): el destello queda debajo de los botones, sin tocarlos, y
               fuera de la réplica. En oscuro el disco (--accent) es más claro que
               la tarjeta y la hacía leer hundida. */}
-          <HeroDisc className="pointer-events-none absolute -top-8 -right-16 size-[20rem] sm:size-[24rem] lg:-top-16 lg:-right-24 lg:size-[28rem] xl:size-[32rem] dark:opacity-70" />
+          <HeroDisc className="pointer-events-none absolute -top-8 -right-16 size-[20rem] sm:size-[24rem] lg:-top-16 lg:-right-24 lg:size-[28rem] xl:size-[32rem]" />
           <OccasionMock className="relative z-10" />
         </div>
       </div>

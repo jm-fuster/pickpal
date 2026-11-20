@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from "react";
-import { Check, Gift } from "lucide-react";
+import { Bell, Check, Gift } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 import { LogoMark } from "@/components/ui/LogoMark";
 import { MockFrame } from "@/components/landing/MockFrame";
 import { beat, reveal } from "@/components/landing/motion";
@@ -15,7 +16,45 @@ import { cn } from "@/lib/utils";
 // porque los hex del real no pasan AA (blanco sobre #F1704B, 2,93:1).
 
 const LABEL =
-  "Ejemplo de aviso por correo: en Ajustes está activado para dos semanas y dos días antes, y el correo que llega 14 días antes del cumpleaños de Marta trae el botón «Ideas para Marta».";
+  "Ejemplo de avisos: la campana de PickPal enseña el cumpleaños de Marta entre las próximas fechas de los próximos 30 días; en Ajustes el correo está activado para dos semanas y dos días antes, y el correo que llega 14 días antes trae el botón «Ideas para Marta».";
+
+/**
+ * La campana de la cabecera (NotificationBell) con su desplegable abierto:
+ * «Próximas fechas», la ventana de 30 días por omisión y una fila por fecha.
+ * Solo Marta, para no inventar a nadie; 14 días va en el gris de lo que no
+ * corre prisa (rojo es hoy y ámbar, siete días o menos).
+ */
+function BellScene() {
+  return (
+    <div className="space-y-2">
+      <div className="flex h-12 items-center justify-between rounded-xl border bg-background px-3">
+        <Logo size="sm" />
+        <span className="relative inline-flex size-8 items-center justify-center rounded-md bg-muted">
+          <Bell className="size-4" aria-hidden />
+          <span
+            className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground"
+            {...beat("pop", 150)}
+          >
+            1
+          </span>
+        </span>
+      </div>
+      <div className="ml-auto w-72 max-w-full overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10" {...beat("rise", 300)}>
+        <div className="border-b border-border/60 px-4 py-3">
+          <p className="text-sm font-medium">Próximas fechas</p>
+          <p className="text-xs text-muted-foreground">Próximos 30 días</p>
+        </div>
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{PERSON.name}</p>
+            <p className="truncate text-xs text-muted-foreground">{OCCASION.label}</p>
+          </div>
+          <span className="shrink-0 text-xs font-medium text-muted-foreground tabular-nums">14d</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** Las cuatro antelaciones de Ajustes (EMAIL_LEAD_OPTIONS), en su orden. */
 const LEADS: { label: string; state: "off" | "on" | "turning-on" }[] = [
@@ -73,35 +112,38 @@ export function RemindersMock({ className }: { className?: string }) {
   return (
     <MockFrame label={LABEL} className={cn("mt-8", className)} {...reveal()}>
       <div className="grid gap-4 md:grid-cols-2 md:items-start">
-        {/* Ajustes · Notificaciones por correo. Sin la línea «Los avisos
-            llegarán a…», que llevaría un email, ni la ayuda «Recibirás un
-            correo cada vez…», que ya cuenta el capítulo. */}
-        <div className="@container space-y-3 rounded-xl border bg-background p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm leading-none font-medium">Notificaciones por correo</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Recibe un email cuando se acerquen tus eventos importantes.
-              </p>
+        <div className="space-y-4">
+          <BellScene />
+          {/* Ajustes · Notificaciones por correo. Sin la línea «Los avisos
+              llegarán a…», que llevaría un email, ni la ayuda «Recibirás un
+              correo cada vez…», que ya cuenta el capítulo. */}
+          <div className="@container space-y-3 rounded-xl border bg-background p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm leading-none font-medium">Notificaciones por correo</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Recibe un email cuando se acerquen tus eventos importantes.
+                </p>
+              </div>
+              {/* El Switch encendido. Apagado debajo (bg-input, disco a la
+                  izquierda); el verde se funde y el disco se desliza. */}
+              <span className="relative inline-flex h-5 w-8 shrink-0 items-center rounded-full border border-transparent bg-input">
+                <span className="absolute -inset-px rounded-full bg-primary" {...beat("fade", 400)} />
+                <span
+                  className="relative block size-4 translate-x-[calc(100%-2px)] rounded-full bg-primary-foreground"
+                  {...beat("slide", 400)}
+                />
+              </span>
             </div>
-            {/* El Switch encendido. Apagado debajo (bg-input, disco a la
-                izquierda); el verde se funde y el disco se desliza. */}
-            <span className="relative inline-flex h-5 w-8 shrink-0 items-center rounded-full border border-transparent bg-input">
-              <span className="absolute -inset-px rounded-full bg-primary" {...beat("fade", 400)} />
-              <span
-                className="relative block size-4 translate-x-[calc(100%-2px)] rounded-full bg-primary-foreground"
-                {...beat("slide", 400)}
-              />
-            </span>
-          </div>
 
-          <div className="space-y-2 pt-1" {...beat("rise", 600)}>
-            <p className="text-sm leading-none font-medium">Cuándo enviarte el correo</p>
-            {/* @sm y no sm: la rejilla responde al ancho de la réplica. */}
-            <div className="grid grid-cols-1 gap-2 @sm:grid-cols-2">
-              {LEADS.map((lead) => (
-                <LeadRow key={lead.label} {...lead} />
-              ))}
+            <div className="space-y-2 pt-1" {...beat("rise", 600)}>
+              <p className="text-sm leading-none font-medium">Cuándo enviarte el correo</p>
+              {/* @sm y no sm: la rejilla responde al ancho de la réplica. */}
+              <div className="grid grid-cols-1 gap-2 @sm:grid-cols-2">
+                {LEADS.map((lead) => (
+                  <LeadRow key={lead.label} {...lead} />
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -216,7 +216,12 @@ export function OccasionCard({
           <p className="text-sm font-medium" {...countBeat}>
             Lo que tienes pensado<Count>{count}</Count>
           </p>
-          <div className="grid grid-cols-3 gap-2">{children}</div>
+          {/* Por debajo de @sm (tarjeta de 384 px; en el móvil mide ~318), como
+              el carrusel de la app: teselas de 144 px en fila y la tercera
+              asomando. Con tres columnas a 390 px de pantalla cada una medía
+              ~78 y los títulos iban a tres líneas. En escritorio (430) siguen
+              las tres columnas. */}
+          <div className="flex gap-2 overflow-hidden *:w-36 *:shrink-0 @sm:grid @sm:grid-cols-3 @sm:*:w-auto">{children}</div>
         </div>
       </div>
     </div>

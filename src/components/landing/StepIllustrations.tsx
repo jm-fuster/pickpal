@@ -174,7 +174,9 @@ export function HeroDisc({ className }: IllustrationProps) {
   return (
     <svg viewBox="0 0 100 100" aria-hidden data-decor className={className}>
       {/* transform-fill: en SVG la escala parte de la esquina del lienzo, no del círculo. */}
-      <circle cx="50" cy="50" r="46" className="fill-accent transform-fill origin-center" {...beat("settle", 0, 700)} />
+      {/* En oscuro, `accent` es casi neutro y con opacidad se leía gris turbio:
+          ámbar de chart-3 al 15 % sobre el fondo, tan sutil como la arena del claro. */}
+      <circle cx="50" cy="50" r="46" className="fill-accent transform-fill origin-center dark:fill-chart-3/15" {...beat("settle", 0, 700)} />
       <g className="transform-fill origin-center" {...beat("pop", 3000)}>
         <path d={sparklePath(50, 4, 4)} className="fill-chart-3" />
       </g>
