@@ -407,7 +407,7 @@ El archivo se auditó con tres criterios del usuario —que no dependa del códi
 
 > My phone reminds me of a birthday on the day, when it is too late to give anything good, and I am worse at the second half: a gift that fits the person. PickPal is the notebook I built to fix that. It keeps the people you care about next to their dates and, when one gets close, drafts nine gift ideas from what you know about them, with a budget for that occasion and links to the stores you actually use.
 >
-> This file is the case, start to finish: the problem, the decisions made before designing, how a date becomes a gift, what a ten-person private beta changed, six paths not taken, and an accessibility pass with its measurements. Behind it sits the design system that made it hold up: 349 variables in four layers with Light and Dark as real modes, 29 component sets documented on six pages, one per family, 73 icons, 25 text styles and 104 product frames, every screen in Light and Dark, with two click-through flows in each theme.
+> This file is the case, start to finish: the problem, the decisions made before designing, how a date becomes a gift, what a ten-person private beta changed, six paths not taken, and an accessibility pass with its measurements. Behind it sits the design system that made it hold up: 359 variables in four layers with Light and Dark as real modes, 29 component sets documented on six pages, one per family, 73 icons, 25 text styles and 110 product frames, every screen in Light and Dark, with two click-through flows in each theme.
 >
 > Documentation in English. The product is Spanish and its copy stays that way, as it ships.
 
