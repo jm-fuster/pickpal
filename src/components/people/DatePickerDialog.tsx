@@ -159,7 +159,7 @@ function ScrollColumn({
         aria-valuenow={valueMin + idx}
         aria-valuetext={(valueTextItems ?? items)[idx]}
         onKeyDown={handleKeyDown}
-        className="h-full overflow-y-scroll cursor-grab rounded-md outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:cursor-grabbing"
+        className="h-full overflow-y-scroll cursor-grab rounded-md outline-none select-none focus-visible:ring-3 focus-visible:ring-ring focus-visible:ring-inset active:cursor-grabbing"
         style={{ scrollbarWidth: "none" } as React.CSSProperties}
         onScroll={handleScroll}
         onMouseDown={handleMouseDown}

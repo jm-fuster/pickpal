@@ -128,7 +128,7 @@ interface AvatarPickerProps {
 
 const SELECTED = "border-primary ring-2 ring-primary ring-offset-2";
 const UNSELECTED = "border-transparent hover:border-subtle-foreground/40";
-const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const FOCUS = "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring";
 
 function pick<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];

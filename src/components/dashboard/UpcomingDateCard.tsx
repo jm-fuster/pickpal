@@ -61,7 +61,7 @@ export function UpcomingDateCard({
         <Link
           href={`/seres-queridos/${person._id}`}
           aria-label={`Ver ficha de ${person.name}`}
-          className="shrink-0 rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="shrink-0 rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Avatar className="size-12">
             {person.avatarUrl ? (

@@ -155,7 +155,7 @@ export function PersonHeader({
         type="button"
         onClick={() => onEdit("avatar")}
         aria-label="Cambiar la foto"
-        className="shrink-0 rounded-full transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="shrink-0 rounded-full transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         {avatarNode}
       </button>
@@ -169,7 +169,7 @@ export function PersonHeader({
           <button
             type="button"
             onClick={() => onEdit("name")}
-            className="relative -mx-2 inline-block max-w-full rounded-md px-2 text-left align-top transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:bottom-0 pointer-coarse:after:h-11"
+            className="relative -mx-2 inline-block max-w-full rounded-md px-2 text-left align-top transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:bottom-0 pointer-coarse:after:h-11"
           >
             <span className="block truncate">{savedName}</span>
           </button>
@@ -177,7 +177,7 @@ export function PersonHeader({
         <button
           type="button"
           onClick={() => onEdit("relationship")}
-          className="relative -mx-2 mt-0.5 rounded-md px-2 py-0.5 text-left text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:top-0 pointer-coarse:after:h-11"
+          className="relative -mx-2 mt-0.5 rounded-md px-2 py-0.5 text-left text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:top-0 pointer-coarse:after:h-11"
         >
           <span className="sr-only">Relación: </span>
           {relationshipLabel(relationship)}
