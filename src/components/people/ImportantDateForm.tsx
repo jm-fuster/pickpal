@@ -222,7 +222,7 @@ export function ImportantDateForm({
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className={`h-8 w-full rounded-md border bg-background px-3 text-sm text-left transition-colors hover:bg-muted/50 ${!watchedDay || !watchedMonth ? "text-subtle-foreground" : ""}`}
+            className={`h-8 pointer-coarse:h-11 w-full rounded-md border bg-background px-3 text-sm text-left transition-colors hover:bg-muted/50 ${!watchedDay || !watchedMonth ? "text-subtle-foreground" : ""}`}
           >
             {watchedDay && watchedMonth
               ? formatDate(watchedDay, watchedMonth, watchedYear)
@@ -282,10 +282,10 @@ export function ImportantDateForm({
         />
 
         <div className="flex gap-2">
-          <Button type="submit" size="sm" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Guardando…" : "Añadir evento"}
           </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={handleCancel}>
+          <Button type="button" variant="ghost" onClick={handleCancel}>
             Cancelar
           </Button>
         </div>
@@ -445,7 +445,7 @@ export function EditImportantDateInline({
         <button
           type="button"
           onClick={() => setPickerOpen(true)}
-          className={`md:hidden h-8 w-full rounded-md border bg-background px-3 text-sm text-left transition-colors hover:bg-muted/50 ${!watchedDay || !watchedMonth ? "text-subtle-foreground" : ""}`}
+          className={`md:hidden h-8 pointer-coarse:h-11 w-full rounded-md border bg-background px-3 text-sm text-left transition-colors hover:bg-muted/50 ${!watchedDay || !watchedMonth ? "text-subtle-foreground" : ""}`}
         >
           {watchedDay && watchedMonth
             ? formatDate(watchedDay, watchedMonth, watchedYear)
@@ -511,10 +511,10 @@ export function EditImportantDateInline({
       />
 
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Guardando…" : "Guardar cambios"}
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+        <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
       </div>

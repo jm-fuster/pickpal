@@ -11,10 +11,12 @@ import { cva } from "class-variance-authority"
 // no es `transition-all` para que el contorno salga de golpe, como en un enlace,
 // y no crezca desde el borde en 150 ms.
 //
-// Táctil en dos niveles (pointer-coarse; «Touch & fit», 21-oct-2026): los
-// tamaños por defecto (default, lg, icon, icon-lg) crecen a 44 px, y los
-// pequeños (xs, sm, icon-xs, icon-sm) se ven igual y ganan una zona de toque
-// invisible de 44 px con un ::after, como Switch. Con ratón no cambia nada.
+// Táctil (pointer-coarse; «Touch & fit», 21-oct-2026): los tamaños por defecto
+// (default, lg, icon, icon-lg) crecen a 44 px. `sm` crece a 36 px con texto de
+// 14 e icono de 16 (21-nov-2026: a 28 px, con su zona invisible de 44, se
+// tocaba bien pero se veía diminuto) y su ::after cubre los 4 px que faltan
+// hasta 44. xs, icon-xs e icon-sm se ven igual y ganan esa zona invisible de
+// 44 px con un ::after, como Switch. Con ratón no cambia nada.
 // `relative` va sin variante: con `pointer-coarse:relative`, tailwind-merge no
 // lo quitaría frente al `absolute` de un botón posicionado (cerrar un diálogo).
 const buttonVariants = cva(
@@ -37,7 +39,7 @@ const buttonVariants = cva(
         default:
           "h-8 gap-2 px-3 pointer-coarse:h-11 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         xs: "relative h-6 gap-1 pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3",
-        sm: "relative h-7 gap-1 pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2 rounded-[min(var(--radius-md),12px)] px-3 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3.5",
+        sm: "relative h-7 gap-1 pointer-coarse:h-9 pointer-coarse:gap-1.5 pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-1 rounded-[min(var(--radius-md),12px)] px-3 text-[0.8rem] pointer-coarse:text-sm in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3.5 pointer-coarse:[&_svg:not([class*='size-'])]:size-4",
         lg: "h-9 gap-2 px-3 pointer-coarse:h-11 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         icon: "size-8 pointer-coarse:size-11",
         "icon-xs":

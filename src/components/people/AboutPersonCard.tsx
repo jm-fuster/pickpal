@@ -55,10 +55,6 @@ function useSaveText(save: BlockProps["save"], initial: AboutFields) {
   };
 }
 
-// Los botones de la cabecera de un bloque: 36 px en el móvil, para el dedo;
-// 28 desde sm, como el resto de botones pequeños.
-const BLOCK_BUTTON = "h-9 sm:h-7";
-
 /**
  * Un bloque de datos de la persona (docs/design-system.md · «Una forma por
  * acción»). En lectura, texto: sin bordes, sin botones por campo y sin los
@@ -84,7 +80,7 @@ function EditableCard({
   return (
     <Card className="border-border/60 shadow-sm">
       <CardContent className="space-y-3 p-5">
-        <div className="flex min-h-9 items-center justify-between gap-2 sm:min-h-7">
+        <div className="flex min-h-7 items-center justify-between gap-2 pointer-coarse:min-h-9">
           <h2 className="text-base font-semibold">{title}</h2>
           {editing ? (
             <div className="flex items-center gap-2.5">
@@ -95,7 +91,6 @@ function EditableCard({
                   restoreFocus();
                   onDone();
                 }}
-                className={BLOCK_BUTTON}
               >
                 Listo
               </Button>
@@ -106,7 +101,6 @@ function EditableCard({
               size="sm"
               variant="outline"
               onClick={onEdit}
-              className={BLOCK_BUTTON}
               aria-label={`Editar ${title.toLowerCase()}`}
             >
               <PencilLine aria-hidden />

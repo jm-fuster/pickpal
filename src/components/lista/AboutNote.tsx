@@ -121,10 +121,10 @@ function NoteEditor({
           La ve quien tiene acceso a tu lista.
         </span>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={onCancel} disabled={saving}>
+          <Button variant="outline" onClick={onCancel} disabled={saving}>
             Cancelar
           </Button>
-          <Button size="sm" className="hover:bg-primary/80" onClick={save} disabled={saving}>
+          <Button className="hover:bg-primary/80" onClick={save} disabled={saving}>
             {saving ? "Guardando…" : "Guardar"}
           </Button>
         </div>

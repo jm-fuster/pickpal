@@ -21,7 +21,7 @@ export function AddRowButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-2 rounded-lg border border-dashed border-input/50 p-3 text-sm text-muted-foreground transition-colors hover:border-input hover:bg-muted/40 hover:text-foreground",
+        "flex w-full items-center gap-2 rounded-lg border border-dashed border-input p-3 text-sm text-foreground transition-colors hover:bg-muted/40",
         className,
       )}
     >

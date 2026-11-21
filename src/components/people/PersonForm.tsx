@@ -206,7 +206,7 @@ function AddEventForm({
         <button
           type="button"
           onClick={() => setPickerOpen(true)}
-          className={`h-8 w-full rounded-md border bg-background px-3 text-sm text-left transition-colors hover:bg-muted/50 ${!watchedDay || !watchedMonth ? "text-subtle-foreground" : ""}`}
+          className={`h-8 pointer-coarse:h-11 w-full rounded-md border bg-background px-3 text-sm text-left transition-colors hover:bg-muted/50 ${!watchedDay || !watchedMonth ? "text-subtle-foreground" : ""}`}
         >
           {watchedDay && watchedMonth
             ? formatEventDate(watchedDay, watchedMonth, watchedYear)
@@ -266,8 +266,8 @@ function AddEventForm({
       />
 
       <div className="flex gap-2">
-        <Button type="button" size="sm" onClick={handleSubmit(onAdd)}>Añadir evento</Button>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+        <Button type="button" onClick={handleSubmit(onAdd)}>Añadir evento</Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
           Cancelar
         </Button>
       </div>
@@ -364,7 +364,7 @@ function EventsSection({
           <button
             type="button"
             onClick={() => setShowAddForm(true)}
-            className="flex w-full items-center gap-2 rounded-lg border border-dashed border-input/50 p-3 text-sm text-muted-foreground transition-colors hover:border-input hover:bg-muted/40 hover:text-foreground"
+            className="flex w-full items-center gap-2 rounded-lg border border-dashed border-input p-3 text-sm text-foreground transition-colors hover:bg-muted/40"
           >
             <Plus className="size-4" aria-hidden />
             Añadir evento

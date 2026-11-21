@@ -85,7 +85,7 @@ export function PersonHeader({
               if (url) save({ avatarUrl: url });
             }}
             trigger={
-              <Button variant="outline" size="sm" autoFocus={focus === "avatar"} className="h-9 sm:h-7">
+              <Button variant="outline" size="sm" autoFocus={focus === "avatar"}>
                 Cambiar foto
               </Button>
             }
@@ -135,7 +135,6 @@ export function PersonHeader({
           <span className="text-xs text-muted-foreground">Se guarda solo</span>
           <Button
             size="sm"
-            className="h-9 sm:h-7"
             onClick={() => {
               restoreFocus();
               onDone();

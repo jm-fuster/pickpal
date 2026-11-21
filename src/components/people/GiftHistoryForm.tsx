@@ -170,10 +170,10 @@ export function GiftHistoryForm({ personId }: { personId: Id<"people"> }) {
       </div>
 
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Guardando…" : "Añadir al historial"}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={handleCancel}>
+        <Button type="button" variant="ghost" onClick={handleCancel}>
           Cancelar
         </Button>
       </div>
@@ -325,10 +325,10 @@ export function EditGiftHistoryInline({
       </div>
 
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Guardando…" : "Guardar cambios"}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onClose}>
+        <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
       </div>
