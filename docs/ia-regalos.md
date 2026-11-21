@@ -208,22 +208,26 @@ await fetchMutation(api.recommendations.upsert,
 
 ## Diseño del prompt (`buildPrompt`)
 
-```
-Genera EXACTAMENTE 9 ideas de regalo para la siguiente persona.
+Vive en [`src/lib/giftPrompt.ts`](../src/lib/giftPrompt.ts) desde el 21-nov-2026 (antes, dentro de `route.ts`).
 
-Persona:
-- Nombre: {name}
+```
+Genera EXACTAMENTE 9 ideas de regalo para la siguiente ocasión y persona.
+
+Ocasión: {occasionLabel}
+
+Persona (su ficha):
+- Nombre: {nombre de pila}
 - Relación: {relationship}
 - Intereses: {interests} | sin definir
 [Marcas favoritas: {favoriteBrands} — solo si están definidas]
 - Notas: {notes} | ninguna
 - Presupuesto: entre Xmin€ y Xmax€ | sin límite definido
-- Ocasión: {occasionLabel}
 [Talla de zapato / ropa / alergias / dislikes — solo si están definidos]
 [Historial de regalos anteriores — hasta 10 entradas, con reacción]
 [Ideas ya descartadas — hasta 40 títulos: no repetirlas; sus intereses siguen valiendo]
 
 Reglas:
+[La ocasión manda: decidir para quién y para qué es el regalo — ver abajo]
 [según giftType: física / experiencia / tiempo-juntos / sorprendeme]
 [Regla de marcas favoritas — solo si hay marcas definidas]
 - Los precios deben respetar el presupuesto indicado cuando sea posible.
@@ -231,6 +235,32 @@ Reglas:
 - "category" array JSON de 1-3 intereses concretos del perfil (ej: ["Senderismo","Fotografía"]). La card muestra como máx. 3 chips en total (marca + categorías).
 - Responde en español.
 ```
+
+### La ocasión manda (21-nov-2026)
+
+La ocasión es texto libre (máx. 40 caracteres: «Nacimiento de Leo», «Boda», «Casa nueva»), no un tipo. Hasta el 21-nov-2026 iba como `- Ocasión:` dentro del bloque Persona y sin ninguna regla, mientras que intereses, marcas y tallas tenían reglas que pedían usarlos. Resultado: en un evento «Nacimiento» en la ficha de la futura madre salían ideas para ella, no para el bebé.
+
+Ahora la ocasión va en su propio bloque, delante de la ficha, y la primera regla pide **decidir para quién y para qué es el regalo** antes que nada:
+
+- Si la etiqueta nombra a otra persona («Cumpleaños de Leo» en la ficha de Ana), el regalo es para esa persona. Como no se sabe su edad ni sus gustos, ni se le aplican los de la ficha ni se propone nada que exija ser adulto (alcohol, navajas).
+- Cumpleaños, santo, aniversario, Navidad, Reyes, Día de la Madre o del Padre, San Valentín o una fecha sin más contexto: el regalo es para la persona de la ficha y sus gustos mandan, como siempre.
+- Nacimiento o llegada de un bebé: la mayoría para el bebé; una o dos para que la familia se cuide esa etapa.
+- Bautizo, comunión o fiesta de un niño: para el niño. Boda o pedida: para la pareja. Mudanza o casa nueva: para el hogar. Jubilación, graduación, oposiciones, trabajo nuevo o viaje: que celebre ese momento.
+- Cualquier otra: la etiqueta es el motivo del regalo y orienta todas las ideas.
+
+Cuando la ocasión manda, los intereses **solo matizan el estilo** (vajilla infantil de cerámica para alguien a quien le gusta la cerámica), **las tallas y las marcas solo valen para lo que sea para la persona de la ficha**, `category` describe el regalo («Ropa de bebé», «Menaje») y `description` deja claro para quién es. No se manda nada nuevo a Gemini: la etiqueta ya iba en el prompt.
+
+**Medido el 21-nov-2026** con `gemini-3.5-flash`, la tanda mezclada y la misma ficha (Ana, familia; cerámica, senderismo y novela negra; Patagonia; tallas M y 38; 30–60 €):
+
+| Ocasión | Antes | Después |
+|---|---|---|
+| Nacimiento de Leo | 1 de 9 para el bebé o la familia (un masaje para la madre); riñonera Patagonia, bastones, novela negra | 9 de 9 y 8 de 9 en dos tiradas: arrullo, móvil de cuna, pijamas, sesión de fotos, pack posparto, comida para congelar |
+| Boda | 0 de 9 para la pareja; una camiseta de su talla | 9 de 9 para la pareja y su casa |
+| Casa nueva | 4 de 9 para el hogar | 7 de 9 |
+| Cumpleaños (control) | sus gustos, sus marcas, su talla | igual |
+| Cumpleaños de Leo | — | regalos para cualquier edad; sin la regla de «no sabes su edad» salían una cata de cervezas y una navaja |
+
+Es una tirada por ocasión (dos en el nacimiento), así que sirve para ver la dirección, no para dar un porcentaje. **Lo que no resuelve**: que el bebé tenga su propia ficha. Para sus cumpleaños siguientes, lo correcto es crearle una; ofrecerlo después de un nacimiento queda como idea en la tarea de ClickUp.
 
 ### Marcas favoritas (`favoriteBrands`)
 
@@ -467,6 +497,7 @@ Los números concretos de RPM/RPD del free tier **ya no aparecen en la doc de Go
 | [`src/components/gifts/GiftRecommendationCard.tsx`](../src/components/gifts/GiftRecommendationCard.tsx) | Tarjeta de idea: título, descripción, precio, categoría, chips de tienda, botones 👍/👎 |
 | [`src/components/gifts/GiftsPanel.tsx`](../src/components/gifts/GiftsPanel.tsx) | Orquesta generación, caché, estado local de ideas, `handleSave` y `handleDiscard` |
 | [`src/app/api/recommendations/route.ts`](../src/app/api/recommendations/route.ts) | API route: fetches Convex, llama a Gemini, inyecta `dislikedCategories`, persiste resultado |
+| [`src/lib/giftPrompt.ts`](../src/lib/giftPrompt.ts) | `buildPrompt`: el texto que recibe Gemini. Fuera del route handler porque un `route.ts` de Next solo exporta métodos HTTP; así se testea (`giftPrompt.test.ts`) y se puede ejecutar contra Gemini sin la API |
 | [`convex/recommendations.ts`](../convex/recommendations.ts) | `getByPersonOccasion`, `upsert`, `removeIdea` (actualiza `discardedTitles` + `dislikedCategories`) |
 | [`convex/savedIdeas.ts`](../convex/savedIdeas.ts) | `save`, `remove`, `getByPerson` — ideas que el usuario quiere recordar (👍) |
 | [`convex/recommendationUsage.ts`](../convex/recommendationUsage.ts) | Rate limit: `check` (query sin efecto) + `consume` (mutation, solo tras éxito) |
