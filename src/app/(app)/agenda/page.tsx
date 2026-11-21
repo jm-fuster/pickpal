@@ -11,6 +11,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { DateGroupedList } from "@/components/dashboard/DateGroupedList";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { IncomingListsCard } from "@/components/lista/IncomingListsCard";
+import { BirthOffersCard } from "@/components/people/BirthOffersCard";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { computeDaysUntil, monthsWindowDays } from "@/lib/dates";
@@ -72,6 +73,7 @@ export default function DashboardPage() {
           es fijo y empieza en left-[48.5rem], así que una tarjeta a todo el
           ancho quedaría tapada en cuanto se abren las ideas de una fecha. */}
       <IncomingListsCard className="xl:max-w-[480px] xl:px-1" />
+      <BirthOffersCard className="xl:max-w-[480px] xl:px-1" />
 
       {!ready || upcoming === undefined ? (
         <div className="space-y-3" role="status" data-loading>

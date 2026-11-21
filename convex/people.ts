@@ -12,7 +12,7 @@ import {
   personHasAccess,
 } from "./personShares";
 
-const CREATE_PERSON_DAILY_LIMIT = 50;
+export const CREATE_PERSON_DAILY_LIMIT = 50;
 
 /** Los textos opcionales de la ficha que se pueden vaciar al editar. */
 const CLEARABLE_PERSON_FIELDS = ["notes", "shoeSize", "clothingSize", "allergies", "dislikes"] as const;

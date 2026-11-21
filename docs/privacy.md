@@ -47,6 +47,8 @@ El usuario introduce información sobre personas de su entorno (amigos, familia,
 
 **Importante:** estos datos **no son del usuario, son de terceros**. Ver sección 7.
 
+**La ficha del bebé (21-nov-2026).** Cuando pasa un nacimiento apuntado en una ficha, la app ofrece crearle una al bebé con su nombre, la relación y su cumpleaños con año (`convex/birthOffers.ts`). No es un dato nuevo ni una finalidad nueva: es una ficha más, con los mismos campos y la misma base que las que se crean a mano, y ya se podían crear fichas de niños. Lo que cambia es que habrá más fichas de menores; por eso la oferta no recoge nada más (ni foto, ni notas, ni gustos) y la ficha sale vacía de todo lo demás. Al evento del nacimiento se le añade un campo de estado (`birthOffer`: «Ahora no» o ficha creada), que no es un dato de nadie y sale en la exportación con el resto del evento. Ver §10 sobre la franja de edad que, con ese año, recibe Gemini desde el 8-dic-2026.
+
 ### 2.3 Datos de uso
 
 - Contadores de cuota diaria de recomendaciones (anti-abuso)

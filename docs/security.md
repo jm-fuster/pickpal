@@ -58,6 +58,21 @@ dueño** — usan `assertIsOwner`, que sí es la comparación estricta de toda l
 vida. Compartir amplía casi todos los permisos, pero no estos dos: ver
 `docs/dudas.md` → "Compartir personas entre usuarios", decisión 1.
 
+**La ficha del bebé, también solo del dueño (21-nov-2026).** `birthOffers.pending`
+solo recorre las fichas propias (índice `by_user`), y `birthOffers.answer` y
+`birthOffers.createProfile` pasan por `assertIsOwner` con la ficha del
+nacimiento, con el mismo «Evento no encontrado.» si no existe que si es de otro
+o solo la tienes compartida. Motivo: la respuesta se guarda en el propio evento
+(`importantDates.birthOffer`), que es de todos los que ven la ficha, y el
+«Ahora no» de un invitado se la quitaría al dueño. `birthOffer` solo lo escriben
+esas dos mutations: `importantDates.update` no lo acepta. `createProfile`
+comprueba además que el evento sea de verdad un nacimiento (`isBirthEvent`, la
+misma regla que el cliente), valida nombre y relación con `validatePersonInput`
+y la fecha con `assertValidDate` y `validateDateInput` (no futura), gasta
+`create_person` y `create_date` como si se hicieran a mano, y marca la oferta
+como `created` en la misma transacción, así que dos toques no crean dos fichas.
+Ver `convex/birthOffers.ts` y sus tests.
+
 **«Mi lista» no usa este patrón, a propósito.** Una lista la lee quien tiene
 una fila en `listShares` con el dueño de la lista, y eso es lo único que se
 comprueba: aunque el lector la guarde en una ficha, tener acceso a esa ficha

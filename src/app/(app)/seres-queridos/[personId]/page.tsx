@@ -325,6 +325,7 @@ function PersonDetailContent({
         >
           <PersonEventsCard
             personId={id}
+            person={isOwner ? { name: person.name, relationship: person.relationship } : null}
             dates={dates}
             formOpen={dateFormOpen}
             onFormOpenChange={setDateFormOpen}

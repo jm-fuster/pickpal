@@ -35,6 +35,12 @@ export default defineSchema({
     recurring: v.optional(v.boolean()),
     budgetMin: v.optional(v.number()),
     budgetMax: v.optional(v.number()),
+    // Solo en un nacimiento (`isBirthEvent`, convex/birth.ts): qué se hizo con
+    // la oferta de hacerle su ficha al bebé. Lo escribe solo `birthOffers.ts`;
+    // `update` no lo acepta. Sin valor, aún no se ha respondido.
+    birthOffer: v.optional(
+      v.union(v.literal("hidden"), v.literal("dismissed"), v.literal("created")),
+    ),
   }).index("by_person", ["personId"]),
 
   userSettings: defineTable({

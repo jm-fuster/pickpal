@@ -11,6 +11,16 @@ import { ActionMenu } from "@/components/people/ActionMenu";
 import type { ImportantDate } from "@/components/people/ideaParts";
 import { formatBudget } from "@/lib/nextOccasion";
 import { formatEventDate } from "@/lib/savedIdeaGroups";
+import { useMutation } from "convex/react";
+import { toast } from "sonner";
+import { api } from "../../../convex/_generated/api";
+import { babyNameFromLabel, showsInProfile } from "../../../convex/birth";
+import { Button } from "@/components/ui/button";
+import { userErrorMessage } from "@/lib/errors";
+
+const BirthProfileSheet = dynamic(() =>
+  import("@/components/people/BirthProfileSheet").then((m) => m.BirthProfileSheet),
+);
 
 // El formulario (react-hook-form, slider, selector de fecha) va en su propio
 // chunk, que la página pide en cuanto monta; mientras llega, la fila «Añadir
@@ -30,12 +40,19 @@ const EditImportantDateInline = dynamic(() => loadImportantDateForm().then((m) =
  */
 export function PersonEventsCard({
   personId,
+  person,
   dates,
   formOpen,
   onFormOpenChange,
   onRemove,
 }: {
   personId: Id<"people">;
+  /**
+   * Solo si eres el dueño: entonces, bajo un nacimiento que ya ha pasado, se
+   * ofrece hacerle su ficha al bebé (`BirthProfileOffer`). Quien tiene la
+   * ficha compartida no la ve: la respuesta se guarda en el evento.
+   */
+  person: { name: string; relationship: string } | null;
   dates: ImportantDate[];
   /** «Añadir una fecha» en la cabecera abre este formulario. */
   formOpen: boolean;
@@ -90,6 +107,9 @@ export function PersonEventsCard({
                       />
                     </div>
                   )}
+                  {person && editing !== d._id && showsInProfile(d) && (
+                    <BirthProfileOffer date={d} person={person} />
+                  )}
                 </li>
               );
             })}
@@ -98,5 +118,62 @@ export function PersonEventsCard({
         <ImportantDateForm personId={personId} open={formOpen} onOpenChange={onFormOpenChange} />
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Bajo un nacimiento que ya ha pasado, en la ficha de su madre o su padre
+ * (opción B de `Playground · Baby profile offer`, 21-nov-2026). Es el sitio
+ * fijo: sigue aquí aunque se diga «Ahora no» en la agenda; «Ahora no» aquí la
+ * quita para siempre. Ver docs/design-system.md · «Ficha del bebé».
+ */
+function BirthProfileOffer({
+  date,
+  person,
+}: {
+  date: ImportantDate;
+  person: { name: string; relationship: string };
+}) {
+  const answer = useMutation(api.birthOffers.answer);
+  const [creating, setCreating] = useState(false);
+  const babyName = babyNameFromLabel(date.label);
+  return (
+    <div className="mt-3 space-y-2.5 rounded-xl bg-[color-mix(in_oklab,var(--secondary)_8%,var(--card))] p-3 ring-1 ring-secondary/40">
+      <p className="text-sm font-medium">
+        {babyName ? `${babyName} ya ha nacido.` : "El bebé ya ha nacido."} ¿Le haces su propia ficha?
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" className="hover:bg-primary/80" onClick={() => setCreating(true)}>
+          Hacerle su ficha
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() =>
+            answer({ importantDateId: date._id, answer: "dismissed" }).catch((err) =>
+              toast.error(userErrorMessage(err)),
+            )
+          }
+        >
+          Ahora no
+        </Button>
+      </div>
+      {creating && (
+        <BirthProfileSheet
+          subject={{
+            importantDateId: date._id,
+            label: date.label,
+            month: date.month,
+            day: date.day,
+            year: date.year!,
+            personName: person.name,
+            relationship: person.relationship,
+            babyName,
+          }}
+          open
+          onOpenChange={setCreating}
+        />
+      )}
+    </div>
   );
 }

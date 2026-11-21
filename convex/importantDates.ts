@@ -7,9 +7,9 @@ import { Doc, Id } from "./_generated/dataModel";
 import { assertPersonAccess, personHasAccess } from "./personShares";
 import { normalizeLabel } from "./eventLabels";
 
-const CREATE_DATE_DAILY_LIMIT = 100;
+export const CREATE_DATE_DAILY_LIMIT = 100;
 
-function assertValidDate(month: number, day: number, year?: number) {
+export function assertValidDate(month: number, day: number, year?: number) {
   if (!Number.isInteger(month) || month < 1 || month > 12) {
     throw new ConvexError("Mes inválido (1-12).");
   }

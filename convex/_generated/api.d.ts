@@ -10,6 +10,8 @@
 
 import type * as account from "../account.js";
 import type * as auth from "../auth.js";
+import type * as birth from "../birth.js";
+import type * as birthOffers from "../birthOffers.js";
 import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
 import type * as eventLabels from "../eventLabels.js";
@@ -39,6 +41,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   account: typeof account;
   auth: typeof auth;
+  birth: typeof birth;
+  birthOffers: typeof birthOffers;
   crons: typeof crons;
   emails: typeof emails;
   eventLabels: typeof eventLabels;
