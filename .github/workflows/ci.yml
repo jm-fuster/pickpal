@@ -11,7 +11,7 @@ on:
 # regalarle el token a código de terceros. Cada job pide lo suyo, abajo.
 
 jobs:
-  # Red de seguridad: typecheck + tests en cada push y PR.
+  # Red de seguridad: typecheck, tests, lint y build en cada push y PR.
   test:
     runs-on: ubuntu-latest
     # Solo leer el código. No empuja, no comenta, no mergea.
@@ -37,6 +37,19 @@ jobs:
       # el CI pero rompen el deploy en Vercel.
       - run: npx tsc -p convex/tsconfig.json --noEmit
       - run: npm test
+      # Lint y build, para que un fallo no se vea por primera vez en el deploy
+      # de Vercel: un major de tooling (ESLint 10, TypeScript 7) rompe los dos
+      # sin que tsc ni vitest lo noten, y el build es lo único que comprueba
+      # qué exporta un route.ts. Van en este job, así que el auto-merge de
+      # Dependabot (`needs: test`) también espera por ellos.
+      - run: npm run lint
+      # Sin secretos: el build solo necesita una URL de Convex con forma
+      # válida para prerenderizar las páginas que montan el ConvexProvider.
+      # No se conecta a ella. Clerk no pide clave para compilar.
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_CONVEX_URL: https://ci-placeholder.convex.cloud
+          NEXT_TELEMETRY_DISABLED: "1"
 
   # Auto-merge SOLO para PRs de Dependabot de tipo patch/minor.
   # `needs: test` garantiza que esto solo corre si los tests pasaron en verde:

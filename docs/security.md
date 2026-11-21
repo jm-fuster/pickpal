@@ -650,7 +650,7 @@ Antes de mergear, verifica que el cambio no rompe ninguno de estos:
 ### Si tocas `package.json` o el lockfile:
 - [ ] Ningún aviso nuevo sin resolver ni justificar (`npm audit`); si se acepta uno, va a la tabla de avisos aceptados.
 - [ ] No se ha ejecutado `npm audit fix --force`.
-- [ ] `npm run lint`, `tsc` y `npm run build` pasan (los majors de tooling rompen el build sin que el CI lo note — el CI solo corre vitest).
+- [ ] `npm run lint`, `tsc` y `npm run build` pasan. Desde el 21-nov-2026 el CI corre los tres (y los tests) en cada push y PR, y el auto-merge de Dependabot espera por ellos; en local, comprobarlo antes de empujar ahorra un rojo en `main`. El build del CI no lleva secretos: solo `NEXT_PUBLIC_CONVEX_URL` de relleno.
 
 ### Si tocas `.github/workflows/`:
 - [ ] Ningún bloque `permissions` a nivel de workflow — cada job declara el suyo.
