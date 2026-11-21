@@ -132,7 +132,9 @@ export default function TermsPage() {
             <li>
               Para generar las ideas se envía a Google (Gemini) la ficha de la
               persona: nombre de pila, intereses, marcas, notas, tallas,
-              restricciones, presupuesto, ocasión e historial de regalos. El
+              restricciones, presupuesto, ocasión, historial de regalos y,
+              desde el 8 de diciembre de 2026, una franja de edad aproximada si
+              es menor y su cumpleaños tiene año. El
               detalle está en la{" "}
               <Link
                 href="/privacidad"
@@ -316,7 +318,7 @@ export default function TermsPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 14 de octubre de 2026.
+          Última actualización: 21 de noviembre de 2026.
         </p>
       </main>
 

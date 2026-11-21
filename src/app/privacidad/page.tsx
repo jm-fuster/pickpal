@@ -157,7 +157,12 @@ export default function PrivacyPage() {
               marcas favoritas, tus notas tal como las escribiste, las tallas,
               las alergias o restricciones, lo que no le gusta, el presupuesto,
               la ocasión, el historial de regalos anteriores con su reacción y
-              el título de las ideas que te propuso y descartaste. Google trata estos
+              el título de las ideas que te propuso y descartaste. Desde el 8 de
+              diciembre de 2026, si es menor de edad y tienes apuntado su
+              cumpleaños con año, recibe también una franja de edad aproximada
+              (por ejemplo, &laquo;de 3 a 5 años&raquo;) para que las ideas le
+              vayan bien a su edad: nunca su fecha de nacimiento ni su edad
+              exacta. Google trata estos
               datos como encargado: no los usa para entrenar ni mejorar sus modelos
               y solo los conserva hasta 55 días para detectar abusos de su
               servicio; únicamente si sus sistemas marcan un posible abuso
@@ -533,7 +538,7 @@ export default function PrivacyPage() {
         </section>
 
         <p className="text-xs text-muted-foreground">
-          Última actualización: 20 de noviembre de 2026.
+          Última actualización: 21 de noviembre de 2026.
         </p>
       </main>
 

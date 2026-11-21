@@ -35,6 +35,18 @@ describe("buildPrompt", () => {
     expect(prompt("Casa nueva", { ...ana, favoriteBrands: [] })).not.toContain("Marcas favoritas:");
   });
 
+  it("sin franja de edad no dice nada de la edad", () => {
+    const p = prompt("Cumpleaños");
+    expect(p).not.toContain("Edad aproximada");
+    expect(p).not.toContain("es menor");
+  });
+
+  it("con franja de edad la pone en la ficha y pide ideas adecuadas para esa edad", () => {
+    const p = buildPrompt({ ...ana, name: "Leo" }, undefined, undefined, "Cumpleaños", "sorprendeme", [], [], "de 1 a 2 años");
+    expect(p).toContain("- Edad aproximada: de 1 a 2 años");
+    expect(p).toContain("Leo es menor (edad aproximada: de 1 a 2 años)");
+  });
+
   it("solo manda el nombre de pila", () => {
     const p = prompt("Cumpleaños");
     expect(p).toContain("- Nombre: Ana");

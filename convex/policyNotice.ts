@@ -43,12 +43,20 @@ export type PolicyNotice = {
  * Los avisos que existen. Uno por cambio sustancial: añade uno nuevo en vez de
  * editar uno ya enviado, o quien lo recibió no volverá a recibirlo.
  *
- * Vacío desde el 20-nov-2026: los dos de octubre (`2026-10-mi-lista` y
- * `2026-10-ideas-propias`) se retiraron sin enviar, porque sus cambios ya
- * estaban publicados en `/privacidad` y un correo con fecha de entrada en
- * vigor futura habría sido falso. No reutilices esos identificadores.
+ * Los dos de octubre (`2026-10-mi-lista` y `2026-10-ideas-propias`) se
+ * retiraron sin enviar el 20-nov-2026, porque sus cambios ya estaban
+ * publicados en `/privacidad` y un correo con fecha de entrada en vigor futura
+ * habría sido falso. No reutilices esos identificadores.
  */
-export const NOTICES: Record<string, PolicyNotice> = {};
+export const NOTICES: Record<string, PolicyNotice> = {
+  // En vigor el 8-dic-2026 (AGE_BAND_FROM en src/lib/ageBand.ts).
+  "2026-12-franja-edad": {
+    id: "2026-12-franja-edad",
+    changes: [
+      "Cuando pidas ideas de regalo para un menor cuyo cumpleaños tengas apuntado con año, Google Gemini recibirá también una franja de edad aproximada (por ejemplo, «de 3 a 5 años») para que las ideas sean adecuadas a su edad. Nunca su fecha de nacimiento ni su edad exacta, y de un adulto no se envía nada nuevo.",
+    ],
+  },
+};
 
 /**
  * La fecha de entrada en vigor, en `YYYY-MM-DD`, ya validada: existe de verdad

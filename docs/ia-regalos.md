@@ -217,6 +217,7 @@ Ocasión: {occasionLabel}
 
 Persona (su ficha):
 - Nombre: {nombre de pila}
+[Edad aproximada: {franja} — solo menores con cumpleaños con año, desde el 8-dic-2026]
 - Relación: {relationship}
 - Intereses: {interests} | sin definir
 [Marcas favoritas: {favoriteBrands} — solo si están definidas]
@@ -261,6 +262,18 @@ Cuando la ocasión manda, los intereses **solo matizan el estilo** (vajilla infa
 | Cumpleaños de Leo | — | regalos para cualquier edad; sin la regla de «no sabes su edad» salían una cata de cervezas y una navaja |
 
 Es una tirada por ocasión (dos en el nacimiento), así que sirve para ver la dirección, no para dar un porcentaje. **Lo que no resuelve**: que el bebé tenga su propia ficha. Para sus cumpleaños siguientes, lo correcto es crearle una; ofrecerlo después de un nacimiento queda como idea en la tarea de ClickUp.
+
+### Franja de edad (desde el 8-dic-2026)
+
+Gemini no recibía ninguna edad, así que para la ficha de un bebé o un niño sin gustos apuntados salían regalos de adulto. Medido el 21-nov-2026 con una ficha «Leo», sin intereses, y su primer cumpleaños: sin franja, una cata de cervezas, una cartera masculina de piel y unos auriculares con cancelación de ruido; con «de 1 a 2 años», un triángulo Pikler, un correpasillos, bloques grandes, libros sensoriales y matronatación.
+
+[`src/lib/ageBand.ts`](../src/lib/ageBand.ts) calcula la franja y `buildPrompt` la recibe como último argumento:
+
+- **De dónde sale**: del cumpleaños de la propia ficha, un evento «Cumpleaños» o «Cumple» (o «Cumpleaños de» su nombre de pila) que se repite cada año y **tiene año**. «Cumpleaños de Leo» en la ficha de Ana no cuenta: es de otra persona.
+- **Cuándo**: la edad que tendrá en la fecha de la ocasión elegida (la próxima, si se repite), no la de hoy. En la Navidad de 2026 Leo tiene 9 meses («menos de 1 año»); en su cumpleaños de 2027, «de 1 a 2 años».
+- **Qué**: solo menores y solo una franja: menos de 1 año, 1–2, 3–5, 6–8, 9–12, 13–17. Nunca la edad exacta, el año ni la fecha. A partir de 18, o sin año, nada.
+- **En el prompt**: una línea «Edad aproximada» en la ficha y una regla para que lo que sea para esa persona resulte adecuado y seguro para su edad.
+- **Desde cuándo**: `AGE_BAND_FROM = "2026-12-08"`. Es un dato nuevo hacia Google, así que es un cambio sustancial de la política: publicado en `/privacidad` y `/terminos` el 21-nov-2026 y avisado por correo con 15 días (`privacy.md` §10 y §11). Antes de esa fecha el código no la manda.
 
 ### Marcas favoritas (`favoriteBrands`)
 

@@ -18,7 +18,8 @@ import {
 import { matchFavoriteBrands, normalizeBrandDomain } from "@/lib/brands";
 import { normalizeInterest } from "@/lib/interests";
 import { classifyProviderError } from "@/lib/errors";
-import { buildPrompt } from "@/lib/giftPrompt";
+import { buildPrompt, firstNameOf } from "@/lib/giftPrompt";
+import { ageBandForPrompt } from "@/lib/ageBand";
 
 const GIFT_TYPE_VALUES = GIFT_TYPES.map((t) => t.value) as [GiftType, ...GiftType[]];
 
@@ -279,11 +280,13 @@ export async function POST(req: NextRequest) {
   // Un personId malformado o de otro usuario hace que Convex lance
   // (ArgumentValidationError / ownership): para el cliente ambos casos son
   // el mismo 404, sin distinguir "no existe" de "no es tuyo".
-  let person, matchingDate, history, discardedTitles;
+  let person, matchingDate, allDates, history, discardedTitles;
   try {
-    [person, matchingDate, history, discardedTitles] = await Promise.all([
+    [person, matchingDate, allDates, history, discardedTitles] = await Promise.all([
       fetchQuery(api.people.getById, { id: personId }, { token }),
       fetchQuery(api.importantDates.getByPersonAndLabel, { personId, label: occasionLabel }, { token }),
+      // Solo para la franja de edad: el cumpleaños con año de la propia ficha.
+      fetchQuery(api.importantDates.getByPerson, { personId }, { token }),
       fetchQuery(api.giftHistory.getByPerson, { personId }, { token }),
       fetchQuery(api.recommendations.getDiscardedTitles, { personId, occasionLabel, giftType }, { token }),
     ]);
@@ -340,7 +343,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const prompt = buildPrompt(person, matchingDate?.budgetMin, matchingDate?.budgetMax, occasionLabel, giftType, history, discardedTitles);
+  const ageBand = ageBandForPrompt({ events: allDates, occasion: matchingDate, firstName: firstNameOf(person.name) });
+  const prompt = buildPrompt(person, matchingDate?.budgetMin, matchingDate?.budgetMax, occasionLabel, giftType, history, discardedTitles, ageBand);
 
   const noStores = giftType === "experiencia" || giftType === "tiempo-juntos";
 

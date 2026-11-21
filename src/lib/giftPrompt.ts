@@ -18,6 +18,9 @@ const formatBudget = (budgetMin?: number, budgetMax?: number) => {
 const reactionLabel = (r: string) =>
   REACTIONS.find((x) => x.value === r)?.label ?? r;
 
+/** El nombre de pila, que es lo único del nombre que sale hacia Gemini. */
+export const firstNameOf = (name: string) => name.trim().split(/\s+/)[0];
+
 export const buildPrompt = (
   person: {
     name: string;
@@ -36,6 +39,9 @@ export const buildPrompt = (
   giftType: GiftType,
   history: Array<{ giftName: string; occasionLabel: string; year?: number; reaction: string }>,
   discardedTitles: string[],
+  // Solo para menores con cumpleaños con año, y solo desde AGE_BAND_FROM
+  // (`ageBandForPrompt` en ageBand.ts). Nunca la edad exacta.
+  ageBand: string | null = null,
 ) => {
   const relationshipLabel =
     RELATIONSHIPS.find((r) => r.value === person.relationship)?.label ??
@@ -53,7 +59,7 @@ export const buildPrompt = (
   // son lo que haría identificable a la persona en el proveedor de IA. El
   // `trim()` previo importa — sin él, un nombre con espacio inicial deja el
   // campo vacío. Ver docs/privacy.md §4.1 (qué se envía y qué no).
-  const firstName = person.name.trim().split(/\s+/)[0];
+  const firstName = firstNameOf(person.name);
 
   const practicalLines = [
     person.shoeSize ? `- Talla de zapato: ${person.shoeSize}` : "",
@@ -152,7 +158,11 @@ ${storesGuide}`,
   - Una mudanza, una casa nueva o una reforma: cosas para el hogar nuevo.
   - Una jubilación, una graduación, unas oposiciones, un trabajo nuevo o un viaje: regalos que celebren ese momento y le sirvan en la etapa que empieza.
   - Cualquier otra ocasión: tómala como el motivo del regalo y deja que oriente todas las ideas.
-- Cuando la ocasión manda sobre los gustos, los intereses de ${firstName} solo matizan el estilo de las ideas (ej. un móvil de cuna de fieltro hecho a mano si le gusta la artesanía), y sus tallas y marcas solo valen para lo que sea para ${firstName}.`;
+- Cuando la ocasión manda sobre los gustos, los intereses de ${firstName} solo matizan el estilo de las ideas (ej. un móvil de cuna de fieltro hecho a mano si le gusta la artesanía), y sus tallas y marcas solo valen para lo que sea para ${firstName}.${
+    ageBand
+      ? `\n- ${firstName} es menor (edad aproximada: ${ageBand}). Todo lo que sea para ${firstName} tiene que ser adecuado y seguro para esa edad: nada de piezas pequeñas para los más pequeños, nada que exija ser adulto, y juguetes, libros y planes pensados para esa etapa.`
+      : ""
+  }`;
 
   return `Genera EXACTAMENTE 9 ideas de regalo para la siguiente ocasión y persona.
 
@@ -160,7 +170,7 @@ Ocasión: ${occasionLabel}
 
 Persona (su ficha):
 - Nombre: ${firstName}
-- Relación con quien regala: ${relationshipLabel}
+${ageBand ? `- Edad aproximada: ${ageBand}\n` : ""}- Relación con quien regala: ${relationshipLabel}
 - Intereses: ${interestsText}
 ${brandsLine ? brandsLine + "\n" : ""}- Notas: ${notesText}
 - Presupuesto: ${budgetText}
