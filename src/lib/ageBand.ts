@@ -10,9 +10,9 @@ import { nextOccurrenceDate } from "./dates";
 
 /**
  * Desde cuándo se manda (00:00 UTC). Es un dato nuevo que sale hacia Google,
- * así que es un cambio sustancial de la política (privacy.md §11): se publica y
- * se avisa por correo al menos 15 días antes. El código puede desplegarse
- * antes; hasta este día la franja no sale.
+ * así que es un cambio sustancial de la política (privacy.md §11), publicado en
+ * `/privacidad` con esta fecha de entrada en vigor. El código puede
+ * desplegarse antes; hasta este día la franja no sale.
  */
 export const AGE_BAND_FROM = "2026-12-08";
 

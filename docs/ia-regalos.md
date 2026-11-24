@@ -273,7 +273,7 @@ Gemini no recibía ninguna edad, así que para la ficha de un bebé o un niño s
 - **Cuándo**: la edad que tendrá en la fecha de la ocasión elegida (la próxima, si se repite), no la de hoy. En la Navidad de 2026 Leo tiene 9 meses («menos de 1 año»); en su cumpleaños de 2027, «de 1 a 2 años».
 - **Qué**: solo menores y solo una franja: menos de 1 año, 1–2, 3–5, 6–8, 9–12, 13–17. Nunca la edad exacta, el año ni la fecha. A partir de 18, o sin año, nada.
 - **En el prompt**: una línea «Edad aproximada» en la ficha y una regla para que lo que sea para esa persona resulte adecuado y seguro para su edad.
-- **Desde cuándo**: `AGE_BAND_FROM = "2026-12-08"`. Es un dato nuevo hacia Google, así que es un cambio sustancial de la política: publicado en `/privacidad` y `/terminos` el 21-nov-2026 y avisado por correo con 15 días (`privacy.md` §10 y §11). Antes de esa fecha el código no la manda.
+- **Desde cuándo**: `AGE_BAND_FROM = "2026-12-08"`. Es un dato nuevo hacia Google, así que es un cambio sustancial de la política: publicado en `/privacidad` y `/terminos` el 21-nov-2026 con esa fecha de entrada en vigor (`privacy.md` §10 y §11). Antes de esa fecha el código no la manda.
 
 ### Marcas favoritas (`favoriteBrands`)
 
